@@ -14,7 +14,10 @@
 //! assert!(!tree.root_node().has_error());
 //! ```
 //!
-//! [`Parser`]: https://docs.rs/willbooster-tree-sitter/1/tree_sitter/struct.Parser.html
+//! The parser carries the ABI number of the WillBooster fork of tree-sitter (`0x57420001`), so it loads only with
+//! the `willbooster-tree-sitter` runtime, version 2.0.0 or later; upstream's `tree-sitter` runtime rejects it.
+//!
+//! [`Parser`]: https://docs.rs/willbooster-tree-sitter/2/tree_sitter/struct.Parser.html
 //! [tree-sitter]: https://tree-sitter.github.io/
 
 use tree_sitter_language::LanguageFn;
