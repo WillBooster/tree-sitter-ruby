@@ -8347,7 +8347,6 @@
   "supertypes": [
     "_statement",
     "_arg",
-    "_call_operator",
     "_method_name",
     "_expression",
     "_variable",
@@ -8360,5 +8359,6 @@
     "_pattern_expr_basic",
     "_pattern_primitive",
     "_pattern_constant"
-  ]
+  ],
+  "reserved": {}
 }
