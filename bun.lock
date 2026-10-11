@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "@willbooster/tree-sitter-rust",
+      "name": "@willbooster/tree-sitter-ruby",
       "devDependencies": {
         "@tsconfig/bun": "1.0.11",
         "@types/bun": "1.4.2",
