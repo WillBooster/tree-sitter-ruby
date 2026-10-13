@@ -1,5 +1,5 @@
 ===================================================
-heredoc word longer than 255 bytes is not recognized
+heredoc word longer than 255 bytes retains its body
 ===================================================
 
 <<AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
@@ -10,8 +10,9 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 
 (program
   (heredoc_beginning)
-  (identifier)
-  (constant))
+  (heredoc_body
+    (heredoc_content)
+    (heredoc_end)))
 
 =========================================================================
 heredocs whose scanner state would end past its buffer are not recognized
@@ -47,3 +48,900 @@ DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD
   (constant)
   (identifier)
   (constant))
+
+================================================================================
+255-byte heredoc identifier retains its body
+================================================================================
+
+x = [<<AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA]
+puts 1
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+f = 2
+
+---
+
+(program
+  (assignment (identifier) (array
+    (heredoc_beginning)))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (assignment (identifier) (integer)))
+
+================================================================================
+1018-byte heredoc identifier fills the scanner state
+================================================================================
+
+x = [<<AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA]
+puts 1
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+f = 2
+
+---
+
+(program
+  (assignment (identifier) (array
+    (heredoc_beginning)))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (assignment (identifier) (integer)))
+
+================================================================================
+mixed long and short heredoc identifiers retain their bodies
+================================================================================
+
+x = [<<AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA, <<B]
+puts 1
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+puts 1
+B
+f = 2
+
+---
+
+(program
+  (assignment (identifier) (array
+    (heredoc_beginning)
+    (heredoc_beginning)))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (assignment (identifier) (integer)))
+
+================================================================================
+near-capacity short heredoc identifiers retain their bodies
+================================================================================
+
+x = [<<AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA, <<BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB, <<CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC, <<DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD]
+puts 1
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+puts 1
+BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+puts 1
+CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
+puts 1
+DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD
+f = 2
+
+---
+
+(program
+  (assignment (identifier) (array
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (assignment (identifier) (integer)))
+
+================================================================================
+200 short heredocs retain every body
+================================================================================
+
+x = [<<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A, <<A]
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+puts 1
+A
+f = 2
+
+---
+
+(program
+  (assignment (identifier) (array
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)
+    (heredoc_beginning)))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (assignment (identifier) (integer)))
