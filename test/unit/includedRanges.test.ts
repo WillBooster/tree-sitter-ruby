@@ -20,6 +20,9 @@ test.each([
   ['<% if ready # why %>\n<p>HTML</p>\n<% end %>', '(program (if condition: (identifier) (comment)))', ['# why ']],
   ['<%# one %><%# two %><% value %>', '(program (comment) (comment) (identifier))', ['# one ', '# two ']],
   ['<% # first%>\n<p>HTML</p>\n<%\nvalue %>', '(program (comment) (identifier))', ['# first']],
+  ['<% foo\n# c %>\n<% bar %>', '(program (identifier) (comment) (identifier))', ['# c ']],
+  ['<% foo\n  # c %>\n<% bar %>', '(program (identifier) (comment) (identifier))', ['# c ']],
+  ['<% foo\n# c\n.bar %>', '(program (call receiver: (identifier) (comment) method: (identifier)))', ['# c']],
   ['<% # last %>', '(program (comment))', ['# last ']],
   ['<% # first\nvalue %>', '(program (comment) (identifier))', ['# first']],
 ] as const)('ends included comments without swallowing later Ruby: %s', (source, expected, comments) => {
@@ -47,33 +50,35 @@ test.each([
   }
 });
 
-test('reparses an edited included comment without losing the following block terminator', () => {
-  const source = '<% if ready # old %>\n<p>HTML</p>\n<% end %>';
-  const changed = source.replace('old', 'new comment');
-  const tree = parser.parse(source, undefined, { includedRanges: includedRanges(source) })!;
-  const startIndex = source.indexOf('old');
-  tree.edit(
-    new Edit({
-      startIndex,
-      oldEndIndex: startIndex + 3,
-      newEndIndex: startIndex + 11,
-      startPosition: pointAt(source, startIndex),
-      oldEndPosition: pointAt(source, startIndex + 3),
-      newEndPosition: pointAt(changed, startIndex + 11),
-    })
-  );
-  const incremental = parser.parse(changed, tree, { includedRanges: includedRanges(changed) })!;
-  const fresh = parser.parse(changed, undefined, { includedRanges: includedRanges(changed) })!;
-  try {
-    expect(incremental.rootNode.toString()).toBe('(program (if condition: (identifier) (comment)))');
-    expect(incremental.rootNode.toString()).toBe(fresh.rootNode.toString());
-    expect(incremental.rootNode.descendantsOfType('comment').map((node) => node.text)).toEqual(['# new comment ']);
-  } finally {
-    fresh.delete();
-    incremental.delete();
-    tree.delete();
+test.each(['<% if ready # old %>\n<p>HTML</p>\n<% end %>', '<% if ready\n# old %>\n<p>HTML</p>\n<% end %>'])(
+  'reparses an edited included comment without losing the following block terminator: %s',
+  (source) => {
+    const changed = source.replace('old', 'new comment');
+    const tree = parser.parse(source, undefined, { includedRanges: includedRanges(source) })!;
+    const startIndex = source.indexOf('old');
+    tree.edit(
+      new Edit({
+        startIndex,
+        oldEndIndex: startIndex + 3,
+        newEndIndex: startIndex + 11,
+        startPosition: pointAt(source, startIndex),
+        oldEndPosition: pointAt(source, startIndex + 3),
+        newEndPosition: pointAt(changed, startIndex + 11),
+      })
+    );
+    const incremental = parser.parse(changed, tree, { includedRanges: includedRanges(changed) })!;
+    const fresh = parser.parse(changed, undefined, { includedRanges: includedRanges(changed) })!;
+    try {
+      expect(incremental.rootNode.toString()).toBe('(program (if condition: (identifier) (comment)))');
+      expect(incremental.rootNode.toString()).toBe(fresh.rootNode.toString());
+      expect(incremental.rootNode.descendantsOfType('comment').map((node) => node.text)).toEqual(['# new comment ']);
+    } finally {
+      fresh.delete();
+      incremental.delete();
+      tree.delete();
+    }
   }
-});
+);
 
 function includedRanges(source: string): Range[] {
   return [...source.matchAll(/<%([\s\S]*?)%>/g)].map((match) => {

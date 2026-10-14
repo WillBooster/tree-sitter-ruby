@@ -163,6 +163,8 @@ static inline void deserialize(Scanner *scanner, const char *buffer, unsigned le
     assert(size == length);
 }
 
+static inline bool scan_line_comment(TSLexer *lexer);
+
 static inline bool scan_whitespace(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols) {
     bool heredoc_body_start_is_valid = scanner->open_heredocs.size > 0 && !scanner->open_heredocs.contents[0].started &&
                                        valid_symbols[HEREDOC_BODY_START];
@@ -216,6 +218,11 @@ static inline bool scan_whitespace(Scanner *scanner, TSLexer *lexer, const bool 
             default:
                 if (crossed_newline) {
                     if (lexer->lookahead != '.' && lexer->lookahead != '&' && lexer->lookahead != '#') {
+                        lexer->result_symbol = LINE_BREAK;
+                    } else if (lexer->lookahead == '#' && valid_symbols[LINE_COMMENT]) {
+                        if (!scan_line_comment(lexer)) {
+                            return false;
+                        }
                         lexer->result_symbol = LINE_BREAK;
                     } else if (lexer->lookahead == '.') {
                         // Don't return LINE_BREAK for the call operator (`.`) but do return one for range
@@ -837,8 +844,6 @@ static inline bool scan_literal_content(Scanner *scanner, TSLexer *lexer) {
     }
 }
 
-static inline bool scan_line_comment(TSLexer *lexer);
-
 static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols) {
     scanner->has_leading_whitespace = false;
 
@@ -863,7 +868,12 @@ static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symb
 
     switch (lexer->lookahead) {
         case '#':
-            return valid_symbols[LINE_COMMENT] && scan_line_comment(lexer);
+            if (valid_symbols[LINE_COMMENT] && scan_line_comment(lexer)) {
+                lexer->mark_end(lexer);
+                lexer->result_symbol = LINE_COMMENT;
+                return true;
+            }
+            return false;
 
         case '&':
             if (valid_symbols[BLOCK_AMPERSAND]) {
@@ -1088,8 +1098,6 @@ static inline bool scan_line_comment(TSLexer *lexer) {
     advance(lexer);
     while (!lexer->eof(lexer) && lexer->lookahead != '\n') {
         if (lexer->is_at_included_range_start(lexer)) {
-            lexer->mark_end(lexer);
-            lexer->result_symbol = LINE_COMMENT;
             return true;
         }
         advance(lexer);
