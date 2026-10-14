@@ -1415,6 +1415,12 @@
     }
   },
   {
+    "type": "comment",
+    "named": true,
+    "extra": true,
+    "fields": {}
+  },
+  {
     "type": "complex",
     "named": true,
     "fields": {},
@@ -3867,11 +3873,6 @@
   {
     "type": "class_variable",
     "named": true
-  },
-  {
-    "type": "comment",
-    "named": true,
-    "extra": true
   },
   {
     "type": "def",
