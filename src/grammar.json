@@ -47,8 +47,17 @@
       ]
     },
     "uninterpreted": {
-      "type": "PATTERN",
-      "value": "(.|\\s)*"
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "PATTERN",
+          "value": "(.|\\s)*"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "_uninterpreted"
+        }
+      ]
     },
     "block_body": {
       "type": "SYMBOL",
@@ -8351,6 +8360,10 @@
     {
       "type": "SYMBOL",
       "name": "_line_comment"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_uninterpreted"
     }
   ],
   "inline": [

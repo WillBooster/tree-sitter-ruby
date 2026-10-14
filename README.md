@@ -109,6 +109,8 @@ Profiles in `.tmp/generation-profiles/` are temporary and must not be committed.
 - an incremental-parsing check (`test/unit/incremental.test.ts`): `script/fuzz-corpus` runs `tree-sitter fuzz`, which
   edits each corpus case at random, reparses it, undoes the edits, and reparses again. `TREE_SITTER_SEED`,
   `TREE_SITTER_ITERATIONS`, and `TREE_SITTER_EDITS` run other or more edits;
+- included-range comment and incremental-edit checks (`test/unit/includedRanges.test.ts`), which load the Wasm build
+  produced by `bun run build/ci`;
 - a check that the real-world Ruby files of [ruby/spec](https://github.com/ruby/spec) cloned into `examples/` fail to
   parse exactly as listed in `script/known-failures.txt`. The first run clones the repository, which is pinned to a
   commit in `script/parse-examples`. After a grammar change or a moved pin alters that list, `script/parse-examples`

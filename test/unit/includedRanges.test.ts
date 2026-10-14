@@ -7,7 +7,7 @@ let parser: Parser;
 
 beforeAll(async () => {
   await Parser.init();
-  language = await Language.load(await readFile('tree-sitter-ruby.wasm'));
+  language = await Language.load(await readFile(new URL('../../tree-sitter-ruby.wasm', import.meta.url)));
 });
 beforeEach(() => {
   parser = new Parser();
@@ -23,6 +23,9 @@ test.each([
   ['<% foo\n# c %>\n<% bar %>', '(program (identifier) (comment) (identifier))', ['# c ']],
   ['<% foo\n  # c %>\n<% bar %>', '(program (identifier) (comment) (identifier))', ['# c ']],
   ['<% foo\n# c\n.bar %>', '(program (call receiver: (identifier) (comment) method: (identifier)))', ['# c']],
+  ['<% foo\n# c %><% .bar %>', '(program (call receiver: (identifier) (comment) method: (identifier)))', ['# c ']],
+  ['<% foo\n# c %><% &.bar %>', '(program (call receiver: (identifier) (comment) method: (identifier)))', ['# c ']],
+  ['<% __END__ %>\n<p>x</p>\n<% # data %><% y %>', '(program (uninterpreted))', []],
   ['<% # last %>', '(program (comment))', ['# last ']],
   ['<% # first\nvalue %>', '(program (comment) (identifier))', ['# first']],
 ] as const)('ends included comments without swallowing later Ruby: %s', (source, expected, comments) => {

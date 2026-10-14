@@ -3352,6 +3352,11 @@
     }
   },
   {
+    "type": "uninterpreted",
+    "named": true,
+    "fields": {}
+  },
+  {
     "type": "unless",
     "named": true,
     "fields": {
@@ -4037,10 +4042,6 @@
   {
     "type": "undef",
     "named": false
-  },
-  {
-    "type": "uninterpreted",
-    "named": true
   },
   {
     "type": "unless",

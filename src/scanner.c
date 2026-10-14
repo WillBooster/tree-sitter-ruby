@@ -41,6 +41,7 @@ typedef enum {
     ELEMENT_REFERENCE_BRACKET,
     SHORT_INTERPOLATION,
     LINE_COMMENT,
+    UNINTERPRETED,
 
     NONE
 } TokenType;
@@ -171,10 +172,10 @@ static inline bool scan_whitespace(Scanner *scanner, TSLexer *lexer, const bool 
     bool crossed_newline = false;
 
     for (;;) {
-        if (!valid_symbols[NO_LINE_BREAK] && valid_symbols[LINE_BREAK] && lexer->is_at_included_range_start(lexer)) {
+        if (!valid_symbols[NO_LINE_BREAK] && valid_symbols[LINE_BREAK] && !crossed_newline &&
+            lexer->is_at_included_range_start(lexer)) {
             lexer->mark_end(lexer);
-            lexer->result_symbol = LINE_BREAK;
-            return true;
+            crossed_newline = true;
         }
 
         switch (lexer->lookahead) {
@@ -198,7 +199,8 @@ static inline bool scan_whitespace(Scanner *scanner, TSLexer *lexer, const bool 
                     return true;
                 } else if (!valid_symbols[NO_LINE_BREAK] && valid_symbols[LINE_BREAK] && !crossed_newline) {
                     lexer->mark_end(lexer);
-                    advance(lexer);
+                    // Keep the saved LINE_BREAK endpoint, but exclude this newline from a following external token.
+                    lexer->advance(lexer, true);
                     crossed_newline = true;
                 } else {
                     skip(scanner, lexer);
@@ -218,11 +220,6 @@ static inline bool scan_whitespace(Scanner *scanner, TSLexer *lexer, const bool 
             default:
                 if (crossed_newline) {
                     if (lexer->lookahead != '.' && lexer->lookahead != '&' && lexer->lookahead != '#') {
-                        lexer->result_symbol = LINE_BREAK;
-                    } else if (lexer->lookahead == '#' && valid_symbols[LINE_COMMENT]) {
-                        if (!scan_line_comment(lexer)) {
-                            return false;
-                        }
                         lexer->result_symbol = LINE_BREAK;
                     } else if (lexer->lookahead == '.') {
                         // Don't return LINE_BREAK for the call operator (`.`) but do return one for range
@@ -845,6 +842,9 @@ static inline bool scan_literal_content(Scanner *scanner, TSLexer *lexer) {
 }
 
 static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols) {
+    if (valid_symbols[UNINTERPRETED] && !valid_symbols[STRING_START]) {
+        return false;
+    }
     scanner->has_leading_whitespace = false;
 
     // Contents of literals, which match any character except for some close delimiter

@@ -78,6 +78,7 @@ module.exports = grammar({
     $._element_reference_bracket,
     $._short_interpolation,
     $._line_comment,
+    $._uninterpreted,
   ],
 
   extras: ($) => [$.comment, $.heredoc_body, /\s/, /\\\r?\n/],
@@ -104,7 +105,8 @@ module.exports = grammar({
   rules: {
     program: ($) => seq(optional($._statements), optional(choice(seq(/__END__/, $.uninterpreted)))),
 
-    uninterpreted: () => /(.|\s)*/,
+    // External extras must yield to the internal lexer after __END__.
+    uninterpreted: ($) => choice(/(.|\s)*/, $._uninterpreted),
 
     block_body: ($) => $._statements,
 
