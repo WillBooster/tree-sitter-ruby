@@ -630,7 +630,7 @@ static inline void scan_heredoc_word(TSLexer *lexer, Heredoc *heredoc) {
 }
 
 static inline bool scan_short_interpolation(TSLexer *lexer, const bool has_content, const TSSymbol content_symbol) {
-    char start = (char)lexer->lookahead;
+    int32_t start = lexer->lookahead;
     if (start == '@' || start == '$') {
         if (has_content) {
             lexer->result_symbol = content_symbol;

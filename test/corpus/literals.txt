@@ -2309,3 +2309,16 @@ Unicode symbols and short interpolation
     (interpolation (instance_variable)))
   (string
     (interpolation (class_variable))))
+
+==================
+Unicode characters resembling interpolation prefixes
+==================
+
+"#ŀx"
+"#Ĥx"
+
+---
+
+(program
+  (string (string_content))
+  (string (string_content)))
