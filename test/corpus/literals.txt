@@ -2284,3 +2284,41 @@ Cß
   (class_variable)
   (simple_symbol)
   (identifier))
+
+==================
+Unicode symbols and short interpolation
+==================
+
+:言
+:你
+:일
+:Ā
+:abc言
+"#@言"
+"#@@你"
+
+---
+
+(program
+  (simple_symbol)
+  (simple_symbol)
+  (simple_symbol)
+  (simple_symbol)
+  (simple_symbol)
+  (string
+    (interpolation (instance_variable)))
+  (string
+    (interpolation (class_variable))))
+
+==================
+Unicode characters resembling interpolation prefixes
+==================
+
+"#ŀx"
+"#Ĥx"
+
+---
+
+(program
+  (string (string_content))
+  (string (string_content)))
