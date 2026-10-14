@@ -842,7 +842,8 @@ static inline bool scan_literal_content(Scanner *scanner, TSLexer *lexer) {
 }
 
 static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols) {
-    if (valid_symbols[UNINTERPRETED] && !valid_symbols[STRING_START]) {
+    if (valid_symbols[UNINTERPRETED] && !valid_symbols[STRING_START] && scanner->open_heredocs.size == 0 &&
+        scanner->literal_stack.size == 0) {
         return false;
     }
     scanner->has_leading_whitespace = false;

@@ -83,6 +83,21 @@ test.each(['<% if ready # old %>\n<p>HTML</p>\n<% end %>', '<% if ready\n# old %
   }
 );
 
+test.each([
+  ['x = <<~EOS; __END__\ndata\nEOS', ['\ndata\nEOS']],
+  ['foo(<<~EOS); __END__\nbody\nEOS', ['\nbody\nEOS']],
+  ['foo(<<A, <<B); __END__\na\nA\nb\nB', ['\na\nA', '\nb\nB']],
+] as const)('retains pending heredoc bodies before raw data in incomplete Ruby: %s', (source, bodies) => {
+  const tree = parser.parse(source)!;
+  try {
+    expect(tree.rootNode.hasError).toBe(false);
+    expect(tree.rootNode.descendantsOfType('heredoc_body').map((node) => node.text)).toEqual(bodies);
+    expect(tree.rootNode.descendantsOfType('uninterpreted').map((node) => node.text)).toEqual(['']);
+  } finally {
+    tree.delete();
+  }
+});
+
 function includedRanges(source: string): Range[] {
   return [...source.matchAll(/<%([\s\S]*?)%>/g)].map((match) => {
     const startIndex = match.index + 2;
