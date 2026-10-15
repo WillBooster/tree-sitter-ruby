@@ -172,10 +172,10 @@ static inline bool scan_whitespace(Scanner *scanner, TSLexer *lexer, const bool 
     bool crossed_newline = false;
 
     for (;;) {
-        if (!valid_symbols[NO_LINE_BREAK] && valid_symbols[LINE_BREAK] && !crossed_newline &&
-            lexer->is_at_included_range_start(lexer)) {
+        if (!valid_symbols[NO_LINE_BREAK] && valid_symbols[LINE_BREAK] && lexer->is_at_included_range_start(lexer)) {
             lexer->mark_end(lexer);
-            crossed_newline = true;
+            lexer->result_symbol = LINE_BREAK;
+            return true;
         }
 
         switch (lexer->lookahead) {
