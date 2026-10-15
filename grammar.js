@@ -77,6 +77,8 @@ module.exports = grammar({
     $._binary_star_star,
     $._element_reference_bracket,
     $._short_interpolation,
+    $._line_comment,
+    $._uninterpreted,
   ],
 
   extras: ($) => [$.comment, $.heredoc_body, /\s/, /\\\r?\n/],
@@ -103,7 +105,8 @@ module.exports = grammar({
   rules: {
     program: ($) => seq(optional($._statements), optional(choice(seq(/__END__/, $.uninterpreted)))),
 
-    uninterpreted: () => /(.|\s)*/,
+    // External extras must yield to the internal lexer after __END__.
+    uninterpreted: ($) => choice(/(.|\s)*/, $._uninterpreted),
 
     block_body: ($) => $._statements,
 
@@ -930,13 +933,16 @@ module.exports = grammar({
     undef: ($) => seq('undef', commaSep1($._method_name)),
     alias: ($) => seq('alias', field('name', $._method_name), field('alias', $._method_name)),
 
-    comment: () =>
-      token(
-        prec(
-          PREC.COMMENT,
-          choice(
-            seq('#', /.*/),
-            seq(/=begin.*\r?\n/, repeat(choice(/[^=]/, /=[^e]/, /=e[^n]/, /=en[^d]/)), /[\s*]*=end.*/)
+    comment: ($) =>
+      choice(
+        $._line_comment,
+        token(
+          prec(
+            PREC.COMMENT,
+            choice(
+              seq('#', /.*/),
+              seq(/=begin.*\r?\n/, repeat(choice(/[^=]/, /=[^e]/, /=e[^n]/, /=en[^d]/)), /[\s*]*=end.*/)
+            )
           )
         )
       ),

@@ -1,27 +1,14 @@
 import { expect, test } from 'vitest';
-import fs from 'node:fs';
 import path from 'node:path';
 
-import { generationInputMtime } from '../helpers/generationInputs.js';
+import { currentWasmPath } from '../helpers/generationInputs.js';
 
 import { Language, Parser } from '@willbooster/web-tree-sitter';
 
 const Root = path.join(import.meta.dirname, '../..');
-const WasmPath = path.join(Root, 'tree-sitter-ruby.wasm');
 await Parser.init();
 const parser = new Parser();
-parser.setLanguage(await Language.load(WasmPath));
-
-// The tests load the existing Wasm build, so a check against a stale one would not measure the current parser.
-test('uses a Wasm build built from the current parser', () => {
-  const sources = ['grammar.js', 'src/parser.c', 'src/scanner.c', 'src/tree_sitter/parser.h'].map(
-    (name) => fs.statSync(path.join(Root, name)).mtimeMs
-  );
-  expect(
-    Math.max(generationInputMtime(Root), ...sources) > fs.statSync(WasmPath).mtimeMs,
-    'generation inputs or src/ changed after the Wasm build was built; run `bun run build/ci`'
-  ).toBe(false);
-});
+parser.setLanguage(await Language.load(currentWasmPath(Root)));
 
 // Thread CPU excludes concurrent test workers and background Wasm compilation/collection.
 // The ratio allows headroom over tenfold input growth while detecting quadratic work.
