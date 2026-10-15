@@ -842,8 +842,8 @@ static inline bool scan_literal_content(Scanner *scanner, TSLexer *lexer) {
 }
 
 static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols) {
-    if (valid_symbols[UNINTERPRETED] && !valid_symbols[STRING_START] && scanner->open_heredocs.size == 0 &&
-        scanner->literal_stack.size == 0) {
+    bool raw_data = valid_symbols[UNINTERPRETED] && !valid_symbols[STRING_START];
+    if (raw_data && scanner->open_heredocs.size == 0 && scanner->literal_stack.size == 0) {
         return false;
     }
     scanner->has_leading_whitespace = false;
@@ -869,7 +869,7 @@ static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symb
 
     switch (lexer->lookahead) {
         case '#':
-            if (valid_symbols[LINE_COMMENT] && scan_line_comment(lexer)) {
+            if (!raw_data && valid_symbols[LINE_COMMENT] && scan_line_comment(lexer)) {
                 lexer->mark_end(lexer);
                 lexer->result_symbol = LINE_COMMENT;
                 return true;

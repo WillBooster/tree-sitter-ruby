@@ -100,6 +100,22 @@ test.each([
   }
 });
 
+test('preserves the raw-data tail after an incomplete included heredoc', () => {
+  const source = '<% x = <<~EOS %>\nbody\nEOS\n<% __END__ %>\n<% # c %>\n<% y %>';
+  const tree = parser.parse(source, undefined, { includedRanges: includedRanges(source) })!;
+  try {
+    expect(tree.rootNode.toString()).toBe(
+      '(program (assignment left: (identifier) right: (heredoc_beginning)) (uninterpreted))'
+    );
+    expect(tree.rootNode.descendantsOfType('comment')).toEqual([]);
+    expect(tree.rootNode.descendantsOfType('uninterpreted').map((node) => node.text)).toEqual([
+      ' %>\n<% # c %>\n<% y ',
+    ]);
+  } finally {
+    tree.delete();
+  }
+});
+
 function includedRanges(source: string): Range[] {
   return [...source.matchAll(/<%([\s\S]*?)%>/g)].map((match) => {
     const startIndex = match.index + 2;
