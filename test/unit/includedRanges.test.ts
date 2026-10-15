@@ -1,13 +1,15 @@
-import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import { Edit, Language, Parser, type Point, type Range } from '@willbooster/web-tree-sitter';
 import { afterEach, beforeAll, beforeEach, expect, test } from 'vitest';
+
+import { currentWasmPath } from '../helpers/generationInputs.js';
 
 let language: Language;
 let parser: Parser;
 
 beforeAll(async () => {
   await Parser.init();
-  language = await Language.load(await readFile(new URL('../../tree-sitter-ruby.wasm', import.meta.url)));
+  language = await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')));
 });
 beforeEach(() => {
   parser = new Parser();

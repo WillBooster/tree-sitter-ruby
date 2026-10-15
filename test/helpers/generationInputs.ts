@@ -1,8 +1,21 @@
+import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
-export function generationInputMtime(root: string): number {
+export function currentWasmPath(root: string): string {
+  const wasmPath = path.join(root, 'tree-sitter-ruby.wasm');
+  const sources = ['grammar.js', 'src/parser.c', 'src/scanner.c', 'src/tree_sitter/parser.h'].map(
+    (name) => fs.statSync(path.join(root, name)).mtimeMs
+  );
+  assert.ok(
+    Math.max(generationInputMtime(root), ...sources) <= fs.statSync(wasmPath).mtimeMs,
+    'generation inputs or src/ changed after the Wasm build was built; run `bun run build/ci`'
+  );
+  return wasmPath;
+}
+
+function generationInputMtime(root: string): number {
   const corpus = path.join(root, 'test/corpus');
   const examples = execFileSync('git', ['ls-files', '-z', '--', 'examples'], {
     cwd: root,
