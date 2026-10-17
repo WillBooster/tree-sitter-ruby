@@ -660,12 +660,64 @@
           "type": "ALIAS",
           "content": {
             "type": "SYMBOL",
+            "name": "return_command"
+          },
+          "named": true,
+          "value": "return"
+        },
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
+            "name": "yield_command"
+          },
+          "named": true,
+          "value": "yield"
+        },
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_endless_command_not"
+          },
+          "named": true,
+          "value": "unary"
+        },
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
             "name": "_endless_command_rescue"
           },
           "named": true,
           "value": "rescue_modifier"
         }
       ]
+    },
+    "_endless_command_not": {
+      "type": "PREC_RIGHT",
+      "value": 5,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "FIELD",
+            "name": "operator",
+            "content": {
+              "type": "STRING",
+              "value": "not"
+            }
+          },
+          {
+            "type": "FIELD",
+            "name": "operand",
+            "content": {
+              "type": "SYMBOL",
+              "name": "_endless_command"
+            }
+          }
+        ]
+      }
     },
     "_endless_command_rescue": {
       "type": "PREC",

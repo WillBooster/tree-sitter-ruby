@@ -47,3 +47,26 @@ def retried = risky value rescue fallback rescue final_fallback
         body: (call method: (identifier) arguments: (argument_list (identifier)))
         handler: (identifier))
       handler: (identifier))))
+
+==============================
+endless command bodies with keywords
+==============================
+
+def finish = return value
+def each_value = yield value rescue fallback
+def self.invalid? = not valid? value rescue false
+
+---
+
+(program
+  (method name: (identifier)
+    body: (return (argument_list (identifier))))
+  (method name: (identifier)
+    body: (rescue_modifier
+      body: (yield (argument_list (identifier)))
+      handler: (identifier)))
+  (singleton_method object: (self) name: (identifier)
+    body: (unary
+      operand: (rescue_modifier
+        body: (call method: (identifier) arguments: (argument_list (identifier)))
+        handler: (false)))))

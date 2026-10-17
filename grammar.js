@@ -185,7 +185,17 @@ module.exports = grammar({
         field('body', $._endless_command)
       ),
 
-    _endless_command: ($) => choice(alias($.command_call, $.call), alias($._endless_command_rescue, $.rescue_modifier)),
+    _endless_command: ($) =>
+      choice(
+        alias($.command_call, $.call),
+        alias($.return_command, $.return),
+        alias($.yield_command, $.yield),
+        alias($._endless_command_not, $.unary),
+        alias($._endless_command_rescue, $.rescue_modifier)
+      ),
+
+    _endless_command_not: ($) =>
+      prec.right(PREC.NOT, seq(field('operator', 'not'), field('operand', $._endless_command))),
 
     _endless_command_rescue: ($) =>
       prec(PREC.RESCUE, seq(field('body', $._endless_command), 'rescue', field('handler', $._arg))),

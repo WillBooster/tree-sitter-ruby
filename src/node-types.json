@@ -2414,6 +2414,14 @@
           {
             "type": "rescue_modifier",
             "named": true
+          },
+          {
+            "type": "return",
+            "named": true
+          },
+          {
+            "type": "yield",
+            "named": true
           }
         ]
       },
@@ -3092,6 +3100,14 @@
           {
             "type": "rescue_modifier",
             "named": true
+          },
+          {
+            "type": "return",
+            "named": true
+          },
+          {
+            "type": "yield",
+            "named": true
           }
         ]
       },
@@ -3316,6 +3332,10 @@
           },
           {
             "type": "parenthesized_statements",
+            "named": true
+          },
+          {
+            "type": "rescue_modifier",
             "named": true
           }
         ]
