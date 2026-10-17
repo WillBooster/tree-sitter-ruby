@@ -32,6 +32,7 @@ typedef enum {
     UNARY_MINUS_NUM,
     BINARY_MINUS,
     BINARY_STAR,
+    BITWISE_AND,
     SINGLETON_CLASS_LEFT_ANGLE_LEFT_ANGLE,
     HASH_KEY_SYMBOL,
     IDENTIFIER_SUFFIX,
@@ -181,6 +182,8 @@ static inline bool scan_whitespace(Scanner *scanner, TSLexer *lexer, const bool 
         switch (lexer->lookahead) {
             case ' ':
             case '\t':
+            case '\f':
+            case '\v':
                 skip(scanner, lexer);
                 break;
             case '\r':
@@ -877,12 +880,19 @@ static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symb
             return false;
 
         case '&':
-            if (valid_symbols[BLOCK_AMPERSAND]) {
+            if (valid_symbols[BLOCK_AMPERSAND] || valid_symbols[BITWISE_AND]) {
                 advance(lexer);
-                if (lexer->lookahead != '&' && lexer->lookahead != '.' && lexer->lookahead != '=' &&
-                    !iswspace(lexer->lookahead)) {
-                    lexer->result_symbol = BLOCK_AMPERSAND;
-                    return true;
+                if (lexer->lookahead != '&' && lexer->lookahead != '.' && lexer->lookahead != '=') {
+                    if (valid_symbols[BLOCK_AMPERSAND] &&
+                        (!valid_symbols[BITWISE_AND] ||
+                         (scanner->has_leading_whitespace && !iswspace(lexer->lookahead)))) {
+                        lexer->result_symbol = BLOCK_AMPERSAND;
+                        return true;
+                    }
+                    if (valid_symbols[BITWISE_AND]) {
+                        lexer->result_symbol = BITWISE_AND;
+                        return true;
+                    }
                 }
                 return false;
             }

@@ -1,0 +1,80 @@
+==============================
+anonymous block forwarding before newline
+==============================
+
+def forward(value, &)
+  target value, &
+end
+
+---
+
+(program
+  (method
+    (identifier)
+    (method_parameters (identifier) (block_parameter))
+    (body_statement
+      (call
+        (identifier)
+        (argument_list (identifier) (block_argument))))))
+
+==============================
+block arguments separated by whitespace
+==============================
+
+foo(& -> {})
+foo( & lambda {})
+foo(1, &
+)
+foo 1, & ;
+
+---
+
+(program
+  (call (identifier)
+    (argument_list (block_argument (lambda (block)))))
+  (call (identifier)
+    (argument_list (block_argument (call (identifier) (block)))))
+  (call (identifier)
+    (argument_list (integer) (block_argument)))
+  (call (identifier)
+    (argument_list (integer) (block_argument))))
+
+==============================
+bitwise and retains whitespace-sensitive call precedence
+==============================
+
+foo &bar
+foo & bar
+foo&bar
+foo& bar
+foo &= bar
+foo && bar
+foo&.bar
+
+---
+
+(program
+  (call (identifier) (argument_list (block_argument (identifier))))
+  (binary (identifier) (identifier))
+  (binary (identifier) (identifier))
+  (binary (identifier) (identifier))
+  (operator_assignment (identifier) (identifier))
+  (binary (identifier) (identifier))
+  (call (identifier) (identifier)))
+
+==============================
+bitwise and across form feed and vertical tab
+==============================
+
+1& 2
+1& 2
+foo&bar
+foo&bar
+
+---
+
+(program
+  (binary (integer) (integer))
+  (binary (integer) (integer))
+  (call (identifier) (argument_list (block_argument (identifier))))
+  (call (identifier) (argument_list (block_argument (identifier)))))

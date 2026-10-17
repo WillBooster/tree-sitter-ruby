@@ -5875,7 +5875,12 @@
                 "type": "FIELD",
                 "name": "operator",
                 "content": {
-                  "type": "STRING",
+                  "type": "ALIAS",
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "_bitwise_and"
+                  },
+                  "named": false,
                   "value": "&"
                 }
               },
@@ -8324,6 +8329,10 @@
     {
       "type": "SYMBOL",
       "name": "_binary_star"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_bitwise_and"
     },
     {
       "type": "SYMBOL",
