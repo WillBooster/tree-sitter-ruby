@@ -62,6 +62,10 @@
         "named": true
       },
       {
+        "type": "method",
+        "named": true
+      },
+      {
         "type": "next",
         "named": true
       },
@@ -71,6 +75,10 @@
       },
       {
         "type": "return",
+        "named": true
+      },
+      {
+        "type": "singleton_method",
         "named": true
       },
       {
@@ -2400,7 +2408,19 @@
             "named": true
           },
           {
+            "type": "call",
+            "named": true
+          },
+          {
             "type": "rescue_modifier",
+            "named": true
+          },
+          {
+            "type": "return",
+            "named": true
+          },
+          {
+            "type": "yield",
             "named": true
           }
         ]
@@ -3074,7 +3094,19 @@
             "named": true
           },
           {
+            "type": "call",
+            "named": true
+          },
+          {
             "type": "rescue_modifier",
+            "named": true
+          },
+          {
+            "type": "return",
+            "named": true
+          },
+          {
+            "type": "yield",
             "named": true
           }
         ]
@@ -3300,6 +3332,10 @@
           },
           {
             "type": "parenthesized_statements",
+            "named": true
+          },
+          {
+            "type": "rescue_modifier",
             "named": true
           }
         ]
