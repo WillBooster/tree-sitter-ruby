@@ -182,6 +182,8 @@ static inline bool scan_whitespace(Scanner *scanner, TSLexer *lexer, const bool 
         switch (lexer->lookahead) {
             case ' ':
             case '\t':
+            case '\f':
+            case '\v':
                 skip(scanner, lexer);
                 break;
             case '\r':

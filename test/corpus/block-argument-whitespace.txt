@@ -61,3 +61,20 @@ foo&.bar
   (operator_assignment (identifier) (identifier))
   (binary (identifier) (identifier))
   (call (identifier) (identifier)))
+
+==============================
+bitwise and across form feed and vertical tab
+==============================
+
+1& 2
+1& 2
+foo&bar
+foo&bar
+
+---
+
+(program
+  (binary (integer) (integer))
+  (binary (integer) (integer))
+  (call (identifier) (argument_list (block_argument (identifier))))
+  (call (identifier) (argument_list (block_argument (identifier)))))
