@@ -1,0 +1,63 @@
+===============================================
+blocks on calls chained from block-bearing commands
+===============================================
+
+b c do end.d e do end
+b c do end.f do end
+b c do end.f(d) do end
+b c do end.f(d) { }
+def a = b c do end.d e do end
+
+---
+
+(program
+  (call
+    (call
+      (identifier)
+      (argument_list
+        (identifier))
+      (do_block))
+    (identifier)
+    (argument_list
+      (identifier))
+    (do_block))
+  (call
+    (call
+      (identifier)
+      (argument_list
+        (identifier))
+      (do_block))
+    (identifier)
+    (do_block))
+  (call
+    (call
+      (identifier)
+      (argument_list
+        (identifier))
+      (do_block))
+    (identifier)
+    (argument_list
+      (identifier))
+    (do_block))
+  (call
+    (call
+      (identifier)
+      (argument_list
+        (identifier))
+      (do_block))
+    (identifier)
+    (argument_list
+      (identifier))
+    (block))
+  (method
+    (identifier)
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier)
+      (argument_list
+        (identifier))
+      (do_block))))

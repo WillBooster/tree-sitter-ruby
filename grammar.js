@@ -699,7 +699,11 @@ module.exports = grammar({
       ),
 
     command_call_with_block: ($) => {
-      const receiver = choice($._call, field('method', choice($._variable, $._function_identifier)));
+      const receiver = choice(
+        $._call,
+        $._chained_command_call,
+        field('method', choice($._variable, $._function_identifier))
+      );
       const args = field('arguments', alias($.command_argument_list, $.argument_list));
       const block = field('block', $.block);
       const doBlock = field('block', $.do_block);
@@ -717,7 +721,11 @@ module.exports = grammar({
       ),
 
     call: ($) => {
-      const receiver = choice($._call, field('method', choice($._variable, $._function_identifier)));
+      const receiver = choice(
+        $._call,
+        $._chained_command_call,
+        field('method', choice($._variable, $._function_identifier))
+      );
 
       const args = field('arguments', $.argument_list);
       const receiverArguments = seq(
