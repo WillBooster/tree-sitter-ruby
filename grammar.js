@@ -90,6 +90,12 @@ module.exports = grammar({
 
   conflicts: ($) => [
     [$._chained_primary, $._chained_lhs],
+    [$._non_pattern_expression, $.match_pattern, $.pair],
+    [$._chained_test_pattern, $.command_call],
+    [$._non_pattern_expression, $._chained_test_pattern],
+    [$._non_pattern_expression, $.test_pattern],
+    [$._non_pattern_expression, $.match_pattern],
+    [$._non_pattern_expression, $._chained_match_pattern],
     [$._array_pattern_n, $.as_pattern, $._find_pattern_body],
   ],
 
@@ -177,7 +183,7 @@ module.exports = grammar({
     rescue_modifier_arg: ($) => prec(PREC.RESCUE, seq(field('body', $._arg), 'rescue', field('handler', $._arg))),
 
     rescue_modifier_expression: ($) =>
-      prec(PREC.RESCUE, seq(field('body', $._expression), 'rescue', field('handler', $._arg))),
+      prec(PREC.RESCUE, seq(field('body', $._non_pattern_expression), 'rescue', field('handler', $._arg))),
 
     _body_expr: ($) => seq('=', field('body', choice($._arg, alias($.rescue_modifier_arg, $.rescue_modifier)))),
 
@@ -596,6 +602,15 @@ module.exports = grammar({
     // This naming convention is based on Ruby's standard grammar.
     _expression: ($) =>
       choice(
+        $._non_pattern_expression,
+        alias($._chained_match_pattern, $.match_pattern),
+        alias($._chained_test_pattern, $.test_pattern),
+        $.match_pattern,
+        $.test_pattern
+      ),
+
+    _non_pattern_expression: ($) =>
+      choice(
         alias($._command_method, $.method),
         alias($._command_singleton_method, $.singleton_method),
         alias($.command_binary, $.binary),
@@ -611,21 +626,22 @@ module.exports = grammar({
         alias($.yield_command, $.yield),
         alias($.break_command, $.break),
         alias($.next_command, $.next),
-        alias($._chained_match_pattern, $.match_pattern),
-        alias($._chained_test_pattern, $.test_pattern),
-        $.match_pattern,
-        $.test_pattern,
         $._arg
       ),
 
     _chained_match_pattern: ($) =>
-      prec(
-        100,
+      prec.dynamic(
+        1,
         seq(
           field(
             'value',
             choice(
               $._chained_arg,
+              alias($.command_assignment, $.assignment),
+              alias($._chained_assignment, $.assignment),
+              alias($._chained_operator_assignment, $.operator_assignment),
+              alias($.command_operator_assignment, $.operator_assignment),
+              alias($.command_call_with_block, $.call),
               alias($._command_method, $.method),
               alias($._command_singleton_method, $.singleton_method)
             )
@@ -635,13 +651,18 @@ module.exports = grammar({
         )
       ),
     _chained_test_pattern: ($) =>
-      prec(
-        100,
+      prec.dynamic(
+        1,
         seq(
           field(
             'value',
             choice(
               $._chained_arg,
+              alias($.command_assignment, $.assignment),
+              alias($._chained_assignment, $.assignment),
+              alias($._chained_operator_assignment, $.operator_assignment),
+              alias($.command_operator_assignment, $.operator_assignment),
+              alias($.command_call_with_block, $.call),
               alias($._chained_command, $.call),
               alias($._command_method, $.method),
               alias($._command_singleton_method, $.singleton_method)
@@ -652,9 +673,10 @@ module.exports = grammar({
         )
       ),
 
-    match_pattern: ($) => prec(100, seq(field('value', $._arg), '=>', field('pattern', $._pattern_top_expr_body))),
+    match_pattern: ($) =>
+      prec.dynamic(1, seq(field('value', $._arg), '=>', field('pattern', $._pattern_top_expr_body))),
 
-    test_pattern: ($) => prec(100, seq(field('value', $._arg), 'in', field('pattern', $._pattern_top_expr_body))),
+    test_pattern: ($) => prec.dynamic(1, seq(field('value', $._arg), 'in', field('pattern', $._pattern_top_expr_body))),
 
     _arg: ($) =>
       choice(
@@ -834,8 +856,8 @@ module.exports = grammar({
     _chained_command_argument_list: ($) =>
       prec.right(
         choice(
-          commaSep1($._argument),
-          seq(choice($._chained_plus_arg, alias($._chained_plus_pair, $.pair)), repeat(seq(',', $._argument)))
+          commaSep1($._command_argument),
+          seq(choice($._chained_plus_arg, alias($._chained_plus_pair, $.pair)), repeat(seq(',', $._command_argument)))
         )
       ),
 
@@ -853,11 +875,24 @@ module.exports = grammar({
     _chained_plus_argument: ($) =>
       prec.right(PREC.COMPLEMENT, seq(field('operator', alias($._unary_plus, '+')), field('operand', $._arg))),
 
-    command_argument_list: ($) => prec.right(commaSep1($._argument)),
+    command_argument_list: ($) => prec.right(commaSep1($._command_argument)),
 
     argument_list: ($) => prec.right(seq(token.immediate('('), optional($._argument_list_with_trailing_comma), ')')),
 
     _argument_list_with_trailing_comma: ($) => prec.right(seq(commaSep1($._argument), optional(','))),
+
+    _command_argument: ($) =>
+      prec.left(
+        1,
+        choice(
+          $._non_pattern_expression,
+          $.splat_argument,
+          $.hash_splat_argument,
+          $.forward_argument,
+          $.block_argument,
+          $.pair
+        )
+      ),
 
     _argument: ($) =>
       prec.left(
@@ -911,7 +946,7 @@ module.exports = grammar({
           field(
             'right',
             choice(
-              $._expression,
+              $._non_pattern_expression,
               $.splat_argument,
               $.right_assignment_list,
               alias($.rescue_modifier_expression, $.rescue_modifier)
@@ -926,7 +961,7 @@ module.exports = grammar({
         seq(
           field('left', $._chained_lhs),
           field('operator', choice('+=', '-=', '*=', '**=', '/=', '||=', '|=', '&&=', '&=', '%=', '>>=', '<<=', '^=')),
-          field('right', choice($._expression, alias($.rescue_modifier_expression, $.rescue_modifier)))
+          field('right', choice($._non_pattern_expression, alias($.rescue_modifier_expression, $.rescue_modifier)))
         )
       ),
 
@@ -948,7 +983,7 @@ module.exports = grammar({
         seq(
           field('left', choice($._lhs, $.left_assignment_list)),
           '=',
-          field('right', choice($._expression, alias($.rescue_modifier_expression, $.rescue_modifier)))
+          field('right', choice($._non_pattern_expression, alias($.rescue_modifier_expression, $.rescue_modifier)))
         )
       ),
 
@@ -968,7 +1003,7 @@ module.exports = grammar({
         seq(
           field('left', $._lhs),
           field('operator', choice('+=', '-=', '*=', '**=', '/=', '||=', '|=', '&&=', '&=', '%=', '>>=', '<<=', '^=')),
-          field('right', choice($._expression, alias($.rescue_modifier_expression, $.rescue_modifier)))
+          field('right', choice($._non_pattern_expression, alias($.rescue_modifier_expression, $.rescue_modifier)))
         )
       ),
 
@@ -1190,28 +1225,31 @@ module.exports = grammar({
     hash: ($) => seq('{', optional(seq(commaSep1(choice($.pair, $.hash_splat_argument)), optional(','))), '}'),
 
     pair: ($) =>
-      prec.right(
-        choice(
-          seq(field('key', $._arg), '=>', field('value', $._arg)),
-          seq(field('key', choice($.string)), token.immediate(':'), field('value', $._arg)),
-          seq(
-            field(
-              'key',
+      prec.dynamic(
+        2,
+        prec.right(
+          choice(
+            seq(field('key', $._arg), '=>', field('value', $._arg)),
+            seq(field('key', choice($.string)), token.immediate(':'), field('value', $._arg)),
+            seq(
+              field(
+                'key',
+                choice(
+                  $.hash_key_symbol,
+                  alias($.identifier, $.hash_key_symbol),
+                  alias($.constant, $.hash_key_symbol),
+                  alias($.identifier_suffix, $.hash_key_symbol),
+                  alias($.constant_suffix, $.hash_key_symbol)
+                )
+              ),
+              token.immediate(':'),
               choice(
-                $.hash_key_symbol,
-                alias($.identifier, $.hash_key_symbol),
-                alias($.constant, $.hash_key_symbol),
-                alias($.identifier_suffix, $.hash_key_symbol),
-                alias($.constant_suffix, $.hash_key_symbol)
+                field('value', optional($._arg)),
+                // This alternative never matches, because '_no_line_break' tokens do not exist.
+                // The purpose is give a hint to the scanner that it should not produce any line-break
+                // terminators at this point.
+                $._no_line_break
               )
-            ),
-            token.immediate(':'),
-            choice(
-              field('value', optional($._arg)),
-              // This alternative never matches, because '_no_line_break' tokens do not exist.
-              // The purpose is give a hint to the scanner that it should not produce any line-break
-              // terminators at this point.
-              $._no_line_break
             )
           )
         )

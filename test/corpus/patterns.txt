@@ -371,12 +371,242 @@ return x => 6 | 7
 )
 
 =====================================
-one-line patterns: incorrectly parsed
+bare command cannot consume a pattern test
 =====================================
-foo x in 5 # FIXME: should be parsed as `(foo x) in 5` instead of `foo (x in 5)`
+foo x in 5
 
 -----------------
 
 (program
-  (call (identifier) (argument_list (test_pattern (identifier) (integer)))) (comment)
+  (call (identifier) (argument_list (identifier))) (ERROR (integer))
 )
+
+========================================
+command pattern boundaries: assignments
+========================================
+
+x = b c in [1]
+x += b c in [1]
+x = b c do end => value
+
+---
+
+(program
+  (test_pattern
+    (assignment
+      (identifier)
+      (call
+        (identifier)
+        (argument_list
+          (identifier))))
+    (array_pattern
+      (integer)))
+  (test_pattern
+    (operator_assignment
+      (identifier)
+      (call
+        (identifier)
+        (argument_list
+          (identifier))))
+    (array_pattern
+      (integer)))
+  (match_pattern
+    (assignment
+      (identifier)
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block)))
+    (identifier)))
+
+========================================
+command pattern boundaries: endless definitions
+========================================
+
+def a = b c in [1]
+def self.a = b c in [1]
+def a = b c do end => value
+
+---
+
+(program
+  (test_pattern
+    (method
+      (identifier)
+      (call
+        (identifier)
+        (argument_list
+          (identifier))))
+    (array_pattern
+      (integer)))
+  (test_pattern
+    (singleton_method
+      (self)
+      (identifier)
+      (call
+        (identifier)
+        (argument_list
+          (identifier))))
+    (array_pattern
+      (integer)))
+  (match_pattern
+    (method
+      (identifier)
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block)))
+    (identifier)))
+
+========================================
+command pattern boundaries: completed block calls
+========================================
+
+b c do end.d z in Integer
+b c do end in Integer
+b c do end => result
+
+---
+
+(program
+  (test_pattern
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier)
+      (argument_list
+        (identifier)))
+    (constant))
+  (test_pattern
+    (call
+      (identifier)
+      (argument_list
+        (identifier))
+      (do_block))
+    (constant))
+  (match_pattern
+    (call
+      (identifier)
+      (argument_list
+        (identifier))
+      (do_block))
+    (identifier)))
+
+========================================
+command pattern boundaries: pairs and parentheses
+========================================
+
+x = b c => [1]
+def a = b c => [1]
+foo (x in Integer)
+x = b (c in Integer)
+foo bar baz
+foo x, y
+
+---
+
+(program
+  (assignment
+    (identifier)
+    (call
+      (identifier)
+      (argument_list
+        (pair
+          (identifier)
+          (array
+            (integer))))))
+  (method
+    (identifier)
+    (call
+      (identifier)
+      (argument_list
+        (pair
+          (identifier)
+          (array
+            (integer))))))
+  (call
+    (identifier)
+    (argument_list
+      (parenthesized_statements
+        (test_pattern
+          (identifier)
+          (constant)))))
+  (assignment
+    (identifier)
+    (call
+      (identifier)
+      (argument_list
+        (parenthesized_statements
+          (test_pattern
+            (identifier)
+            (constant))))))
+  (call
+    (identifier)
+    (argument_list
+      (call
+        (identifier)
+        (argument_list
+          (identifier)))))
+  (call
+    (identifier)
+    (argument_list
+      (identifier)
+      (identifier))))
+
+========================================
+command pattern boundaries: rescue
+========================================
+
+x = b c rescue y in Integer
+x += b c rescue y in Integer
+x = b c in Integer rescue y
+def a = b c rescue y in Integer
+
+---
+
+(program
+  (test_pattern
+    (assignment
+      (identifier)
+      (rescue_modifier
+        (call
+          (identifier)
+          (argument_list
+            (identifier)))
+        (identifier)))
+    (constant))
+  (test_pattern
+    (operator_assignment
+      (identifier)
+      (rescue_modifier
+        (call
+          (identifier)
+          (argument_list
+            (identifier)))
+        (identifier)))
+    (constant))
+  (rescue_modifier
+    (test_pattern
+      (assignment
+        (identifier)
+        (call
+          (identifier)
+          (argument_list
+            (identifier))))
+      (constant))
+    (identifier))
+  (test_pattern
+    (method
+      (identifier)
+      (rescue_modifier
+        (call
+          (identifier)
+          (argument_list
+            (identifier)))
+        (identifier)))
+    (constant)))
