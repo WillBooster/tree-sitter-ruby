@@ -92,6 +92,7 @@ module.exports = grammar({
   conflicts: ($) => [
     [$._chained_primary, $._chained_lhs],
     [$._command_value, $.pair],
+    [$._command_value, $._command_definition_pair],
     [$._statement, $._chained_test_pattern],
     [$._statement, $.command_binary],
     [$._chained_test_pattern, $.command_call],
@@ -914,7 +915,30 @@ module.exports = grammar({
     _command_argument: ($) =>
       prec.left(
         1,
-        choice($._command_value, $.splat_argument, $.hash_splat_argument, $.forward_argument, $.block_argument, $.pair)
+        choice(
+          $._command_value,
+          $.splat_argument,
+          $.hash_splat_argument,
+          $.forward_argument,
+          $.block_argument,
+          $.pair,
+          alias($._command_definition_pair, $.pair)
+        )
+      ),
+
+    _command_definition_pair: ($) =>
+      prec.dynamic(
+        2,
+        prec.right(
+          seq(
+            field(
+              'key',
+              choice(alias($._command_method, $.method), alias($._command_singleton_method, $.singleton_method))
+            ),
+            '=>',
+            field('value', $._arg)
+          )
+        )
       ),
 
     _argument: ($) =>

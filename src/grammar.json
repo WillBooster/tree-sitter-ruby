@@ -6907,8 +6907,69 @@
           {
             "type": "SYMBOL",
             "name": "pair"
+          },
+          {
+            "type": "ALIAS",
+            "content": {
+              "type": "SYMBOL",
+              "name": "_command_definition_pair"
+            },
+            "named": true,
+            "value": "pair"
           }
         ]
+      }
+    },
+    "_command_definition_pair": {
+      "type": "PREC_DYNAMIC",
+      "value": 2,
+      "content": {
+        "type": "PREC_RIGHT",
+        "value": 0,
+        "content": {
+          "type": "SEQ",
+          "members": [
+            {
+              "type": "FIELD",
+              "name": "key",
+              "content": {
+                "type": "CHOICE",
+                "members": [
+                  {
+                    "type": "ALIAS",
+                    "content": {
+                      "type": "SYMBOL",
+                      "name": "_command_method"
+                    },
+                    "named": true,
+                    "value": "method"
+                  },
+                  {
+                    "type": "ALIAS",
+                    "content": {
+                      "type": "SYMBOL",
+                      "name": "_command_singleton_method"
+                    },
+                    "named": true,
+                    "value": "singleton_method"
+                  }
+                ]
+              }
+            },
+            {
+              "type": "STRING",
+              "value": "=>"
+            },
+            {
+              "type": "FIELD",
+              "name": "value",
+              "content": {
+                "type": "SYMBOL",
+                "name": "_arg"
+              }
+            }
+          ]
+        }
       }
     },
     "_argument": {
@@ -11237,6 +11298,10 @@
     [
       "_command_value",
       "pair"
+    ],
+    [
+      "_command_value",
+      "_command_definition_pair"
     ],
     [
       "_statement",

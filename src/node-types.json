@@ -2852,6 +2852,14 @@
             "named": true
           },
           {
+            "type": "method",
+            "named": true
+          },
+          {
+            "type": "singleton_method",
+            "named": true
+          },
+          {
             "type": "string",
             "named": true
           }

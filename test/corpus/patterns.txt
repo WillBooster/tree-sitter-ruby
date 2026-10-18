@@ -960,3 +960,108 @@ foo not not a in Integer
 (program
   (return (argument_list (unary (unary (test_pattern (identifier) (constant))))))
   (call (identifier) (argument_list (unary (unary (test_pattern (identifier) (constant)))))))
+
+========================================
+command pattern boundaries: definition pair keys
+========================================
+
+foo def a = b c rescue d => 1
+foo def a = b c rescue d => Integer
+foo def self.a = b c rescue d => 1
+foo def a = b c => 1
+foo (def a = b c rescue d) => 1
+def a = b c rescue d => 1
+foo def a = b c rescue d, e => 1
+
+---
+
+(program
+  (call
+    (identifier)
+    (argument_list
+      (pair
+        (method
+          (identifier)
+          (rescue_modifier
+            (call
+              (identifier)
+              (argument_list
+                (identifier)))
+            (identifier)))
+        (integer))))
+  (call
+    (identifier)
+    (argument_list
+      (pair
+        (method
+          (identifier)
+          (rescue_modifier
+            (call
+              (identifier)
+              (argument_list
+                (identifier)))
+            (identifier)))
+        (constant))))
+  (call
+    (identifier)
+    (argument_list
+      (pair
+        (singleton_method
+          (self)
+          (identifier)
+          (rescue_modifier
+            (call
+              (identifier)
+              (argument_list
+                (identifier)))
+            (identifier)))
+        (integer))))
+  (call
+    (identifier)
+    (argument_list
+      (method
+        (identifier)
+        (call
+          (identifier)
+          (argument_list
+            (pair
+              (identifier)
+              (integer)))))))
+  (call
+    (identifier)
+    (argument_list
+      (pair
+        (parenthesized_statements
+          (method
+            (identifier)
+            (rescue_modifier
+              (call
+                (identifier)
+                (argument_list
+                  (identifier)))
+              (identifier))))
+        (integer))))
+  (match_pattern
+    (method
+      (identifier)
+      (rescue_modifier
+        (call
+          (identifier)
+          (argument_list
+            (identifier)))
+        (identifier)))
+    (integer))
+  (call
+    (identifier)
+    (argument_list
+      (method
+        (identifier)
+        (rescue_modifier
+          (call
+            (identifier)
+            (argument_list
+              (identifier)))
+          (identifier)))
+      (pair
+        (identifier)
+        (integer)))))
