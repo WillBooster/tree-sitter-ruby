@@ -79,6 +79,7 @@ module.exports = grammar({
     $._constant_suffix,
     $._hash_splat_star_star,
     $._binary_star_star,
+    $._modulo_assignment,
     $._element_reference_bracket,
     $._short_interpolation,
     $._line_comment,
@@ -106,6 +107,7 @@ module.exports = grammar({
     [$._command_value, $._command_definition_pair],
     [$._chained_match_pattern, $.command_call],
     [$.call, $._variable],
+    [$._primary, $.call],
     [$._primary, $._variable],
     [$._primary, $.command_call_with_block, $._variable],
     [$._primary, $._super_command, $.command_call_with_block, $._variable],
@@ -764,7 +766,7 @@ module.exports = grammar({
 
     _primary: ($) =>
       choice(
-        $.super,
+        prec(1, $.super),
         $.parenthesized_statements,
         $._lhs,
         alias($._function_identifier_call, $.call),
@@ -1108,7 +1110,7 @@ module.exports = grammar({
         PREC.ASSIGN,
         seq(
           field('left', $._chained_lhs),
-          field('operator', choice('+=', '-=', '*=', '**=', '/=', '||=', '|=', '&&=', '&=', '%=', '>>=', '<<=', '^=')),
+          field('operator', assignmentOperator($)),
           field('right', choice($._command_value, alias($._command_value_rescue, $.rescue_modifier)))
         )
       ),
@@ -1138,11 +1140,7 @@ module.exports = grammar({
     operator_assignment: ($) =>
       prec.right(
         PREC.ASSIGN,
-        seq(
-          field('left', $._lhs),
-          field('operator', choice('+=', '-=', '*=', '**=', '/=', '||=', '|=', '&&=', '&=', '%=', '>>=', '<<=', '^=')),
-          field('right', $._arg_rhs)
-        )
+        seq(field('left', $._lhs), field('operator', assignmentOperator($)), field('right', $._arg_rhs))
       ),
 
     command_operator_assignment: ($) =>
@@ -1150,7 +1148,7 @@ module.exports = grammar({
         PREC.ASSIGN,
         seq(
           field('left', $._lhs),
-          field('operator', choice('+=', '-=', '*=', '**=', '/=', '||=', '|=', '&&=', '&=', '%=', '>>=', '<<=', '^=')),
+          field('operator', assignmentOperator($)),
           field('right', choice($._command_value, alias($._command_value_rescue, $.rescue_modifier)))
         )
       ),
@@ -1524,6 +1522,27 @@ function commaSep1(rule) {
  */
 function commaSep(rule) {
   return optional(commaSep1(rule));
+}
+
+/**
+ * @param {GrammarSymbols<string>} $
+ */
+function assignmentOperator($) {
+  return choice(
+    '+=',
+    '-=',
+    '*=',
+    '**=',
+    '/=',
+    '||=',
+    '|=',
+    '&&=',
+    '&=',
+    alias($._modulo_assignment, '%='),
+    '>>=',
+    '<<=',
+    '^='
+  );
 }
 
 /**

@@ -41,6 +41,7 @@ typedef enum {
     CONSTANT_SUFFIX,
     HASH_SPLAT_STAR_STAR,
     BINARY_STAR_STAR,
+    MODULO_ASSIGNMENT,
     ELEMENT_REFERENCE_BRACKET,
     SHORT_INTERPOLATION,
     LINE_COMMENT,
@@ -384,7 +385,7 @@ static inline bool scan_symbol_identifier(TSLexer *lexer) {
     return true;
 }
 
-static inline bool scan_open_delimiter(Scanner *scanner, TSLexer *lexer, Literal *literal, const bool *valid_symbols) {
+static inline bool scan_literal_start_or_assignment(Scanner *scanner, TSLexer *lexer, Literal *literal, const bool *valid_symbols) {
     switch (lexer->lookahead) {
         case '"':
             literal->type = STRING_START;
@@ -432,98 +433,42 @@ static inline bool scan_open_delimiter(Scanner *scanner, TSLexer *lexer, Literal
             }
             return true;
 
-        case '%':
+        case '%': {
             advance(lexer);
+            if (valid_symbols[MODULO_ASSIGNMENT] && lexer->lookahead == '=') {
+                advance(lexer);
+                literal->type = MODULO_ASSIGNMENT;
+                return true;
+            }
 
-            switch (lexer->lookahead) {
-                case 's':
-                    if (!valid_symbols[SIMPLE_SYMBOL]) {
-                        return false;
-                    }
-                    literal->type = SYMBOL_START;
-                    literal->allows_interpolation = false;
+            static const struct {
+                int32_t prefix;
+                TokenType type;
+                bool allows_interpolation;
+            } kinds[] = {
+                {'s', SYMBOL_START, false},
+                {'r', REGEX_START, true},
+                {'x', SUBSHELL_START, true},
+                {'q', STRING_START, false},
+                {'Q', STRING_START, true},
+                {'w', STRING_ARRAY_START, false},
+                {'W', STRING_ARRAY_START, true},
+                {'i', SYMBOL_ARRAY_START, false},
+                {'I', SYMBOL_ARRAY_START, true},
+            };
+            literal->type = STRING_START;
+            literal->allows_interpolation = true;
+            for (unsigned i = 0; i < sizeof(kinds) / sizeof(kinds[0]); i++) {
+                if (lexer->lookahead == kinds[i].prefix) {
+                    literal->type = kinds[i].type;
+                    literal->allows_interpolation = kinds[i].allows_interpolation;
                     advance(lexer);
                     break;
-
-                case 'r':
-                    if (!valid_symbols[REGEX_START]) {
-                        return false;
-                    }
-                    literal->type = REGEX_START;
-                    literal->allows_interpolation = true;
-                    advance(lexer);
-                    break;
-
-                case 'x':
-                    if (!valid_symbols[SUBSHELL_START]) {
-                        return false;
-                    }
-                    literal->type = SUBSHELL_START;
-                    literal->allows_interpolation = true;
-                    advance(lexer);
-                    break;
-
-                case 'q':
-                    if (!valid_symbols[STRING_START]) {
-                        return false;
-                    }
-                    literal->type = STRING_START;
-                    literal->allows_interpolation = false;
-                    advance(lexer);
-                    break;
-
-                case 'Q':
-                    if (!valid_symbols[STRING_START]) {
-                        return false;
-                    }
-                    literal->type = STRING_START;
-                    literal->allows_interpolation = true;
-                    advance(lexer);
-                    break;
-
-                case 'w':
-                    if (!valid_symbols[STRING_ARRAY_START]) {
-                        return false;
-                    }
-                    literal->type = STRING_ARRAY_START;
-                    literal->allows_interpolation = false;
-                    advance(lexer);
-                    break;
-
-                case 'i':
-                    if (!valid_symbols[SYMBOL_ARRAY_START]) {
-                        return false;
-                    }
-                    literal->type = SYMBOL_ARRAY_START;
-                    literal->allows_interpolation = false;
-                    advance(lexer);
-                    break;
-
-                case 'W':
-                    if (!valid_symbols[STRING_ARRAY_START]) {
-                        return false;
-                    }
-                    literal->type = STRING_ARRAY_START;
-                    literal->allows_interpolation = true;
-                    advance(lexer);
-                    break;
-
-                case 'I':
-                    if (!valid_symbols[SYMBOL_ARRAY_START]) {
-                        return false;
-                    }
-                    literal->type = SYMBOL_ARRAY_START;
-                    literal->allows_interpolation = true;
-                    advance(lexer);
-                    break;
-
-                default:
-                    if (!valid_symbols[STRING_START]) {
-                        return false;
-                    }
-                    literal->type = STRING_START;
-                    literal->allows_interpolation = true;
-                    break;
+                }
+            }
+            TokenType required_token = literal->type == SYMBOL_START ? SIMPLE_SYMBOL : literal->type;
+            if (!valid_symbols[required_token]) {
+                return false;
             }
 
             switch (lexer->lookahead) {
@@ -574,11 +519,7 @@ static inline bool scan_open_delimiter(Scanner *scanner, TSLexer *lexer, Literal
                 case ']':
                 case '}':
                 case '>':
-                // TODO: Implement %= as external rule and re-enable = as a valid
-                // unbalanced delimiter. That will be necessary due to ambiguity
-                // between &= assignment operator and %=...= as string
-                // content delimiter.
-                // case '=':
+                case '=':
                 case '+':
                 case '-':
                 case '~':
@@ -600,7 +541,7 @@ static inline bool scan_open_delimiter(Scanner *scanner, TSLexer *lexer, Literal
 
             advance(lexer);
             return true;
-
+        }
         default:
             return false;
     }
@@ -1081,8 +1022,7 @@ static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symb
         return false;
     }
 
-    // Open delimiters for literals
-    if (valid_symbols[STRING_START]) {
+    if (valid_symbols[STRING_START] || (lexer->lookahead == '%' && valid_symbols[MODULO_ASSIGNMENT])) {
         Literal literal = {0};
         literal.nesting_depth = 1;
 
@@ -1109,8 +1049,10 @@ static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symb
             return true;
         }
 
-        if (scan_open_delimiter(scanner, lexer, &literal, valid_symbols)) {
-            array_push(&scanner->literal_stack, literal);
+        if (scan_literal_start_or_assignment(scanner, lexer, &literal, valid_symbols)) {
+            if (literal.type != MODULO_ASSIGNMENT) {
+                array_push(&scanner->literal_stack, literal);
+            }
             lexer->result_symbol = literal.type;
             return true;
         }

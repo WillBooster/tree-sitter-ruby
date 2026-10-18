@@ -2823,3 +2823,103 @@ foo not not super c do end && x in Integer
         (do_block))
       (identifier))
     (constant)))
+
+===============================
+repeated super statement modifiers
+===============================
+
+def m
+  super unless X
+  super unless X
+  super unless X
+  super unless X
+  super unless X
+  super unless X
+  super unless X
+  super unless X
+  super unless X
+  super unless X
+end
+
+def n
+  return super if X
+  return super if X
+  return super if X
+  return super if X
+  return super if X
+  return super if X
+  return super if X
+  return super if X
+  return super if X
+  return super if X
+end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (unless_modifier
+        (super)
+        (constant))
+      (unless_modifier
+        (super)
+        (constant))
+      (unless_modifier
+        (super)
+        (constant))
+      (unless_modifier
+        (super)
+        (constant))
+      (unless_modifier
+        (super)
+        (constant))
+      (unless_modifier
+        (super)
+        (constant))
+      (unless_modifier
+        (super)
+        (constant))
+      (unless_modifier
+        (super)
+        (constant))
+      (unless_modifier
+        (super)
+        (constant))
+      (unless_modifier
+        (super)
+        (constant))))
+  (method
+    (identifier)
+    (body_statement
+      (if_modifier
+        (return (argument_list (super)))
+        (constant))
+      (if_modifier
+        (return (argument_list (super)))
+        (constant))
+      (if_modifier
+        (return (argument_list (super)))
+        (constant))
+      (if_modifier
+        (return (argument_list (super)))
+        (constant))
+      (if_modifier
+        (return (argument_list (super)))
+        (constant))
+      (if_modifier
+        (return (argument_list (super)))
+        (constant))
+      (if_modifier
+        (return (argument_list (super)))
+        (constant))
+      (if_modifier
+        (return (argument_list (super)))
+        (constant))
+      (if_modifier
+        (return (argument_list (super)))
+        (constant))
+      (if_modifier
+        (return (argument_list (super)))
+        (constant)))))
