@@ -3989,6 +3989,15 @@
           "type": "ALIAS",
           "content": {
             "type": "SYMBOL",
+            "name": "_test_pattern_not"
+          },
+          "named": true,
+          "value": "unary"
+        },
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
             "name": "_command_method"
           },
           "named": true,
@@ -4367,6 +4376,15 @@
                   "content": {
                     "type": "SYMBOL",
                     "name": "command_unary"
+                  },
+                  "named": true,
+                  "value": "unary"
+                },
+                {
+                  "type": "ALIAS",
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "_command_not"
                   },
                   "named": true,
                   "value": "unary"
@@ -9546,20 +9564,7 @@
                 },
                 {
                   "type": "SYMBOL",
-                  "name": "test_pattern"
-                },
-                {
-                  "type": "SYMBOL",
                   "name": "match_pattern"
-                },
-                {
-                  "type": "ALIAS",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "_chained_test_pattern"
-                  },
-                  "named": true,
-                  "value": "test_pattern"
                 },
                 {
                   "type": "ALIAS",
@@ -9574,6 +9579,58 @@
             }
           }
         ]
+      }
+    },
+    "_test_pattern_not": {
+      "type": "PREC_DYNAMIC",
+      "value": 3,
+      "content": {
+        "type": "PREC_RIGHT",
+        "value": 5,
+        "content": {
+          "type": "SEQ",
+          "members": [
+            {
+              "type": "FIELD",
+              "name": "operator",
+              "content": {
+                "type": "STRING",
+                "value": "not"
+              }
+            },
+            {
+              "type": "FIELD",
+              "name": "operand",
+              "content": {
+                "type": "CHOICE",
+                "members": [
+                  {
+                    "type": "SYMBOL",
+                    "name": "test_pattern"
+                  },
+                  {
+                    "type": "ALIAS",
+                    "content": {
+                      "type": "SYMBOL",
+                      "name": "_chained_test_pattern"
+                    },
+                    "named": true,
+                    "value": "test_pattern"
+                  },
+                  {
+                    "type": "ALIAS",
+                    "content": {
+                      "type": "SYMBOL",
+                      "name": "_test_pattern_not"
+                    },
+                    "named": true,
+                    "value": "unary"
+                  }
+                ]
+              }
+            }
+          ]
+        }
       }
     },
     "parenthesized_unary": {

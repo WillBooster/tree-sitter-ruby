@@ -623,6 +623,7 @@ module.exports = grammar({
     _command_value: ($) =>
       choice(
         alias($._command_not, $.unary),
+        alias($._test_pattern_not, $.unary),
         alias($._command_method, $.method),
         alias($._command_singleton_method, $.singleton_method),
         alias($.command_assignment, $.assignment),
@@ -688,6 +689,7 @@ module.exports = grammar({
               alias($._receiver_command, $.call),
               alias($.command_binary, $.binary),
               alias($.command_unary, $.unary),
+              alias($._command_not, $.unary),
               alias($.yield_command, $.yield),
               alias($._super_command, $.call),
               $.if_modifier,
@@ -1096,14 +1098,24 @@ module.exports = grammar({
         PREC.NOT,
         seq(
           field('operator', 'not'),
-          field(
-            'operand',
-            choice(
-              $._command_value,
-              $.test_pattern,
-              $.match_pattern,
-              alias($._chained_test_pattern, $.test_pattern),
-              alias($._chained_match_pattern, $.match_pattern)
+          field('operand', choice($._command_value, $.match_pattern, alias($._chained_match_pattern, $.match_pattern)))
+        )
+      ),
+
+    _test_pattern_not: ($) =>
+      prec.dynamic(
+        3,
+        prec.right(
+          PREC.NOT,
+          seq(
+            field('operator', 'not'),
+            field(
+              'operand',
+              choice(
+                $.test_pattern,
+                alias($._chained_test_pattern, $.test_pattern),
+                alias($._test_pattern_not, $.unary)
+              )
             )
           )
         )

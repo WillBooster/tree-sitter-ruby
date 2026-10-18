@@ -1073,6 +1073,8 @@ command pattern boundaries: negated keyword pairs
 not not b c => value
 not not b.c d => value
 not not b c in Integer
+not not not b c in Integer
+not not not not b c in Integer
 not not not b c => value
 not not not not not b c => value
 
@@ -1096,14 +1098,33 @@ not not not not not b c => value
           (pair
             (identifier)
             (identifier))))))
-  (test_pattern
-    (unary
+  (unary
+    (test_pattern
       (unary
         (call
           (identifier)
           (argument_list
-            (identifier)))))
-    (constant))
+            (identifier))))
+      (constant)))
+  (unary
+    (unary
+      (test_pattern
+        (unary
+          (call
+            (identifier)
+            (argument_list
+              (identifier))))
+        (constant))))
+  (unary
+    (unary
+      (unary
+        (test_pattern
+          (unary
+            (call
+              (identifier)
+              (argument_list
+                (identifier))))
+          (constant)))))
   (unary
     (unary
       (unary
