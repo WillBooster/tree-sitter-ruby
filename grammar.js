@@ -95,6 +95,7 @@ module.exports = grammar({
     [$._chained_command_argument_list, $.command_argument_list],
     [$._pair_block_argument, $.block_argument],
     [$.command_call, $._command_pair],
+    [$._command_value, $._command_pair],
     [$._chained_test_pattern, $._command_not, $._negated_unary_test_pattern],
     [$._statement, $._chained_test_pattern],
     [$._chained_test_pattern, $.command_call],
@@ -657,6 +658,7 @@ module.exports = grammar({
             'value',
             choice(
               $._chained_arg,
+              alias($._chained_command, $.call),
               alias($.command_assignment, $.assignment),
               alias($._chained_assignment, $.assignment),
               alias($._chained_operator_assignment, $.operator_assignment),
@@ -961,10 +963,18 @@ module.exports = grammar({
 
     _command_pair: ($) =>
       prec.dynamic(
-        2,
+        1,
         prec.right(
           seq(
-            field('key', choice(alias($._command_pair_key, $.call), alias($._super_command, $.call))),
+            field(
+              'key',
+              choice(
+                alias($._command_pair_key, $.call),
+                alias($._super_command, $.call),
+                alias($.yield_command, $.yield),
+                alias($._command_not, $.unary)
+              )
+            ),
             '=>',
             field('value', $._arg)
           )
@@ -1006,7 +1016,16 @@ module.exports = grammar({
 
     _argument: ($) =>
       prec.left(
-        choice($._expression, $.splat_argument, $.hash_splat_argument, $.forward_argument, $.block_argument, $.pair)
+        choice(
+          $._expression,
+          $.splat_argument,
+          $.hash_splat_argument,
+          $.forward_argument,
+          $.block_argument,
+          $.pair,
+          alias($._command_pair, $.pair),
+          alias($._command_definition_pair, $.pair)
+        )
       ),
 
     forward_argument: () => '...',
@@ -1139,7 +1158,7 @@ module.exports = grammar({
 
     unary: ($) => unaryExpression($._arg, choice(alias($._unary_minus, '-'), '+')),
 
-    command_unary: ($) => unaryExpression($._expression, choice(alias($._unary_minus, '-'), '+')),
+    command_unary: ($) => unaryExpression($._non_pattern_expression, choice(alias($._unary_minus, '-'), '+')),
 
     _command_not: ($) =>
       prec.right(

@@ -4161,6 +4161,15 @@
                   "type": "ALIAS",
                   "content": {
                     "type": "SYMBOL",
+                    "name": "_chained_command"
+                  },
+                  "named": true,
+                  "value": "call"
+                },
+                {
+                  "type": "ALIAS",
+                  "content": {
+                    "type": "SYMBOL",
                     "name": "command_assignment"
                   },
                   "named": true,
@@ -7132,7 +7141,7 @@
     },
     "_command_pair": {
       "type": "PREC_DYNAMIC",
-      "value": 2,
+      "value": 1,
       "content": {
         "type": "PREC_RIGHT",
         "value": 0,
@@ -7162,6 +7171,24 @@
                     },
                     "named": true,
                     "value": "call"
+                  },
+                  {
+                    "type": "ALIAS",
+                    "content": {
+                      "type": "SYMBOL",
+                      "name": "yield_command"
+                    },
+                    "named": true,
+                    "value": "yield"
+                  },
+                  {
+                    "type": "ALIAS",
+                    "content": {
+                      "type": "SYMBOL",
+                      "name": "_command_not"
+                    },
+                    "named": true,
+                    "value": "unary"
                   }
                 ]
               }
@@ -7365,6 +7392,24 @@
           {
             "type": "SYMBOL",
             "name": "pair"
+          },
+          {
+            "type": "ALIAS",
+            "content": {
+              "type": "SYMBOL",
+              "name": "_command_pair"
+            },
+            "named": true,
+            "value": "pair"
+          },
+          {
+            "type": "ALIAS",
+            "content": {
+              "type": "SYMBOL",
+              "name": "_command_definition_pair"
+            },
+            "named": true,
+            "value": "pair"
           }
         ]
       }
@@ -9680,7 +9725,7 @@
                 "name": "operand",
                 "content": {
                   "type": "SYMBOL",
-                  "name": "_expression"
+                  "name": "_non_pattern_expression"
                 }
               }
             ]
@@ -9705,7 +9750,7 @@
                 "name": "operand",
                 "content": {
                   "type": "SYMBOL",
-                  "name": "_expression"
+                  "name": "_non_pattern_expression"
                 }
               }
             ]
@@ -9744,7 +9789,7 @@
                 "name": "operand",
                 "content": {
                   "type": "SYMBOL",
-                  "name": "_expression"
+                  "name": "_non_pattern_expression"
                 }
               }
             ]
@@ -9778,7 +9823,7 @@
                 "name": "operand",
                 "content": {
                   "type": "SYMBOL",
-                  "name": "_expression"
+                  "name": "_non_pattern_expression"
                 }
               }
             ]
@@ -11763,6 +11808,10 @@
     ],
     [
       "command_call",
+      "_command_pair"
+    ],
+    [
+      "_command_value",
       "_command_pair"
     ],
     [
