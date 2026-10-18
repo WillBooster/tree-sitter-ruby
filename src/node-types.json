@@ -984,6 +984,10 @@
           {
             "type": "_simple_numeric",
             "named": true
+          },
+          {
+            "type": "super",
+            "named": true
           }
         ]
       },
@@ -2853,6 +2857,10 @@
         "types": [
           {
             "type": "_arg",
+            "named": true
+          },
+          {
+            "type": "call",
             "named": true
           },
           {

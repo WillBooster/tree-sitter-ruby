@@ -1459,3 +1459,229 @@ def f; super while x; end
       (while_modifier
         (super)
         (identifier)))))
+
+========================================
+command pattern boundaries: block-pass pair keys
+========================================
+
+x = b c &blk => Integer
+foo b c &blk => 1
+x = b c.d &blk => Integer
+x = b c d &blk => Integer
+x = b c *xs, &blk => Integer
+x = b c **h, &blk => Integer
+x = b c d, &blk => Integer
+
+def in; end
+obj.in
+x = b obj.in &blk => Integer
+
+---
+
+(program
+  (assignment
+    (identifier)
+    (call
+      (identifier)
+      (argument_list
+        (pair
+          (call
+            (identifier)
+            (argument_list
+              (block_argument
+                (identifier))))
+          (constant)))))
+  (call
+    (identifier)
+    (argument_list
+      (call
+        (identifier)
+        (argument_list
+          (pair
+            (call
+              (identifier)
+              (argument_list
+                (block_argument
+                  (identifier))))
+            (integer))))))
+  (assignment
+    (identifier)
+    (call
+      (identifier)
+      (argument_list
+        (pair
+          (call
+            (identifier)
+            (identifier)
+            (argument_list
+              (block_argument
+                (identifier))))
+          (constant)))))
+  (assignment
+    (identifier)
+    (call
+      (identifier)
+      (argument_list
+        (call
+          (identifier)
+          (argument_list
+            (pair
+              (call
+                (identifier)
+                (argument_list
+                  (block_argument
+                    (identifier))))
+              (constant)))))))
+  (match_pattern
+    (assignment
+      (identifier)
+      (call
+        (identifier)
+        (argument_list
+          (call
+            (identifier)
+            (argument_list
+              (splat_argument
+                (identifier))
+              (block_argument
+                (identifier)))))))
+    (constant))
+  (match_pattern
+    (assignment
+      (identifier)
+      (call
+        (identifier)
+        (argument_list
+          (call
+            (identifier)
+            (argument_list
+              (hash_splat_argument
+                (identifier))
+              (block_argument
+                (identifier)))))))
+    (constant))
+  (match_pattern
+    (assignment
+      (identifier)
+      (call
+        (identifier)
+        (argument_list
+          (call
+            (identifier)
+            (argument_list
+              (identifier)
+              (block_argument
+                (identifier)))))))
+    (constant))
+  (method
+    (identifier))
+  (call
+    (identifier)
+    (identifier))
+  (assignment
+    (identifier)
+    (call
+      (identifier)
+      (argument_list
+        (pair
+          (call
+            (identifier)
+            (identifier)
+            (argument_list
+              (block_argument
+                (identifier))))
+          (constant))))))
+
+========================================
+command pattern boundaries: negated assignment logic
+========================================
+
+a = not b c in Integer and d
+a = not not b c in Integer and d
+a += not b c in Integer or d
+
+---
+
+(program
+  (binary
+    (test_pattern
+      (assignment
+        (identifier)
+        (unary
+          (call
+            (identifier)
+            (argument_list
+              (identifier)))))
+      (constant))
+    (identifier))
+  (binary
+    (assignment
+      (identifier)
+      (unary
+        (test_pattern
+          (unary
+            (call
+              (identifier)
+              (argument_list
+                (identifier))))
+          (constant))))
+    (identifier))
+  (binary
+    (test_pattern
+      (operator_assignment
+        (identifier)
+        (unary
+          (call
+            (identifier)
+            (argument_list
+              (identifier)))))
+      (constant))
+    (identifier)))
+
+========================================
+command pattern boundaries: super arithmetic spacing
+========================================
+
+def f
+  super + x
+  super +x
+  super + 1
+  super +1
+  super + x in Integer
+  super +x in Integer
+end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (binary
+        (super)
+        (identifier))
+      (call
+        (super)
+        (argument_list
+          (unary
+            (identifier))))
+      (binary
+        (super)
+        (integer))
+      (call
+        (super)
+        (argument_list
+          (unary
+            (integer))))
+      (test_pattern
+        (binary
+          (super)
+          (identifier))
+        (constant))
+      (test_pattern
+        (call
+          (super)
+          (argument_list
+            (unary
+              (identifier))))
+        (constant)))))

@@ -89,7 +89,11 @@ module.exports = grammar({
 
   word: ($) => $.identifier,
 
+  reserved: { global: () => [], variables: () => ['in'], methodNames: () => [] },
+
   conflicts: ($) => [
+    [$._chained_command_argument_list, $.command_argument_list],
+    [$._command_block_key_argument, $.block_argument],
     [$._chained_primary, $._chained_lhs],
     [$._command_value, $.pair],
     [$._command_value, $._command_definition_pair],
@@ -189,6 +193,9 @@ module.exports = grammar({
       ),
 
     rescue_modifier_arg: ($) => prec(PREC.RESCUE, seq(field('body', $._arg), 'rescue', field('handler', $._arg))),
+
+    _command_value_rescue: ($) =>
+      prec(PREC.RESCUE, seq(field('body', $._command_value), 'rescue', field('handler', $._arg))),
 
     rescue_modifier_expression: ($) =>
       prec(PREC.RESCUE, seq(field('body', $._non_pattern_expression), 'rescue', field('handler', $._arg))),
@@ -725,6 +732,7 @@ module.exports = grammar({
         $.conditional,
         $.range,
         $.binary,
+        alias($._super_plus_binary, $.binary),
         $.unary
       ),
 
@@ -813,8 +821,14 @@ module.exports = grammar({
         $._chained_command
       ),
 
+    _super_plus_binary: ($) =>
+      prec.left(
+        PREC.ADDITIVE,
+        seq(field('left', $.super), field('operator', alias($._binary_plus, '+')), field('right', $._arg))
+      ),
+
     _super_command: ($) =>
-      seq(field('method', $.super), field('arguments', alias($.command_argument_list, $.argument_list))),
+      seq(field('method', $.super), field('arguments', alias($._chained_command_argument_list, $.argument_list))),
 
     _receiver_command: ($) => seq($._call, field('arguments', alias($.command_argument_list, $.argument_list))),
 
@@ -937,9 +951,23 @@ module.exports = grammar({
           $.forward_argument,
           $.block_argument,
           $.pair,
-          alias($._command_definition_pair, $.pair)
+          alias($._command_definition_pair, $.pair),
+          alias($._command_block_pair, $.pair)
         )
       ),
+
+    _command_block_pair: ($) =>
+      prec.dynamic(2, prec.right(seq(field('key', alias($._command_block_key, $.call)), '=>', field('value', $._arg)))),
+
+    _command_block_key: ($) =>
+      seq(
+        choice(field('method', choice($._variable, $._function_identifier)), $._call),
+        field('arguments', alias($._command_block_key_arguments, $.argument_list))
+      ),
+
+    _command_block_key_arguments: ($) => seq(alias($._command_block_key_argument, $.block_argument)),
+
+    _command_block_key_argument: ($) => seq(alias($._block_ampersand, '&'), $._arg),
 
     _command_definition_pair: ($) =>
       prec.dynamic(
@@ -1008,10 +1036,10 @@ module.exports = grammar({
           field(
             'right',
             choice(
-              $._non_pattern_expression,
+              $._command_value,
               $.splat_argument,
               $.right_assignment_list,
-              alias($.rescue_modifier_expression, $.rescue_modifier)
+              alias($._command_value_rescue, $.rescue_modifier)
             )
           )
         )
@@ -1023,7 +1051,7 @@ module.exports = grammar({
         seq(
           field('left', $._chained_lhs),
           field('operator', choice('+=', '-=', '*=', '**=', '/=', '||=', '|=', '&&=', '&=', '%=', '>>=', '<<=', '^=')),
-          field('right', choice($._non_pattern_expression, alias($.rescue_modifier_expression, $.rescue_modifier)))
+          field('right', choice($._command_value, alias($._command_value_rescue, $.rescue_modifier)))
         )
       ),
 
@@ -1045,7 +1073,7 @@ module.exports = grammar({
         seq(
           field('left', choice($._lhs, $.left_assignment_list)),
           '=',
-          field('right', choice($._non_pattern_expression, alias($.rescue_modifier_expression, $.rescue_modifier)))
+          field('right', choice($._command_value, alias($._command_value_rescue, $.rescue_modifier)))
         )
       ),
 
@@ -1065,7 +1093,7 @@ module.exports = grammar({
         seq(
           field('left', $._lhs),
           field('operator', choice('+=', '-=', '*=', '**=', '/=', '||=', '|=', '&&=', '&=', '%=', '>>=', '<<=', '^=')),
-          field('right', choice($._non_pattern_expression, alias($.rescue_modifier_expression, $.rescue_modifier)))
+          field('right', choice($._command_value, alias($._command_value_rescue, $.rescue_modifier)))
         )
       ),
 
@@ -1162,7 +1190,7 @@ module.exports = grammar({
         )
       ),
 
-    _variable: ($) => prec.right(choice($.super, $.identifier, $.constant)),
+    _variable: ($) => prec.right(choice($.super, reserved('variables', $.identifier), $.constant)),
 
     operator: () =>
       choice(
@@ -1200,7 +1228,7 @@ module.exports = grammar({
 
     _method_name: ($) =>
       choice(
-        $.identifier,
+        reserved('methodNames', $.identifier),
         $._function_identifier,
         $.constant,
         $.setter,
