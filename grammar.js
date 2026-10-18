@@ -104,10 +104,10 @@ module.exports = grammar({
     [$._chained_primary, $._chained_lhs],
     [$._command_value, $.pair],
     [$._command_value, $._command_definition_pair],
-    [$._statement, $.command_binary],
     [$._chained_match_pattern, $.command_call],
     [$.call, $._variable],
     [$._primary, $._variable],
+    [$._primary, $.command_call_with_block, $._variable],
     [$._primary, $._super_command, $.command_call_with_block, $._variable],
     [$._non_pattern_expression, $._chained_match_pattern],
     [$._command_value, $._chained_match_pattern],
@@ -851,6 +851,7 @@ module.exports = grammar({
       choice(
         $._chained_primary,
         alias($._chained_binary, $.binary),
+        alias($._chained_unary, $.unary),
         alias($._chained_conditional, $.conditional),
         alias($._chained_range, $.range)
       ),
@@ -967,7 +968,8 @@ module.exports = grammar({
                 alias($.yield_command, $.yield),
                 alias($._command_not, $.unary),
                 alias($._chained_assignment, $.assignment),
-                alias($._chained_operator_assignment, $.operator_assignment)
+                alias($._chained_operator_assignment, $.operator_assignment),
+                $._chained_arg
               )
             ),
             '=>',
@@ -1144,10 +1146,17 @@ module.exports = grammar({
 
     _chained_binary: ($) => binaryExpression($, choice($._chained_arg, alias($.command_call_with_block, $.call))),
 
+    _chained_unary: ($) =>
+      strongUnaryExpression(
+        choice($._chained_arg, alias($.command_call_with_block, $.call)),
+        choice(alias($._unary_minus, '-'), '+')
+      ),
+
     binary: ($) => binaryExpression($, $._arg),
 
     command_binary: ($) =>
       prec.left(
+        1,
         seq(field('left', $._expression), field('operator', choice('or', 'and')), field('right', $._expression))
       ),
 
@@ -1497,6 +1506,16 @@ function unaryExpression(operand, sign) {
   return choice(
     prec(PREC.DEFINED, seq(field('operator', 'defined?'), field('operand', operand))),
     prec.right(PREC.NOT, seq(field('operator', 'not'), field('operand', operand))),
+    strongUnaryExpression(operand, sign)
+  );
+}
+
+/**
+ * @param {RuleOrLiteral} operand
+ * @param {RuleOrLiteral} sign
+ */
+function strongUnaryExpression(operand, sign) {
+  return choice(
     prec.right(PREC.UNARY_MINUS, seq(field('operator', sign), field('operand', operand))),
     prec.right(PREC.COMPLEMENT, seq(field('operator', choice('!', '~')), field('operand', operand)))
   );

@@ -2860,11 +2860,19 @@
             "named": true
           },
           {
+            "type": "element_reference",
+            "named": true
+          },
+          {
             "type": "hash_key_symbol",
             "named": true
           },
           {
             "type": "method",
+            "named": true
+          },
+          {
+            "type": "scope_resolution",
             "named": true
           },
           {

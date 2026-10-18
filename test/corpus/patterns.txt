@@ -2592,3 +2592,122 @@ def f; ! super +x; ~ super +x; - super +x; + super +x; end
           (argument_list
             (unary
               (identifier))))))))
+
+========================================
+command pattern boundaries: completed block binary pair key
+========================================
+
+foo(b c do end && x => v)
+
+---
+
+(program
+  (call
+    (identifier)
+    (argument_list
+      (pair
+        (binary
+          (call
+            (identifier)
+            (argument_list
+              (identifier))
+            (do_block))
+          (identifier))
+        (identifier)))))
+
+========================================
+command pattern boundaries: strong unary before block binary
+========================================
+
+! b c do end && x
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block)))
+    (identifier)))
+
+========================================
+command pattern boundaries: signed unary before block binary
+========================================
+
+- b c do end + x
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block)))
+    (identifier)))
+
+========================================
+command pattern boundaries: logical negation over block binary pattern
+========================================
+
+not b c do end && x in Integer
+
+---
+
+(program
+  (unary
+    (test_pattern
+      (binary
+        (call
+          (identifier)
+          (argument_list
+            (identifier))
+          (do_block))
+        (identifier))
+      (constant))))
+
+========================================
+command pattern boundaries: logical command inside patterned modifier
+========================================
+
+a and b if c d in Integer
+
+---
+
+(program
+  (test_pattern
+    (if_modifier
+      (binary
+        (identifier)
+        (identifier))
+      (call
+        (identifier)
+        (argument_list
+          (identifier))))
+    (constant)))
+
+========================================
+command pattern boundaries: logical negation inside patterned modifier
+========================================
+
+a or not b unless c d in Integer
+
+---
+
+(program
+  (test_pattern
+    (unless_modifier
+      (binary
+        (identifier)
+        (unary
+          (identifier)))
+      (call
+        (identifier)
+        (argument_list
+          (identifier))))
+    (constant)))
