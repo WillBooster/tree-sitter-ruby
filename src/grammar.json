@@ -4206,6 +4206,15 @@
                   "type": "ALIAS",
                   "content": {
                     "type": "SYMBOL",
+                    "name": "_receiver_command"
+                  },
+                  "named": true,
+                  "value": "call"
+                },
+                {
+                  "type": "ALIAS",
+                  "content": {
+                    "type": "SYMBOL",
                     "name": "_command_method"
                   },
                   "named": true,
@@ -7113,7 +7122,7 @@
             "type": "ALIAS",
             "content": {
               "type": "SYMBOL",
-              "name": "_command_block_pair"
+              "name": "_command_pair"
             },
             "named": true,
             "value": "pair"
@@ -7121,7 +7130,7 @@
         ]
       }
     },
-    "_command_block_pair": {
+    "_command_pair": {
       "type": "PREC_DYNAMIC",
       "value": 2,
       "content": {
@@ -7134,13 +7143,27 @@
               "type": "FIELD",
               "name": "key",
               "content": {
-                "type": "ALIAS",
-                "content": {
-                  "type": "SYMBOL",
-                  "name": "_command_block_key"
-                },
-                "named": true,
-                "value": "call"
+                "type": "CHOICE",
+                "members": [
+                  {
+                    "type": "ALIAS",
+                    "content": {
+                      "type": "SYMBOL",
+                      "name": "_command_pair_key"
+                    },
+                    "named": true,
+                    "value": "call"
+                  },
+                  {
+                    "type": "ALIAS",
+                    "content": {
+                      "type": "SYMBOL",
+                      "name": "_super_command"
+                    },
+                    "named": true,
+                    "value": "call"
+                  }
+                ]
               }
             },
             {
@@ -7159,7 +7182,7 @@
         }
       }
     },
-    "_command_block_key": {
+    "_command_pair_key": {
       "type": "SEQ",
       "members": [
         {
@@ -7195,7 +7218,7 @@
             "type": "ALIAS",
             "content": {
               "type": "SYMBOL",
-              "name": "_command_block_key_arguments"
+              "name": "_command_pair_key_arguments"
             },
             "named": true,
             "value": "argument_list"
@@ -7203,41 +7226,67 @@
         }
       ]
     },
-    "_command_block_key_arguments": {
-      "type": "SEQ",
-      "members": [
-        {
-          "type": "ALIAS",
-          "content": {
-            "type": "SYMBOL",
-            "name": "_command_block_key_argument"
+    "_command_pair_key_arguments": {
+      "type": "PREC_LEFT",
+      "value": 1,
+      "content": {
+        "type": "CHOICE",
+        "members": [
+          {
+            "type": "ALIAS",
+            "content": {
+              "type": "SYMBOL",
+              "name": "command_call"
+            },
+            "named": true,
+            "value": "call"
           },
-          "named": true,
-          "value": "block_argument"
-        }
-      ]
+          {
+            "type": "ALIAS",
+            "content": {
+              "type": "SYMBOL",
+              "name": "command_call_with_block"
+            },
+            "named": true,
+            "value": "call"
+          },
+          {
+            "type": "ALIAS",
+            "content": {
+              "type": "SYMBOL",
+              "name": "_pair_block_argument"
+            },
+            "named": true,
+            "value": "block_argument"
+          }
+        ]
+      }
     },
-    "_command_block_key_argument": {
-      "type": "SEQ",
-      "members": [
-        {
-          "type": "ALIAS",
-          "content": {
-            "type": "SYMBOL",
-            "name": "_block_ampersand"
+    "_pair_block_argument": {
+      "type": "PREC_DYNAMIC",
+      "value": 1,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "ALIAS",
+            "content": {
+              "type": "SYMBOL",
+              "name": "_block_ampersand"
+            },
+            "named": false,
+            "value": "&"
           },
-          "named": false,
-          "value": "&"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "_arg"
-        }
-      ]
+          {
+            "type": "SYMBOL",
+            "name": "_arg"
+          }
+        ]
+      }
     },
     "_command_definition_pair": {
       "type": "PREC_DYNAMIC",
-      "value": 2,
+      "value": 1,
       "content": {
         "type": "PREC_RIGHT",
         "value": 0,
@@ -9762,6 +9811,15 @@
                   "name": "_command_value"
                 },
                 {
+                  "type": "ALIAS",
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "command_unary"
+                  },
+                  "named": true,
+                  "value": "unary"
+                },
+                {
                   "type": "SYMBOL",
                   "name": "match_pattern"
                 },
@@ -9811,6 +9869,15 @@
                     "type": "ALIAS",
                     "content": {
                       "type": "SYMBOL",
+                      "name": "_negated_unary_test_pattern"
+                    },
+                    "named": true,
+                    "value": "test_pattern"
+                  },
+                  {
+                    "type": "ALIAS",
+                    "content": {
+                      "type": "SYMBOL",
                       "name": "_chained_test_pattern"
                     },
                     "named": true,
@@ -9826,6 +9893,44 @@
                     "value": "unary"
                   }
                 ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    "_negated_unary_test_pattern": {
+      "type": "PREC",
+      "value": 6,
+      "content": {
+        "type": "PREC_DYNAMIC",
+        "value": 1,
+        "content": {
+          "type": "SEQ",
+          "members": [
+            {
+              "type": "FIELD",
+              "name": "value",
+              "content": {
+                "type": "ALIAS",
+                "content": {
+                  "type": "SYMBOL",
+                  "name": "command_unary"
+                },
+                "named": true,
+                "value": "unary"
+              }
+            },
+            {
+              "type": "STRING",
+              "value": "in"
+            },
+            {
+              "type": "FIELD",
+              "name": "pattern",
+              "content": {
+                "type": "SYMBOL",
+                "name": "_pattern_top_expr_body"
               }
             }
           ]
@@ -11615,8 +11720,12 @@
       "type": "CHOICE",
       "members": [
         {
-          "type": "SYMBOL",
-          "name": "_line_break"
+          "type": "PREC_DYNAMIC",
+          "value": 1,
+          "content": {
+            "type": "SYMBOL",
+            "name": "_line_break"
+          }
         },
         {
           "type": "STRING",
@@ -11649,8 +11758,33 @@
       "command_argument_list"
     ],
     [
-      "_command_block_key_argument",
+      "_pair_block_argument",
       "block_argument"
+    ],
+    [
+      "command_call",
+      "_command_pair"
+    ],
+    [
+      "_chained_test_pattern",
+      "_command_not",
+      "_negated_unary_test_pattern"
+    ],
+    [
+      "_statement",
+      "_chained_test_pattern"
+    ],
+    [
+      "_chained_test_pattern",
+      "command_call"
+    ],
+    [
+      "_command_value",
+      "_chained_test_pattern"
+    ],
+    [
+      "_non_pattern_expression",
+      "_chained_test_pattern"
     ],
     [
       "_chained_primary",
@@ -11666,15 +11800,7 @@
     ],
     [
       "_statement",
-      "_chained_test_pattern"
-    ],
-    [
-      "_statement",
       "command_binary"
-    ],
-    [
-      "_chained_test_pattern",
-      "command_call"
     ],
     [
       "_chained_match_pattern",
@@ -11693,14 +11819,6 @@
       "_super_command",
       "command_call_with_block",
       "_variable"
-    ],
-    [
-      "_command_value",
-      "_chained_test_pattern"
-    ],
-    [
-      "_non_pattern_expression",
-      "_chained_test_pattern"
     ],
     [
       "_non_pattern_expression",

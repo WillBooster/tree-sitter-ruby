@@ -93,19 +93,21 @@ module.exports = grammar({
 
   conflicts: ($) => [
     [$._chained_command_argument_list, $.command_argument_list],
-    [$._command_block_key_argument, $.block_argument],
+    [$._pair_block_argument, $.block_argument],
+    [$.command_call, $._command_pair],
+    [$._chained_test_pattern, $._command_not, $._negated_unary_test_pattern],
+    [$._statement, $._chained_test_pattern],
+    [$._chained_test_pattern, $.command_call],
+    [$._command_value, $._chained_test_pattern],
+    [$._non_pattern_expression, $._chained_test_pattern],
     [$._chained_primary, $._chained_lhs],
     [$._command_value, $.pair],
     [$._command_value, $._command_definition_pair],
-    [$._statement, $._chained_test_pattern],
     [$._statement, $.command_binary],
-    [$._chained_test_pattern, $.command_call],
     [$._chained_match_pattern, $.command_call],
     [$.call, $._variable],
     [$._primary, $._variable],
     [$._primary, $._super_command, $.command_call_with_block, $._variable],
-    [$._command_value, $._chained_test_pattern],
-    [$._non_pattern_expression, $._chained_test_pattern],
     [$._non_pattern_expression, $._chained_match_pattern],
     [$._command_value, $._chained_match_pattern],
     [$._array_pattern_n, $.as_pattern, $._find_pattern_body],
@@ -660,6 +662,7 @@ module.exports = grammar({
               alias($._chained_operator_assignment, $.operator_assignment),
               alias($.command_operator_assignment, $.operator_assignment),
               alias($.command_call_with_block, $.call),
+              alias($._receiver_command, $.call),
               alias($._command_method, $.method),
               alias($._command_singleton_method, $.singleton_method),
               alias($.command_binary, $.binary),
@@ -952,26 +955,43 @@ module.exports = grammar({
           $.block_argument,
           $.pair,
           alias($._command_definition_pair, $.pair),
-          alias($._command_block_pair, $.pair)
+          alias($._command_pair, $.pair)
         )
       ),
 
-    _command_block_pair: ($) =>
-      prec.dynamic(2, prec.right(seq(field('key', alias($._command_block_key, $.call)), '=>', field('value', $._arg)))),
-
-    _command_block_key: ($) =>
-      seq(
-        choice(field('method', choice($._variable, $._function_identifier)), $._call),
-        field('arguments', alias($._command_block_key_arguments, $.argument_list))
+    _command_pair: ($) =>
+      prec.dynamic(
+        2,
+        prec.right(
+          seq(
+            field('key', choice(alias($._command_pair_key, $.call), alias($._super_command, $.call))),
+            '=>',
+            field('value', $._arg)
+          )
+        )
       ),
 
-    _command_block_key_arguments: ($) => seq(alias($._command_block_key_argument, $.block_argument)),
+    _command_pair_key: ($) =>
+      seq(
+        choice(field('method', choice($._variable, $._function_identifier)), $._call),
+        field('arguments', alias($._command_pair_key_arguments, $.argument_list))
+      ),
 
-    _command_block_key_argument: ($) => seq(alias($._block_ampersand, '&'), $._arg),
+    _command_pair_key_arguments: ($) =>
+      prec.left(
+        1,
+        choice(
+          alias($.command_call, $.call),
+          alias($.command_call_with_block, $.call),
+          alias($._pair_block_argument, $.block_argument)
+        )
+      ),
+
+    _pair_block_argument: ($) => prec.dynamic(1, seq(alias($._block_ampersand, '&'), $._arg)),
 
     _command_definition_pair: ($) =>
       prec.dynamic(
-        2,
+        1,
         prec.right(
           seq(
             field(
@@ -1126,7 +1146,15 @@ module.exports = grammar({
         PREC.NOT,
         seq(
           field('operator', 'not'),
-          field('operand', choice($._command_value, $.match_pattern, alias($._chained_match_pattern, $.match_pattern)))
+          field(
+            'operand',
+            choice(
+              $._command_value,
+              alias($.command_unary, $.unary),
+              $.match_pattern,
+              alias($._chained_match_pattern, $.match_pattern)
+            )
+          )
         )
       ),
 
@@ -1141,11 +1169,21 @@ module.exports = grammar({
               'operand',
               choice(
                 $.test_pattern,
+                alias($._negated_unary_test_pattern, $.test_pattern),
                 alias($._chained_test_pattern, $.test_pattern),
                 alias($._test_pattern_not, $.unary)
               )
             )
           )
+        )
+      ),
+
+    _negated_unary_test_pattern: ($) =>
+      prec(
+        PREC.PATTERN,
+        prec.dynamic(
+          1,
+          seq(field('value', alias($.command_unary, $.unary)), 'in', field('pattern', $._pattern_top_expr_body))
         )
       ),
 
@@ -1385,7 +1423,7 @@ module.exports = grammar({
 
     empty_statement: () => prec(-1, ';'),
 
-    _terminator: ($) => choice($._line_break, ';'),
+    _terminator: ($) => choice(prec.dynamic(1, $._line_break), ';'),
   },
 });
 

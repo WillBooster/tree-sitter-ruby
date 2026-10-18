@@ -1685,3 +1685,414 @@ end
             (unary
               (identifier))))
         (constant)))))
+
+========================================
+command pattern boundaries: nested command pair key
+========================================
+
+b c b c => v => w
+
+---
+
+(program
+  (call
+    (identifier)
+    (argument_list
+      (pair
+        (call
+          (identifier)
+          (argument_list
+            (call
+              (identifier)
+              (argument_list
+                (pair
+                  (identifier)
+                  (identifier))))))
+        (identifier)))))
+
+========================================
+command pattern boundaries: receiver command outer match after pair
+========================================
+
+b.c d e => v => w
+
+---
+
+(program
+  (match_pattern
+    (call
+      (identifier)
+      (identifier)
+      (argument_list
+        (call
+          (identifier)
+          (argument_list
+            (pair
+              (identifier)
+              (identifier))))))
+    (identifier)))
+
+========================================
+command pattern boundaries: nested command splat pair key
+========================================
+
+x = foo b c *xs => v
+
+---
+
+(program
+  (assignment
+    (identifier)
+    (call
+      (identifier)
+      (argument_list
+        (pair
+          (call
+            (identifier)
+            (argument_list
+              (call
+                (identifier)
+                (argument_list
+                  (splat_argument
+                    (identifier))))))
+          (identifier))))))
+
+========================================
+command pattern boundaries: nested command hash splat pair key
+========================================
+
+x = foo b c **h => v
+
+---
+
+(program
+  (assignment
+    (identifier)
+    (call
+      (identifier)
+      (argument_list
+        (pair
+          (call
+            (identifier)
+            (argument_list
+              (call
+                (identifier)
+                (argument_list
+                  (hash_splat_argument
+                    (identifier))))))
+          (identifier))))))
+
+========================================
+command pattern boundaries: direct command splat outer match
+========================================
+
+x = b c *xs => Integer
+
+---
+
+(program
+  (match_pattern
+    (assignment
+      (identifier)
+      (call
+        (identifier)
+        (argument_list
+          (call
+            (identifier)
+            (argument_list
+              (splat_argument
+                (identifier)))))))
+    (constant)))
+
+========================================
+command pattern boundaries: direct command hash splat outer match
+========================================
+
+x = b c **h => Integer
+
+---
+
+(program
+  (match_pattern
+    (assignment
+      (identifier)
+      (call
+        (identifier)
+        (argument_list
+          (call
+            (identifier)
+            (argument_list
+              (hash_splat_argument
+                (identifier)))))))
+    (constant)))
+
+========================================
+command pattern boundaries: mixed unary command assignment
+========================================
+
+a = not !b c
+
+---
+
+(program
+  (assignment
+    (identifier)
+    (unary
+      (unary
+        (call
+          (identifier)
+          (argument_list
+            (identifier)))))))
+
+========================================
+command pattern boundaries: mixed unary command assignment rescue
+========================================
+
+a += not !b c rescue d
+
+---
+
+(program
+  (operator_assignment
+    (identifier)
+    (rescue_modifier
+      (unary
+        (unary
+          (call
+            (identifier)
+            (argument_list
+              (identifier)))))
+      (identifier))))
+
+========================================
+command pattern boundaries: mixed unary command assignment pattern
+========================================
+
+a = not !b c in Integer and d
+
+---
+
+(program
+  (binary
+    (assignment
+      (identifier)
+      (unary
+        (test_pattern
+          (unary
+            (call
+              (identifier)
+              (argument_list
+                (identifier))))
+          (constant))))
+    (identifier)))
+
+========================================
+command pattern boundaries: nested super pair key
+========================================
+
+foo bar super a => v => z
+
+---
+
+(program
+  (call
+    (identifier)
+    (argument_list
+      (call
+        (identifier)
+        (argument_list
+          (pair
+            (call
+              (super)
+              (argument_list
+                (pair
+                  (identifier)
+                  (identifier))))
+            (identifier)))))))
+
+========================================
+command pattern boundaries: modifier nested command pair key
+========================================
+
+z if foo b c **h => v
+
+---
+
+(program
+  (if_modifier
+    (identifier)
+    (call
+      (identifier)
+      (argument_list
+        (pair
+          (call
+            (identifier)
+            (argument_list
+              (call
+                (identifier)
+                (argument_list
+                  (hash_splat_argument
+                    (identifier))))))
+          (identifier))))))
+
+========================================
+command pattern boundaries: parenthesized nested command pair key
+========================================
+
+foo(b c b c => v => w)
+
+---
+
+(program
+  (call
+    (identifier)
+    (argument_list
+      (call
+        (identifier)
+        (argument_list
+          (pair
+            (call
+              (identifier)
+              (argument_list
+                (call
+                  (identifier)
+                  (argument_list
+                    (pair
+                      (identifier)
+                      (identifier))))))
+            (identifier)))))))
+
+========================================
+command pattern boundaries: definition body pair before rescue
+========================================
+
+foo def b = c d => [1] rescue q
+
+---
+
+(program
+  (call
+    (identifier)
+    (argument_list
+      (method
+        (identifier)
+        (rescue_modifier
+          (call
+            (identifier)
+            (argument_list
+              (pair
+                (identifier)
+                (array
+                  (integer)))))
+          (identifier))))))
+
+========================================
+command pattern boundaries: definition key after rescued body
+========================================
+
+foo def b = c d rescue q => [1]
+
+---
+
+(program
+  (call
+    (identifier)
+    (argument_list
+      (pair
+        (method
+          (identifier)
+          (rescue_modifier
+            (call
+              (identifier)
+              (argument_list
+                (identifier)))
+            (identifier)))
+        (array
+          (integer))))))
+
+========================================
+command pattern boundaries: newline after logical modifier
+========================================
+
+q and z if w
+w in [1]
+
+---
+
+(program
+  (if_modifier
+    (binary
+      (identifier)
+      (identifier))
+    (identifier))
+  (test_pattern
+    (identifier)
+    (array_pattern
+      (integer))))
+
+========================================
+command pattern boundaries: newline before pattern assignment
+========================================
+
+x in [1] and y unless z
+w = v => 1
+
+---
+
+(program
+  (unless_modifier
+    (binary
+      (test_pattern
+        (identifier)
+        (array_pattern
+          (integer)))
+      (identifier))
+    (identifier))
+  (match_pattern
+    (assignment
+      (identifier)
+      (identifier))
+    (integer)))
+
+========================================
+command pattern boundaries: newline before endless definition pattern
+========================================
+
+q and z while w
+def m = a + b in [1]
+
+---
+
+(program
+  (while_modifier
+    (binary
+      (identifier)
+      (identifier))
+    (identifier))
+  (test_pattern
+    (method
+      (identifier)
+      (binary
+        (identifier)
+        (identifier)))
+    (array_pattern
+      (integer))))
+
+========================================
+command pattern boundaries: escaped newline in modifier command
+========================================
+
+z if b \
+ c in Integer
+
+---
+
+(program
+  (test_pattern
+    (if_modifier
+      (identifier)
+      (call
+        (identifier)
+        (argument_list
+          (identifier))))
+    (constant)))
