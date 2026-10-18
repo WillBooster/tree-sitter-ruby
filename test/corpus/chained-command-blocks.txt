@@ -190,3 +190,85 @@ b c do end.d (+ z) do end
         (unary
           (identifier))))
     (do_block)))
+
+===============================================
+non-callable operands retain tight binary addition
+===============================================
+
+@value +offset
+self +offset
+@@value +offset
+$value +offset
+
+---
+
+(program
+  (binary
+    (instance_variable)
+    (identifier))
+  (binary
+    (self)
+    (identifier))
+  (binary
+    (class_variable)
+    (identifier))
+  (binary
+    (global_variable)
+    (identifier)))
+
+===============================================
+chained calls preserve ordinary hash and arithmetic parsing
+===============================================
+
+{a!:1}
+{a?:1}
+[1].collect { |i| arg + i -1 }
+b c do end.d * z + y
+b c do end.d + z * y
+
+---
+
+(program
+  (hash
+    (pair
+      (hash_key_symbol)
+      (integer)))
+  (hash
+    (pair
+      (hash_key_symbol)
+      (integer)))
+  (call
+    (array
+      (integer))
+    (identifier)
+    (block
+      (block_parameters
+        (identifier))
+      (block_body
+        (binary
+          (binary
+            (identifier)
+            (identifier))
+          (integer)))))
+  (binary
+    (binary
+      (call
+        (call
+          (identifier)
+          (argument_list
+            (identifier))
+          (do_block))
+        (identifier))
+      (identifier))
+    (identifier))
+  (binary
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier))
+    (binary
+      (identifier)
+      (identifier))))

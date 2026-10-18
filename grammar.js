@@ -141,7 +141,13 @@ module.exports = grammar({
     singleton_method: ($) =>
       seq(
         'def',
-        seq(choice(field('object', $._variable), seq('(', field('object', $._arg), ')')), choice('.', '::')),
+        seq(
+          choice(
+            field('object', choice($._variable, $.self, $._nonlocal_variable)),
+            seq('(', field('object', $._arg), ')')
+          ),
+          choice('.', '::')
+        ),
         $._method_rest
       ),
 
@@ -175,7 +181,13 @@ module.exports = grammar({
     _command_singleton_method: ($) =>
       seq(
         'def',
-        seq(choice(field('object', $._variable), seq('(', field('object', $._arg), ')')), choice('.', '::')),
+        seq(
+          choice(
+            field('object', choice($._variable, $.self, $._nonlocal_variable)),
+            seq('(', field('object', $._arg), ')')
+          ),
+          choice('.', '::')
+        ),
         $._command_method_rest
       ),
 
@@ -195,6 +207,9 @@ module.exports = grammar({
       choice(
         alias($.command_call, $.call),
         alias($.command_call_with_block, $.call),
+        prec.left(alias($._chained_command_call, $.call)),
+        alias($._chained_binary, $.binary),
+        alias($._chained_call, $.call),
         alias($.return_command, $.return),
         alias($.yield_command, $.yield),
         alias($._endless_command_not, $.unary),
@@ -584,6 +599,9 @@ module.exports = grammar({
         alias($.command_operator_assignment, $.operator_assignment),
         alias($.command_call, $.call),
         alias($.command_call_with_block, $.call),
+        prec.left(alias($._chained_command_call, $.call)),
+        alias($._chained_binary, $.binary),
+        alias($._chained_call, $.call),
         alias($.return_command, $.return),
         alias($.yield_command, $.yield),
         alias($.break_command, $.break),
@@ -627,7 +645,6 @@ module.exports = grammar({
         $._lhs,
         alias($._function_identifier_call, $.call),
         $.call,
-        prec.left(alias($._chained_command_call, $.call)),
         $.array,
         $.string_array,
         $.symbol_array,
@@ -721,12 +738,18 @@ module.exports = grammar({
         field('method', choice($.identifier, $._function_identifier, $.operator, $.constant))
       ),
 
-    call: ($) => {
-      const receiver = choice(
-        $._call,
-        $._chained_command_call,
-        field('method', choice($._variable, $._function_identifier))
+    _chained_call: ($) => {
+      const receiver = $._chained_command_call;
+      const args = field('arguments', $.argument_list);
+      return choice(
+        seq(receiver, args),
+        prec(PREC.CURLY_BLOCK, seq(receiver, optional(args), field('block', $.block))),
+        prec(PREC.DO_BLOCK, seq(receiver, optional(args), field('block', $.do_block)))
       );
+    },
+
+    call: ($) => {
+      const receiver = choice($._call, field('method', choice($._variable, $._function_identifier)));
 
       const args = field('arguments', $.argument_list);
       const receiverArguments = seq(
@@ -827,52 +850,38 @@ module.exports = grammar({
 
     range: ($) => {
       const begin = field('begin', $._arg);
-      const end = field('end', $._arg);
+      const end = field('end', choice($._arg, alias($._range_sign, $.unary)));
       const operator = field('operator', choice('..', '...'));
       return prec.right(PREC.RANGE, choice(seq(begin, operator, end), seq(operator, end), seq(begin, operator)));
     },
 
-    binary: ($) => {
-      // oxlint-disable typescript/unbound-method -- The DSL's `prec` functions do not use `this`.
-      /** @type {[(precedence: number, rule: RuleOrLiteral) => Rule, number, RuleOrLiteral][]} */
-      const operators = [
-        [prec.left, PREC.AND, 'and'],
-        [prec.left, PREC.OR, 'or'],
-        [prec.left, PREC.BOOLEAN_OR, '||'],
-        [prec.left, PREC.BOOLEAN_AND, '&&'],
-        [prec.left, PREC.SHIFT, choice('<<', '>>')],
-        [prec.left, PREC.COMPARISON, choice('<', '<=', '>', '>=')],
-        [prec.left, PREC.BITWISE_AND, alias($._bitwise_and, '&')],
-        [prec.left, PREC.BITWISE_OR, choice('^', '|')],
-        [prec.left, PREC.ADDITIVE, choice(alias($._binary_plus, '+'), alias($._binary_minus, '-'))],
-        [prec.left, PREC.MULTIPLICATIVE, choice('/', '%', alias($._binary_star, '*'))],
-        [prec.right, PREC.RELATIONAL, choice('==', '!=', '===', '<=>', '=~', '!~')],
-        [prec.right, PREC.EXPONENTIAL, alias($._binary_star_star, '**')],
-      ];
-      // oxlint-enable typescript/unbound-method
-
-      return choice(
-        ...operators.map(([fn, precedence, operator]) =>
-          fn(precedence, seq(field('left', $._arg), field('operator', operator), field('right', $._arg)))
+    _range_sign: ($) =>
+      prec.right(
+        PREC.UNARY_MINUS,
+        seq(
+          field('operator', choice(alias($._binary_minus, '-'), alias($._binary_plus, '+'))),
+          field('operand', $._arg)
         )
-      );
-    },
+      ),
+
+    _chained_binary: ($) =>
+      binaryExpression(
+        $,
+        choice(
+          alias($._chained_command_call, $.call),
+          alias($._chained_call, $.call),
+          alias($._chained_binary, $.binary)
+        )
+      ),
+
+    binary: ($) => binaryExpression($, $._arg),
 
     command_binary: ($) =>
       prec.left(
         seq(field('left', $._expression), field('operator', choice('or', 'and')), field('right', $._expression))
       ),
 
-    unary: ($) =>
-      unaryExpression(
-        $._arg,
-        choice(
-          alias($._unary_minus, '-'),
-          alias($._binary_minus, '-'),
-          alias($._unary_plus, '+'),
-          alias($._binary_plus, '+')
-        )
-      ),
+    unary: ($) => unaryExpression($._arg, choice(alias($._unary_minus, '-'), alias($._unary_plus, '+'))),
 
     command_unary: ($) => unaryExpression($._expression, choice(alias($._unary_minus, '-'), alias($._unary_plus, '+'))),
 
@@ -904,10 +913,20 @@ module.exports = grammar({
     _function_identifier_call: ($) => prec.left(field('method', $._function_identifier)),
     _lhs: ($) =>
       prec.left(
-        choice($._variable, $.true, $.false, $.nil, $.scope_resolution, $.element_reference, alias($._call, $.call))
+        choice(
+          $._variable,
+          $.self,
+          $._nonlocal_variable,
+          $.true,
+          $.false,
+          $.nil,
+          $.scope_resolution,
+          $.element_reference,
+          alias($._call, $.call)
+        )
       ),
 
-    _variable: ($) => prec.right(choice($.self, $.super, $._nonlocal_variable, $.identifier, $.constant)),
+    _variable: ($) => prec.right(choice($.super, $.identifier, $.constant)),
 
     operator: () =>
       choice(
@@ -1161,5 +1180,35 @@ function unaryExpression(operand, sign) {
     prec.right(PREC.NOT, seq(field('operator', 'not'), field('operand', operand))),
     prec.right(PREC.UNARY_MINUS, seq(field('operator', sign), field('operand', operand))),
     prec.right(PREC.COMPLEMENT, seq(field('operator', choice('!', '~')), field('operand', operand)))
+  );
+}
+
+/**
+ * @param {GrammarSymbols<string>} $
+ * @param {RuleOrLiteral} left
+ */
+function binaryExpression($, left) {
+  // oxlint-disable typescript/unbound-method -- The DSL's `prec` functions do not use `this`.
+  /** @type {[(precedence: number, rule: RuleOrLiteral) => Rule, number, RuleOrLiteral][]} */
+  const operators = [
+    [prec.left, PREC.AND, 'and'],
+    [prec.left, PREC.OR, 'or'],
+    [prec.left, PREC.BOOLEAN_OR, '||'],
+    [prec.left, PREC.BOOLEAN_AND, '&&'],
+    [prec.left, PREC.SHIFT, choice('<<', '>>')],
+    [prec.left, PREC.COMPARISON, choice('<', '<=', '>', '>=')],
+    [prec.left, PREC.BITWISE_AND, alias($._bitwise_and, '&')],
+    [prec.left, PREC.BITWISE_OR, choice('^', '|')],
+    [prec.left, PREC.ADDITIVE, choice(alias($._binary_plus, '+'), alias($._binary_minus, '-'))],
+    [prec.left, PREC.MULTIPLICATIVE, choice('/', '%', alias($._binary_star, '*'))],
+    [prec.right, PREC.RELATIONAL, choice('==', '!=', '===', '<=>', '=~', '!~')],
+    [prec.right, PREC.EXPONENTIAL, alias($._binary_star_star, '**')],
+  ];
+  // oxlint-enable typescript/unbound-method
+
+  return choice(
+    ...operators.map(([fn, precedence, operator]) =>
+      fn(precedence, seq(field('left', left), field('operator', operator), field('right', $._arg)))
+    )
   );
 }

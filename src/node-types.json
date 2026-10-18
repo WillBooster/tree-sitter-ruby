@@ -100,6 +100,10 @@
     "named": true,
     "subtypes": [
       {
+        "type": "_nonlocal_variable",
+        "named": true
+      },
+      {
         "type": "_variable",
         "named": true
       },
@@ -121,6 +125,10 @@
       },
       {
         "type": "scope_resolution",
+        "named": true
+      },
+      {
+        "type": "self",
         "named": true
       },
       {
@@ -586,19 +594,11 @@
     "named": true,
     "subtypes": [
       {
-        "type": "_nonlocal_variable",
-        "named": true
-      },
-      {
         "type": "constant",
         "named": true
       },
       {
         "type": "identifier",
-        "named": true
-      },
-      {
-        "type": "self",
         "named": true
       },
       {
@@ -3146,7 +3146,15 @@
             "named": true
           },
           {
+            "type": "_nonlocal_variable",
+            "named": true
+          },
+          {
             "type": "_variable",
+            "named": true
+          },
+          {
+            "type": "self",
             "named": true
           }
         ]
