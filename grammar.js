@@ -201,8 +201,7 @@ module.exports = grammar({
         alias($._command_singleton_method, $.singleton_method)
       ),
 
-    _endless_command_not: ($) =>
-      prec.right(PREC.NOT, seq(field('operator', 'not'), field('operand', $._endless_command_operand))),
+    _endless_command_not: ($) => prec.right(PREC.NOT, seq(field('operator', 'not'), field('operand', $._expression))),
 
     _endless_command_rescue: ($) =>
       prec(PREC.RESCUE, seq(field('body', $._endless_command_operand), 'rescue', field('handler', $._arg))),

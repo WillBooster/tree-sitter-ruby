@@ -114,3 +114,22 @@ def define = def self.helper(value) = target value rescue fallback rescue final_
           body: (call method: (identifier) arguments: (argument_list (identifier)))
           handler: (identifier)))
       handler: (identifier))))
+
+==============================
+endless command bodies negating commands
+==============================
+
+def blank? = not !present? value
+def stale? = not @cache ||= load key
+
+---
+
+(program
+  (method name: (identifier)
+    body: (unary
+      operand: (unary
+        operand: (call method: (identifier) arguments: (argument_list (identifier))))))
+  (method name: (identifier)
+    body: (unary
+      operand: (operator_assignment left: (instance_variable)
+        right: (call method: (identifier) arguments: (argument_list (identifier)))))))
