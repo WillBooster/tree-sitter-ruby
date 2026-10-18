@@ -2413,3 +2413,93 @@ foo(b c do end.d &&= v => w)
             (identifier))
           (identifier))
         (identifier)))))
+
+========================================
+command pattern boundaries: negated block call retains inner pair before arithmetic
+========================================
+
+return not b c => v do end +b == d
+
+---
+
+(program
+  (return
+    (argument_list
+      (unary
+        (binary
+          (binary
+            (call
+              (identifier)
+              (argument_list
+                (pair
+                  (identifier)
+                  (identifier)))
+              (do_block))
+            (identifier))
+          (identifier))))))
+
+========================================
+command pattern boundaries: yield block call retains inner pair before arithmetic
+========================================
+
+return yield a b => v do end +b == d
+
+---
+
+(program
+  (return
+    (argument_list
+      (yield
+        (argument_list
+          (binary
+            (binary
+              (call
+                (identifier)
+                (argument_list
+                  (pair
+                    (identifier)
+                    (identifier)))
+                (do_block))
+              (identifier))
+            (identifier)))))))
+
+========================================
+command pattern boundaries: negated block call retains inner pair before boolean operator
+========================================
+
+next not b c => v do end && d
+
+---
+
+(program
+  (next
+    (argument_list
+      (unary
+        (binary
+          (call
+            (identifier)
+            (argument_list
+              (pair
+                (identifier)
+                (identifier)))
+            (do_block))
+          (identifier))))))
+
+========================================
+command pattern boundaries: bare block call arithmetic before outer pattern
+========================================
+
+b c do end + x in Integer
+
+---
+
+(program
+  (test_pattern
+    (binary
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier))
+    (constant)))

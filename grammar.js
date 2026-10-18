@@ -1149,7 +1149,8 @@ module.exports = grammar({
     _range_sign: ($) =>
       prec.right(PREC.UNARY_MINUS, seq(field('operator', alias($._binary_minus, '-')), field('operand', $._arg))),
 
-    _chained_binary: ($) => binaryExpression($, $._chained_arg, alias($._binary_plus, '+')),
+    _chained_binary: ($) =>
+      binaryExpression($, choice($._chained_arg, alias($.command_call_with_block, $.call)), alias($._binary_plus, '+')),
 
     binary: ($) => binaryExpression($, $._arg),
 
