@@ -771,10 +771,13 @@ percent string with unbalanced delimiters
 %/a/
 %\a\
 %#a#
+%=a=
 
 ---
 
 (program
+  (string
+    (string_content))
   (string
     (string_content))
   (string
@@ -2322,3 +2325,196 @@ Unicode characters resembling interpolation prefixes
 (program
   (string (string_content))
   (string (string_content)))
+
+=========================================
+equals delimiters with interpolation and escapes
+=========================================
+
+%==
+%=hello #{value}=
+%=a\=b=
+
+---
+
+(program
+  (string)
+  (string
+    (string_content)
+    (interpolation
+      (identifier)))
+  (string
+    (string_content)
+    (escape_sequence)
+    (string_content)))
+
+=========================================
+typed equals delimiters
+=========================================
+
+%q=hello=
+%Q=hello #{value}=
+%w=one two=
+%W=one #{value}=
+%i=one two=
+%I=one #{value}=
+%r=hello=
+%x=hello=
+%s=hello=
+
+---
+
+(program
+  (string
+    (string_content))
+  (string
+    (string_content)
+    (interpolation
+      (identifier)))
+  (string_array
+    (bare_string
+      (string_content))
+    (bare_string
+      (string_content)))
+  (string_array
+    (bare_string
+      (string_content))
+    (bare_string
+      (interpolation
+        (identifier))))
+  (symbol_array
+    (bare_symbol
+      (string_content))
+    (bare_symbol
+      (string_content)))
+  (symbol_array
+    (bare_symbol
+      (string_content))
+    (bare_symbol
+      (interpolation
+        (identifier))))
+  (regex
+    (string_content))
+  (subshell
+    (string_content))
+  (delimited_symbol
+    (string_content)))
+
+=========================================
+equals delimiters as command arguments
+=========================================
+
+f %q=hello=
+f %W=one #{value}=
+f %r=hello=
+f %s=hello=
+
+---
+
+(program
+  (call
+    (identifier)
+    (argument_list
+      (string
+        (string_content))))
+  (call
+    (identifier)
+    (argument_list
+      (string_array
+        (bare_string
+          (string_content))
+        (bare_string
+          (interpolation
+            (identifier))))))
+  (call
+    (identifier)
+    (argument_list
+      (regex
+        (string_content))))
+  (call
+    (identifier)
+    (argument_list
+      (delimited_symbol
+        (string_content)))))
+
+=========================================
+modulo assignment and equals-delimited values
+=========================================
+
+a%=2
+a %= b c
+obj.foo %= %q=hello=
+a[0] %= %w=one two=
+b c do end.d %= %q=hello=
+
+---
+
+(program
+  (operator_assignment
+    (identifier)
+    (integer))
+  (operator_assignment
+    (identifier)
+    (call
+      (identifier)
+      (argument_list
+        (identifier))))
+  (operator_assignment
+    (call
+      (identifier)
+      (identifier))
+    (string
+      (string_content)))
+  (operator_assignment
+    (element_reference
+      (identifier)
+      (integer))
+    (string_array
+      (bare_string
+        (string_content))
+      (bare_string
+        (string_content))))
+  (operator_assignment
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier))
+    (string
+      (string_content))))
+
+=========================================
+modulo assignment inside percent interpolation
+=========================================
+
+%Q=a#{x %= 2}b=
+a %= %Q=#{a %= 2}=
+f %Q=outer #{%q=inner=} tail=
+
+---
+
+(program
+  (string
+    (string_content)
+    (interpolation
+      (operator_assignment
+        (identifier)
+        (integer)))
+    (string_content))
+  (operator_assignment
+    (identifier)
+    (string
+      (interpolation
+        (operator_assignment
+          (identifier)
+          (integer)))))
+  (call
+    (identifier)
+    (argument_list
+      (string
+        (string_content)
+        (interpolation
+          (string
+            (string_content)))
+        (string_content)))))
