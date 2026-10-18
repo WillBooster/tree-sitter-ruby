@@ -2967,3 +2967,51 @@ return b c do end => v
 ---
 
 (ERROR)
+
+===============================
+reject ungrouped command patterns in call arguments
+:error
+===============================
+
+foo(b c d do end in Integer)
+
+---
+
+(ERROR)
+
+===============================
+command pattern groups in call and return arguments
+===============================
+
+foo((b c d do end in Integer))
+return(b c d do end in Integer)
+
+---
+
+(program
+  (call
+    (identifier)
+    (argument_list
+      (parenthesized_statements
+        (test_pattern
+          (call
+            (identifier)
+            (argument_list
+              (call
+                (identifier)
+                (argument_list
+                  (identifier))))
+            (do_block))
+          (constant)))))
+  (return
+    (argument_list
+      (test_pattern
+        (call
+          (identifier)
+          (argument_list
+            (call
+              (identifier)
+              (argument_list
+                (identifier))))
+          (do_block))
+        (constant)))))

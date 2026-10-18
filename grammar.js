@@ -327,7 +327,7 @@ module.exports = grammar({
     yield_command: ($) => prec.left(seq('yield', alias($.command_argument_list, $.argument_list))),
     break_command: ($) => prec.left(seq('break', alias($.command_argument_list, $.argument_list))),
     next_command: ($) => prec.left(seq('next', alias($.command_argument_list, $.argument_list))),
-    return: ($) => prec.left(seq('return', optional($.argument_list))),
+    return: ($) => prec.left(seq('return', optional(alias($._return_argument_list, $.argument_list)))),
     yield: ($) => prec.left(seq('yield', optional($.argument_list))),
     break: ($) => prec.left(seq('break', optional($.argument_list))),
     next: ($) => prec.left(seq('next', optional($.argument_list))),
@@ -1035,19 +1035,12 @@ module.exports = grammar({
         )
       ),
 
-    _argument: ($) =>
-      prec.left(
-        choice(
-          $._expression,
-          $.splat_argument,
-          $.hash_splat_argument,
-          $.forward_argument,
-          $.block_argument,
-          $.pair,
-          alias($._command_pair, $.pair),
-          alias($._command_definition_pair, $.pair)
-        )
-      ),
+    _argument: ($) => argument($, choice($._non_pattern_expression, $.match_pattern, $.test_pattern)),
+
+    _unrestricted_argument: ($) => argument($, $._expression),
+
+    _return_argument_list: ($) =>
+      seq(token.immediate('('), optional(seq(commaSep1($._unrestricted_argument), optional(','))), ')'),
 
     forward_argument: () => '...',
     splat_argument: ($) => prec.right(seq(alias($._splat_star, '*'), optional($._arg))),
@@ -1648,5 +1641,24 @@ function commandCallWithBlock($, receiver, argumentsRule) {
   return choice(
     seq(receiver, prec(PREC.CURLY_BLOCK, seq(args, field('block', $.block)))),
     seq(receiver, prec(PREC.DO_BLOCK, seq(args, field('block', $.do_block))))
+  );
+}
+
+/**
+ * @param {GrammarSymbols<string>} $
+ * @param {RuleOrLiteral} expression
+ */
+function argument($, expression) {
+  return prec.left(
+    choice(
+      expression,
+      $.splat_argument,
+      $.hash_splat_argument,
+      $.forward_argument,
+      $.block_argument,
+      $.pair,
+      alias($._command_pair, $.pair),
+      alias($._command_definition_pair, $.pair)
+    )
   );
 }
