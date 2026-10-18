@@ -7,5 +7,4 @@ examples/ruby_spec/core/range/reverse_each_spec.rb
 examples/ruby_spec/language/fixtures/utf16-be-nobom.rb
 examples/ruby_spec/language/fixtures/utf16-le-nobom.rb
 examples/ruby_spec/language/lambda_spec.rb
-examples/ruby_spec/language/method_spec.rb
 examples/ruby_spec/language/string_spec.rb

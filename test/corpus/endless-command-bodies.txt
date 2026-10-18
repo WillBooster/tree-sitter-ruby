@@ -1,0 +1,135 @@
+==============================
+endless methods with command calls
+==============================
+
+def missing() = raise NotImplementedError
+def log(value) = logger.info value
+def self.forward(value) = target value
+def nested = outer inner 1
+next_statement
+
+---
+
+(program
+  (method name: (identifier) parameters: (method_parameters)
+    body: (call method: (identifier) arguments: (argument_list (constant))))
+  (method name: (identifier) parameters: (method_parameters (identifier))
+    body: (call receiver: (identifier) method: (identifier) arguments: (argument_list (identifier))))
+  (singleton_method object: (self) name: (identifier) parameters: (method_parameters (identifier))
+    body: (call method: (identifier) arguments: (argument_list (identifier))))
+  (method name: (identifier)
+    body: (call method: (identifier)
+      arguments: (argument_list (call method: (identifier) arguments: (argument_list (integer))))))
+  (identifier))
+
+==============================
+endless command body rescue and outer conditional
+==============================
+
+def guarded = risky value rescue fallback
+def conditional = target value if ready
+def retried = risky value rescue fallback rescue final_fallback
+
+---
+
+(program
+  (method name: (identifier)
+    body: (rescue_modifier
+      body: (call method: (identifier) arguments: (argument_list (identifier)))
+      handler: (identifier)))
+  (if_modifier
+    body: (method name: (identifier)
+      body: (call method: (identifier) arguments: (argument_list (identifier))))
+    condition: (identifier))
+  (rescue_modifier
+    body: (method name: (identifier)
+      body: (rescue_modifier
+        body: (call method: (identifier) arguments: (argument_list (identifier)))
+        handler: (identifier)))
+    handler: (identifier)))
+
+==============================
+endless command bodies with keywords
+==============================
+
+def finish = return value
+def each_value = yield value rescue fallback
+def self.invalid? = not valid? value rescue false
+
+---
+
+(program
+  (method name: (identifier)
+    body: (return (argument_list (identifier))))
+  (method name: (identifier)
+    body: (rescue_modifier
+      body: (yield (argument_list (identifier)))
+      handler: (identifier)))
+  (singleton_method object: (self) name: (identifier)
+    body: (rescue_modifier
+      body: (unary
+        operand: (call method: (identifier) arguments: (argument_list (identifier))))
+      handler: (false))))
+
+==============================
+endless command bodies with blocks
+==============================
+
+def each_item = items.each value do |item| end
+def chained = build value do end.finish result
+private def helper = run task do end
+
+---
+
+(program
+  (method name: (identifier)
+    body: (call receiver: (identifier) method: (identifier)
+      arguments: (argument_list (identifier))
+      block: (do_block parameters: (block_parameters (identifier)))))
+  (method name: (identifier)
+    body: (call
+      receiver: (call method: (identifier) arguments: (argument_list (identifier)) block: (do_block))
+      method: (identifier)
+      arguments: (argument_list (identifier))))
+  (call method: (identifier)
+    arguments: (argument_list
+      (method name: (identifier)
+        body: (call method: (identifier) arguments: (argument_list (identifier)))))
+    block: (do_block)))
+
+==============================
+endless command bodies defining methods
+==============================
+
+def define = def self.helper(value) = target value rescue fallback rescue final_fallback
+
+---
+
+(program
+  (method name: (identifier)
+    body: (rescue_modifier
+      body: (singleton_method object: (self) name: (identifier)
+        parameters: (method_parameters (identifier))
+        body: (rescue_modifier
+          body: (call method: (identifier) arguments: (argument_list (identifier)))
+          handler: (identifier)))
+      handler: (identifier))))
+
+==============================
+endless command bodies negating commands
+==============================
+
+def blank? = not !present? value
+def stale? = not @cache ||= load key
+
+---
+
+(program
+  (method name: (identifier)
+    body: (unary
+      operand: (unary
+        operand: (call method: (identifier) arguments: (argument_list (identifier))))))
+  (method name: (identifier)
+    body: (unary
+      operand: (operator_assignment left: (instance_variable)
+        right: (call method: (identifier) arguments: (argument_list (identifier)))))))

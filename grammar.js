@@ -168,6 +168,44 @@ module.exports = grammar({
 
     _body_expr: ($) => seq('=', field('body', choice($._arg, alias($.rescue_modifier_arg, $.rescue_modifier)))),
 
+    _command_method: ($) => seq('def', $._command_method_rest),
+
+    _command_singleton_method: ($) =>
+      seq(
+        'def',
+        seq(choice(field('object', $._variable), seq('(', field('object', $._arg), ')')), choice('.', '::')),
+        $._command_method_rest
+      ),
+
+    _command_method_rest: ($) =>
+      seq(
+        field('name', $._method_name),
+        optional(field('parameters', alias($.parameters, $.method_parameters))),
+        '=',
+        field('body', $._endless_command)
+      ),
+
+    // Ruby 4.0's default parser (Prism) lets an endless body hold at most one `rescue`, applied outside any `not`; a
+    // further `rescue` applies to the whole definition.
+    _endless_command: ($) => choice($._endless_command_operand, alias($._endless_command_rescue, $.rescue_modifier)),
+
+    _endless_command_operand: ($) =>
+      choice(
+        alias($.command_call, $.call),
+        alias($.command_call_with_block, $.call),
+        prec.left(alias($._chained_command_call, $.call)),
+        alias($.return_command, $.return),
+        alias($.yield_command, $.yield),
+        alias($._endless_command_not, $.unary),
+        alias($._command_method, $.method),
+        alias($._command_singleton_method, $.singleton_method)
+      ),
+
+    _endless_command_not: ($) => prec.right(PREC.NOT, seq(field('operator', 'not'), field('operand', $._expression))),
+
+    _endless_command_rescue: ($) =>
+      prec(PREC.RESCUE, seq(field('body', $._endless_command_operand), 'rescue', field('handler', $._arg))),
+
     parameters: ($) => seq('(', commaSep($._formal_parameter), ')'),
 
     bare_parameters: ($) => seq($._simple_formal_parameter, repeat(seq(',', $._formal_parameter))),
@@ -537,6 +575,8 @@ module.exports = grammar({
     // This naming convention is based on Ruby's standard grammar.
     _expression: ($) =>
       choice(
+        alias($._command_method, $.method),
+        alias($._command_singleton_method, $.singleton_method),
         alias($.command_binary, $.binary),
         alias($.command_unary, $.unary),
         alias($.command_assignment, $.assignment),
