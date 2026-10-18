@@ -354,3 +354,197 @@ def a = b c do end.d(e).g do end
           (identifier)))
       (identifier)
       (do_block))))
+
+===============================================
+ordinary continuations compose on chained call results
+===============================================
+
+b c do end.d(e).(f) do end
+b c do end.d(e)[0]
+b c do end.d(e) ? y : z do end
+b c do end.d(e)[0].(f).g do end
+b c do end.d(e)..z
+b c do end.d(e)[0] + z * y
+b c do end.d(e) + y ? z : q
+b c do end.d(e) ? y : z..q
+
+b c do end.d(e)[0] = v
+b c do end.d(e).g = v
+b c do end.d(e)[0] += v
+b c do end.d(e) in [x]
+b c do end.d(e) => x
+
+---
+
+(program
+  (call
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier)
+      (argument_list
+        (identifier)))
+    (argument_list
+      (identifier))
+    (do_block))
+  (element_reference
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier)
+      (argument_list
+        (identifier)))
+    (integer))
+  (conditional
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier)
+      (argument_list
+        (identifier)))
+    (identifier)
+    (call
+      (identifier)
+      (do_block)))
+  (call
+    (call
+      (element_reference
+        (call
+          (call
+            (identifier)
+            (argument_list
+              (identifier))
+            (do_block))
+          (identifier)
+          (argument_list
+            (identifier)))
+        (integer))
+      (argument_list
+        (identifier)))
+    (identifier)
+    (do_block))
+  (range
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier)
+      (argument_list
+        (identifier)))
+    (identifier))
+  (binary
+    (element_reference
+      (call
+        (call
+          (identifier)
+          (argument_list
+            (identifier))
+          (do_block))
+        (identifier)
+        (argument_list
+          (identifier)))
+      (integer))
+    (binary
+      (identifier)
+      (identifier)))
+  (conditional
+    (binary
+      (call
+        (call
+          (identifier)
+          (argument_list
+            (identifier))
+          (do_block))
+        (identifier)
+        (argument_list
+          (identifier)))
+      (identifier))
+    (identifier)
+    (identifier))
+  (conditional
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier)
+      (argument_list
+        (identifier)))
+    (identifier)
+    (range
+      (identifier)
+      (identifier)))
+  (assignment
+    (element_reference
+      (call
+        (call
+          (identifier)
+          (argument_list
+            (identifier))
+          (do_block))
+        (identifier)
+        (argument_list
+          (identifier)))
+      (integer))
+    (identifier))
+  (assignment
+    (call
+      (call
+        (call
+          (identifier)
+          (argument_list
+            (identifier))
+          (do_block))
+        (identifier)
+        (argument_list
+          (identifier)))
+      (identifier))
+    (identifier))
+  (operator_assignment
+    (element_reference
+      (call
+        (call
+          (identifier)
+          (argument_list
+            (identifier))
+          (do_block))
+        (identifier)
+        (argument_list
+          (identifier)))
+      (integer))
+    (identifier))
+  (test_pattern
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier)
+      (argument_list
+        (identifier)))
+    (array_pattern
+      (identifier)))
+  (match_pattern
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier)
+      (argument_list
+        (identifier)))
+    (identifier)))

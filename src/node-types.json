@@ -58,6 +58,14 @@
         "named": true
       },
       {
+        "type": "conditional",
+        "named": true
+      },
+      {
+        "type": "element_reference",
+        "named": true
+      },
+      {
         "type": "match_pattern",
         "named": true
       },
@@ -71,6 +79,10 @@
       },
       {
         "type": "operator_assignment",
+        "named": true
+      },
+      {
+        "type": "range",
         "named": true
       },
       {
@@ -1296,6 +1308,10 @@
           {
             "type": "_primary",
             "named": true
+          },
+          {
+            "type": "element_reference",
+            "named": true
           }
         ]
       }
@@ -1471,6 +1487,14 @@
         "types": [
           {
             "type": "_arg",
+            "named": true
+          },
+          {
+            "type": "call",
+            "named": true
+          },
+          {
+            "type": "element_reference",
             "named": true
           }
         ]
@@ -1654,6 +1678,10 @@
         "types": [
           {
             "type": "_primary",
+            "named": true
+          },
+          {
+            "type": "element_reference",
             "named": true
           }
         ]
@@ -2386,6 +2414,14 @@
           {
             "type": "_arg",
             "named": true
+          },
+          {
+            "type": "call",
+            "named": true
+          },
+          {
+            "type": "element_reference",
+            "named": true
           }
         ]
       }
@@ -2409,6 +2445,10 @@
           },
           {
             "type": "call",
+            "named": true
+          },
+          {
+            "type": "element_reference",
             "named": true
           },
           {
@@ -2797,6 +2837,14 @@
           {
             "type": "_pattern_primitive",
             "named": true
+          },
+          {
+            "type": "call",
+            "named": true
+          },
+          {
+            "type": "element_reference",
+            "named": true
           }
         ]
       },
@@ -3106,6 +3154,10 @@
             "named": true
           },
           {
+            "type": "element_reference",
+            "named": true
+          },
+          {
             "type": "method",
             "named": true
           },
@@ -3313,6 +3365,14 @@
         "types": [
           {
             "type": "_arg",
+            "named": true
+          },
+          {
+            "type": "call",
+            "named": true
+          },
+          {
+            "type": "element_reference",
             "named": true
           }
         ]

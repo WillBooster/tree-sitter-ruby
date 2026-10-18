@@ -207,9 +207,9 @@ module.exports = grammar({
       choice(
         alias($.command_call, $.call),
         alias($.command_call_with_block, $.call),
-        prec.left(alias($._chained_command_call, $.call)),
-        alias($._chained_binary, $.binary),
-        alias($._chained_call, $.call),
+        $._chained_arg,
+        alias($._chained_assignment, $.assignment),
+        alias($._chained_operator_assignment, $.operator_assignment),
         alias($.return_command, $.return),
         alias($.yield_command, $.yield),
         alias($._endless_command_not, $.unary),
@@ -599,17 +599,24 @@ module.exports = grammar({
         alias($.command_operator_assignment, $.operator_assignment),
         alias($.command_call, $.call),
         alias($.command_call_with_block, $.call),
-        prec.left(alias($._chained_command_call, $.call)),
-        alias($._chained_binary, $.binary),
-        alias($._chained_call, $.call),
+        $._chained_arg,
+        alias($._chained_assignment, $.assignment),
+        alias($._chained_operator_assignment, $.operator_assignment),
         alias($.return_command, $.return),
         alias($.yield_command, $.yield),
         alias($.break_command, $.break),
         alias($.next_command, $.next),
+        alias($._chained_match_pattern, $.match_pattern),
+        alias($._chained_test_pattern, $.test_pattern),
         $.match_pattern,
         $.test_pattern,
         $._arg
       ),
+
+    _chained_match_pattern: ($) =>
+      prec(100, seq(field('value', $._chained_primary), '=>', field('pattern', $._pattern_top_expr_body))),
+    _chained_test_pattern: ($) =>
+      prec(100, seq(field('value', $._chained_primary), 'in', field('pattern', $._pattern_top_expr_body))),
 
     match_pattern: ($) => prec(100, seq(field('value', $._arg), '=>', field('pattern', $._pattern_top_expr_body))),
 
@@ -681,17 +688,7 @@ module.exports = grammar({
 
     parenthesized_statements: ($) => seq('(', optional($._statements), ')'),
 
-    element_reference: ($) =>
-      prec.left(
-        1,
-        seq(
-          field('object', $._primary),
-          alias($._element_reference_bracket, '['),
-          optional($._argument_list_with_trailing_comma),
-          ']',
-          optional(field('block', choice($.block, $.do_block)))
-        )
-      ),
+    element_reference: ($) => elementReference($, $._primary),
 
     scope_resolution: ($) =>
       prec.left(
@@ -731,27 +728,40 @@ module.exports = grammar({
       );
     },
 
+    _chained_arg: ($) =>
+      choice(
+        $._chained_primary,
+        alias($._chained_binary, $.binary),
+        alias($._chained_conditional, $.conditional),
+        alias($._chained_range, $.range)
+      ),
+
+    _chained_primary: ($) =>
+      choice(
+        prec.left(alias($._chained_command_call, $.call)),
+        alias($._chained_call, $.call),
+        alias($._chained_element_reference, $.element_reference)
+      ),
+
     _chained_command_call: ($) =>
       seq(
-        field(
-          'receiver',
-          choice(
-            alias($.command_call_with_block, $.call),
-            alias($._chained_call, $.call),
-            alias($._chained_command_call, $.call)
-          )
-        ),
+        field('receiver', choice(alias($.command_call_with_block, $.call), $._chained_primary)),
         field('operator', $._call_operator),
         field('method', choice($.identifier, $._function_identifier, $.operator, $.constant))
       ),
 
+    _chained_element_reference: ($) => elementReference($, $._chained_primary),
+
     _chained_call: ($) => {
       const receiver = $._chained_command_call;
-      const args = field('arguments', $.argument_list);
+      const receiverArguments = seq(
+        choice(receiver, seq(field('receiver', $._chained_primary), field('operator', $._call_operator))),
+        field('arguments', $.argument_list)
+      );
       return choice(
-        seq(receiver, args),
-        prec(PREC.CURLY_BLOCK, seq(receiver, optional(args), field('block', $.block))),
-        prec(PREC.DO_BLOCK, seq(receiver, optional(args), field('block', $.do_block)))
+        receiverArguments,
+        prec(PREC.CURLY_BLOCK, seq(choice(receiver, receiverArguments), field('block', $.block))),
+        prec(PREC.DO_BLOCK, seq(choice(receiver, receiverArguments), field('block', $.do_block)))
       );
     },
 
@@ -807,6 +817,37 @@ module.exports = grammar({
       ),
 
     _arg_rhs: ($) => choice($._arg, alias($.rescue_modifier_arg, $.rescue_modifier)),
+    _chained_lhs: ($) =>
+      choice(alias($._chained_command_call, $.call), alias($._chained_element_reference, $.element_reference)),
+
+    _chained_assignment: ($) =>
+      prec.right(
+        PREC.ASSIGN,
+        seq(
+          field('left', $._chained_lhs),
+          '=',
+          field(
+            'right',
+            choice(
+              $._expression,
+              $.splat_argument,
+              $.right_assignment_list,
+              alias($.rescue_modifier_expression, $.rescue_modifier)
+            )
+          )
+        )
+      ),
+
+    _chained_operator_assignment: ($) =>
+      prec.right(
+        PREC.ASSIGN,
+        seq(
+          field('left', $._chained_lhs),
+          field('operator', choice('+=', '-=', '*=', '**=', '/=', '||=', '|=', '&&=', '&=', '%=', '>>=', '<<=', '^=')),
+          field('right', choice($._expression, alias($.rescue_modifier_expression, $.rescue_modifier)))
+        )
+      ),
+
     assignment: ($) =>
       prec.right(
         PREC.ASSIGN,
@@ -849,18 +890,13 @@ module.exports = grammar({
         )
       ),
 
-    conditional: ($) =>
-      prec.right(
-        PREC.CONDITIONAL,
-        seq(field('condition', $._arg), '?', field('consequence', $._arg), ':', field('alternative', $._arg))
-      ),
+    conditional: ($) => conditionalExpression($, $._arg),
 
-    range: ($) => {
-      const begin = field('begin', $._arg);
-      const end = field('end', choice($._arg, alias($._range_sign, $.unary)));
-      const operator = field('operator', choice('..', '...'));
-      return prec.right(PREC.RANGE, choice(seq(begin, operator, end), seq(operator, end), seq(begin, operator)));
-    },
+    _chained_conditional: ($) => conditionalExpression($, $._chained_arg),
+
+    range: ($) => rangeExpression($, $._arg, true),
+
+    _chained_range: ($) => rangeExpression($, $._chained_arg, false),
 
     _range_sign: ($) =>
       prec.right(
@@ -871,15 +907,7 @@ module.exports = grammar({
         )
       ),
 
-    _chained_binary: ($) =>
-      binaryExpression(
-        $,
-        choice(
-          alias($._chained_command_call, $.call),
-          alias($._chained_call, $.call),
-          alias($._chained_binary, $.binary)
-        )
-      ),
+    _chained_binary: ($) => binaryExpression($, $._chained_arg),
 
     binary: ($) => binaryExpression($, $._arg),
 
@@ -1218,4 +1246,44 @@ function binaryExpression($, left) {
       fn(precedence, seq(field('left', left), field('operator', operator), field('right', $._arg)))
     )
   );
+}
+
+/**
+ * @param {GrammarSymbols<string>} $
+ * @param {RuleOrLiteral} object
+ */
+function elementReference($, object) {
+  return prec.left(
+    1,
+    seq(
+      field('object', object),
+      alias($._element_reference_bracket, '['),
+      optional($._argument_list_with_trailing_comma),
+      ']',
+      optional(field('block', choice($.block, $.do_block)))
+    )
+  );
+}
+
+/**
+ * @param {GrammarSymbols<string>} $
+ * @param {RuleOrLiteral} condition
+ */
+function conditionalExpression($, condition) {
+  return prec.right(
+    PREC.CONDITIONAL,
+    seq(field('condition', condition), '?', field('consequence', $._arg), ':', field('alternative', $._arg))
+  );
+}
+
+/**
+ * @param {GrammarSymbols<string>} $
+ * @param {RuleOrLiteral} begin
+ * @param {boolean} allowBeginless
+ */
+function rangeExpression($, begin, allowBeginless) {
+  const end = field('end', choice($._arg, alias($._range_sign, $.unary)));
+  const operator = field('operator', choice('..', '...'));
+  const bounded = seq(field('begin', begin), operator, optional(end));
+  return prec.right(PREC.RANGE, allowBeginless ? choice(bounded, seq(operator, end)) : bounded);
 }
