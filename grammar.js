@@ -188,6 +188,8 @@ module.exports = grammar({
     _endless_command: ($) =>
       choice(
         alias($.command_call, $.call),
+        alias($.command_call_with_block, $.call),
+        prec.left(alias($._chained_command_call, $.call)),
         alias($.return_command, $.return),
         alias($.yield_command, $.yield),
         alias($._endless_command_not, $.unary),

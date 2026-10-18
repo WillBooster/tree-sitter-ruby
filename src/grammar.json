@@ -660,6 +660,28 @@
           "type": "ALIAS",
           "content": {
             "type": "SYMBOL",
+            "name": "command_call_with_block"
+          },
+          "named": true,
+          "value": "call"
+        },
+        {
+          "type": "PREC_LEFT",
+          "value": 0,
+          "content": {
+            "type": "ALIAS",
+            "content": {
+              "type": "SYMBOL",
+              "name": "_chained_command_call"
+            },
+            "named": true,
+            "value": "call"
+          }
+        },
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
             "name": "return_command"
           },
           "named": true,

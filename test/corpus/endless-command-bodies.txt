@@ -70,3 +70,29 @@ def self.invalid? = not valid? value rescue false
       operand: (rescue_modifier
         body: (call method: (identifier) arguments: (argument_list (identifier)))
         handler: (false)))))
+
+==============================
+endless command bodies with blocks
+==============================
+
+def each_item = items.each value do |item| end
+def chained = build value do end.finish result
+private def helper = run task do end
+
+---
+
+(program
+  (method name: (identifier)
+    body: (call receiver: (identifier) method: (identifier)
+      arguments: (argument_list (identifier))
+      block: (do_block parameters: (block_parameters (identifier)))))
+  (method name: (identifier)
+    body: (call
+      receiver: (call method: (identifier) arguments: (argument_list (identifier)) block: (do_block))
+      method: (identifier)
+      arguments: (argument_list (identifier))))
+  (call method: (identifier)
+    arguments: (argument_list
+      (method name: (identifier)
+        body: (call method: (identifier) arguments: (argument_list (identifier)))))
+    block: (do_block)))
