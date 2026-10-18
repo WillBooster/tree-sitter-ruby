@@ -737,7 +737,6 @@ module.exports = grammar({
         $.conditional,
         $.range,
         $.binary,
-        alias($._super_plus_binary, $.binary),
         $.unary
       ),
 
@@ -824,12 +823,6 @@ module.exports = grammar({
         $._super_command,
         $._receiver_command,
         $._chained_command
-      ),
-
-    _super_plus_binary: ($) =>
-      prec.left(
-        PREC.ADDITIVE,
-        seq(field('left', $.super), field('operator', alias($._binary_plus, '+')), field('right', $._arg))
       ),
 
     _super_command: ($) =>
@@ -1149,8 +1142,7 @@ module.exports = grammar({
     _range_sign: ($) =>
       prec.right(PREC.UNARY_MINUS, seq(field('operator', alias($._binary_minus, '-')), field('operand', $._arg))),
 
-    _chained_binary: ($) =>
-      binaryExpression($, choice($._chained_arg, alias($.command_call_with_block, $.call)), alias($._binary_plus, '+')),
+    _chained_binary: ($) => binaryExpression($, choice($._chained_arg, alias($.command_call_with_block, $.call))),
 
     binary: ($) => binaryExpression($, $._arg),
 
@@ -1513,9 +1505,8 @@ function unaryExpression(operand, sign) {
 /**
  * @param {GrammarSymbols<string>} $
  * @param {RuleOrLiteral} left
- * @param {RuleOrLiteral} plus
  */
-function binaryExpression($, left, plus = '+') {
+function binaryExpression($, left) {
   // oxlint-disable typescript/unbound-method -- The DSL's `prec` functions do not use `this`.
   /** @type {[(precedence: number, rule: RuleOrLiteral) => Rule, number, RuleOrLiteral][]} */
   const operators = [
@@ -1527,7 +1518,7 @@ function binaryExpression($, left, plus = '+') {
     [prec.left, PREC.COMPARISON, choice('<', '<=', '>', '>=')],
     [prec.left, PREC.BITWISE_AND, alias($._bitwise_and, '&')],
     [prec.left, PREC.BITWISE_OR, choice('^', '|')],
-    [prec.left, PREC.ADDITIVE, choice(plus, alias($._binary_minus, '-'))],
+    [prec.left, PREC.ADDITIVE, choice('+', alias($._binary_plus, '+'), alias($._binary_minus, '-'))],
     [prec.left, PREC.MULTIPLICATIVE, choice('/', '%', alias($._binary_star, '*'))],
     [prec.right, PREC.RELATIONAL, choice('==', '!=', '===', '<=>', '=~', '!~')],
     [prec.right, PREC.EXPONENTIAL, alias($._binary_star_star, '**')],

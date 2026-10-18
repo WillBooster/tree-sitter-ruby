@@ -966,13 +966,12 @@ static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symb
             break;
 
         case '+':
-            if (valid_symbols[UNARY_PLUS] || valid_symbols[BINARY_PLUS]) {
+            if (valid_symbols[UNARY_PLUS]) {
                 advance(lexer);
                 if (lexer->lookahead == '=') {
                     return false;
                 }
-                lexer->result_symbol = valid_symbols[UNARY_PLUS] &&
-                    (!valid_symbols[BINARY_PLUS] ||
+                lexer->result_symbol = (!valid_symbols[BINARY_PLUS] ||
                      (scanner->has_leading_whitespace && !iswspace(lexer->lookahead)))
                     ? UNARY_PLUS : BINARY_PLUS;
                 return true;

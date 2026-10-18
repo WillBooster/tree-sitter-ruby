@@ -984,10 +984,6 @@
           {
             "type": "_simple_numeric",
             "named": true
-          },
-          {
-            "type": "super",
-            "named": true
           }
         ]
       },

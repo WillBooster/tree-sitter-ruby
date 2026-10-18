@@ -2503,3 +2503,92 @@ b c do end + x in Integer
         (do_block))
       (identifier))
     (constant)))
+
+========================================
+command pattern boundaries: strong unary binds before spaced super addition
+========================================
+
+def f; ! super + x; ~ super + x; - super + x; + super + x; end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (binary
+        (unary
+          (super))
+        (identifier))
+      (binary
+        (unary
+          (super))
+        (identifier))
+      (binary
+        (unary
+          (super))
+        (identifier))
+      (binary
+        (unary
+          (super))
+        (identifier)))))
+
+========================================
+command pattern boundaries: super addition retains left associativity
+========================================
+
+def f; foo + super + x; foo - super + x; end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (binary
+        (binary
+          (identifier)
+          (super))
+        (identifier))
+      (binary
+        (binary
+          (identifier)
+          (super))
+        (identifier)))))
+
+========================================
+command pattern boundaries: strong unary retains unspaced super plus argument
+========================================
+
+def f; ! super +x; ~ super +x; - super +x; + super +x; end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (unary
+        (call
+          (super)
+          (argument_list
+            (unary
+              (identifier)))))
+      (unary
+        (call
+          (super)
+          (argument_list
+            (unary
+              (identifier)))))
+      (unary
+        (call
+          (super)
+          (argument_list
+            (unary
+              (identifier)))))
+      (unary
+        (call
+          (super)
+          (argument_list
+            (unary
+              (identifier))))))))
