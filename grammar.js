@@ -733,7 +733,14 @@ module.exports = grammar({
 
     _chained_command_call: ($) =>
       seq(
-        field('receiver', alias($.command_call_with_block, $.call)),
+        field(
+          'receiver',
+          choice(
+            alias($.command_call_with_block, $.call),
+            alias($._chained_call, $.call),
+            alias($._chained_command_call, $.call)
+          )
+        ),
         field('operator', $._call_operator),
         field('method', choice($.identifier, $._function_identifier, $.operator, $.constant))
       ),

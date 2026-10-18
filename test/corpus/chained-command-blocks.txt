@@ -272,3 +272,85 @@ b c do end.d + z * y
     (binary
       (identifier)
       (identifier))))
+
+===============================================
+blocks on continued parenthesized chained calls
+===============================================
+
+b c do end.d(e).g do end
+b c do end.d(e).g.h do end
+b c do end.d(e)&.g(f) do end
+b c do end.d(e).g f do end
+def a = b c do end.d(e).g do end
+
+---
+
+(program
+  (call
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier)
+      (argument_list
+        (identifier)))
+    (identifier)
+    (do_block))
+  (call
+    (call
+      (call
+        (call
+          (identifier)
+          (argument_list
+            (identifier))
+          (do_block))
+        (identifier)
+        (argument_list
+          (identifier)))
+      (identifier))
+    (identifier)
+    (do_block))
+  (call
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier)
+      (argument_list
+        (identifier)))
+    (identifier)
+    (argument_list
+      (identifier))
+    (do_block))
+  (call
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier)
+      (argument_list
+        (identifier)))
+    (identifier)
+    (argument_list
+      (identifier))
+    (do_block))
+  (method
+    (identifier)
+    (call
+      (call
+        (call
+          (identifier)
+          (argument_list
+            (identifier))
+          (do_block))
+        (identifier)
+        (argument_list
+          (identifier)))
+      (identifier)
+      (do_block))))
