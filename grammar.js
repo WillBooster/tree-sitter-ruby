@@ -9,6 +9,7 @@ const PREC = {
   AND: -2,
   OR: -2,
   NOT: 5,
+  PATTERN: 6,
   DEFINED: 10,
   ALIAS: 11,
   ASSIGN: 15,
@@ -90,12 +91,14 @@ module.exports = grammar({
 
   conflicts: ($) => [
     [$._chained_primary, $._chained_lhs],
-    [$._non_pattern_expression, $.match_pattern, $.pair],
+    [$._command_value, $.pair],
+    [$._statement, $._chained_test_pattern],
+    [$._statement, $.command_binary],
     [$._chained_test_pattern, $.command_call],
+    [$._command_value, $._chained_test_pattern],
     [$._non_pattern_expression, $._chained_test_pattern],
-    [$._non_pattern_expression, $.test_pattern],
-    [$._non_pattern_expression, $.match_pattern],
     [$._non_pattern_expression, $._chained_match_pattern],
+    [$._command_value, $._chained_match_pattern],
     [$._array_pattern_n, $.as_pattern, $._find_pattern_body],
   ],
 
@@ -610,11 +613,13 @@ module.exports = grammar({
       ),
 
     _non_pattern_expression: ($) =>
+      choice(alias($.command_binary, $.binary), alias($.command_unary, $.unary), $._command_value),
+
+    _command_value: ($) =>
       choice(
+        alias($._pattern_not, $.unary),
         alias($._command_method, $.method),
         alias($._command_singleton_method, $.singleton_method),
-        alias($.command_binary, $.binary),
-        alias($.command_unary, $.unary),
         alias($.command_assignment, $.assignment),
         alias($.command_operator_assignment, $.operator_assignment),
         alias($.command_call, $.call),
@@ -643,7 +648,14 @@ module.exports = grammar({
               alias($.command_operator_assignment, $.operator_assignment),
               alias($.command_call_with_block, $.call),
               alias($._command_method, $.method),
-              alias($._command_singleton_method, $.singleton_method)
+              alias($._command_singleton_method, $.singleton_method),
+              alias($.command_binary, $.binary),
+              alias($.command_unary, $.unary),
+              $.if_modifier,
+              $.unless_modifier,
+              $.while_modifier,
+              $.until_modifier,
+              $.rescue_modifier
             )
           ),
           '=>',
@@ -665,7 +677,15 @@ module.exports = grammar({
               alias($.command_call_with_block, $.call),
               alias($._chained_command, $.call),
               alias($._command_method, $.method),
-              alias($._command_singleton_method, $.singleton_method)
+              alias($._command_singleton_method, $.singleton_method),
+              alias($._receiver_command, $.call),
+              alias($.command_binary, $.binary),
+              alias($.command_unary, $.unary),
+              $.if_modifier,
+              $.unless_modifier,
+              $.while_modifier,
+              $.until_modifier,
+              $.rescue_modifier
             )
           ),
           'in',
@@ -674,9 +694,16 @@ module.exports = grammar({
       ),
 
     match_pattern: ($) =>
-      prec.dynamic(1, seq(field('value', $._arg), '=>', field('pattern', $._pattern_top_expr_body))),
+      prec(
+        PREC.PATTERN,
+        prec.dynamic(1, seq(field('value', $._arg), '=>', field('pattern', $._pattern_top_expr_body)))
+      ),
 
-    test_pattern: ($) => prec.dynamic(1, seq(field('value', $._arg), 'in', field('pattern', $._pattern_top_expr_body))),
+    test_pattern: ($) =>
+      prec(
+        PREC.PATTERN,
+        prec.dynamic(1, seq(field('value', $._arg), 'in', field('pattern', $._pattern_top_expr_body)))
+      ),
 
     _arg: ($) =>
       choice(
@@ -766,11 +793,14 @@ module.exports = grammar({
     command_call: ($) =>
       choice(
         seq(
-          choice($._call, field('method', choice($._variable, $._function_identifier))),
+          field('method', choice($._variable, $._function_identifier)),
           field('arguments', alias($.command_argument_list, $.argument_list))
         ),
+        $._receiver_command,
         $._chained_command
       ),
+
+    _receiver_command: ($) => seq($._call, field('arguments', alias($.command_argument_list, $.argument_list))),
 
     _chained_command: ($) =>
       seq($._chained_command_call, field('arguments', alias($._chained_command_argument_list, $.argument_list))),
@@ -884,14 +914,7 @@ module.exports = grammar({
     _command_argument: ($) =>
       prec.left(
         1,
-        choice(
-          $._non_pattern_expression,
-          $.splat_argument,
-          $.hash_splat_argument,
-          $.forward_argument,
-          $.block_argument,
-          $.pair
-        )
+        choice($._command_value, $.splat_argument, $.hash_splat_argument, $.forward_argument, $.block_argument, $.pair)
       ),
 
     _argument: ($) =>
@@ -1030,6 +1053,27 @@ module.exports = grammar({
     unary: ($) => unaryExpression($._arg, choice(alias($._unary_minus, '-'), '+')),
 
     command_unary: ($) => unaryExpression($._expression, choice(alias($._unary_minus, '-'), '+')),
+
+    _pattern_not: ($) =>
+      prec.dynamic(
+        3,
+        prec.right(
+          PREC.NOT,
+          seq(
+            field('operator', 'not'),
+            field(
+              'operand',
+              choice(
+                alias($._pattern_not, $.unary),
+                $.test_pattern,
+                $.match_pattern,
+                alias($._chained_test_pattern, $.test_pattern),
+                alias($._chained_match_pattern, $.match_pattern)
+              )
+            )
+          )
+        )
+      ),
 
     parenthesized_unary: ($) =>
       prec(PREC.CALL, seq(field('operator', choice('defined?', 'not')), field('operand', $.parenthesized_statements))),

@@ -378,7 +378,7 @@ foo x in 5
 -----------------
 
 (program
-  (call (identifier) (argument_list (identifier))) (ERROR (integer))
+  (test_pattern (identifier) (ERROR (identifier)) (integer))
 )
 
 ========================================
@@ -610,3 +610,353 @@ def a = b c rescue y in Integer
             (identifier)))
         (identifier)))
     (constant)))
+
+========================================
+command pattern boundaries: logical negation
+========================================
+
+not x in Integer
+not not x in Integer
+not x in Integer and d
+if not x in Integer then 1 end
+unless not x in Integer then 1 end
+x = not b in c
+return not a in b
+foo not x in Integer
+not a.b c in Integer
+not a => b
+!x in Integer
+-x in Integer
+defined? x in Integer
+
+---
+
+(program
+  (unary
+    (test_pattern
+      (identifier)
+      (constant)))
+  (unary
+    (unary
+      (test_pattern
+        (identifier)
+        (constant))))
+  (binary
+    (unary
+      (test_pattern
+        (identifier)
+        (constant)))
+    (identifier))
+  (if
+    (unary
+      (test_pattern
+        (identifier)
+        (constant)))
+    (then
+      (integer)))
+  (unless
+    (unary
+      (test_pattern
+        (identifier)
+        (constant)))
+    (then
+      (integer)))
+  (assignment
+    (identifier)
+    (unary
+      (test_pattern
+        (identifier)
+        (identifier))))
+  (return
+    (argument_list
+      (unary
+        (test_pattern
+          (identifier)
+          (identifier)))))
+  (call
+    (identifier)
+    (argument_list
+      (unary
+        (test_pattern
+          (identifier)
+          (constant)))))
+  (unary
+    (test_pattern
+      (call
+        (identifier)
+        (identifier)
+        (argument_list
+          (identifier)))
+      (constant)))
+  (unary
+    (match_pattern
+      (identifier)
+      (identifier)))
+  (test_pattern
+    (unary
+      (identifier))
+    (constant))
+  (test_pattern
+    (unary
+      (identifier))
+    (constant))
+  (test_pattern
+    (unary
+      (identifier))
+    (constant)))
+
+========================================
+command pattern boundaries: modifiers
+========================================
+
+z if b c in Integer
+z if c in Integer
+z if b c => result
+z unless b c in Integer
+z unless c in Integer
+z unless b c => result
+z while b c in Integer
+z while c in Integer
+z while b c => result
+z until b c in Integer
+z until c in Integer
+z until b c => result
+z rescue b c in Integer
+z rescue c in Integer
+z rescue b c => result
+
+---
+
+(program
+  (test_pattern
+    (if_modifier
+      (identifier)
+      (call
+        (identifier)
+        (argument_list
+          (identifier))))
+    (constant))
+  (if_modifier
+    (identifier)
+    (test_pattern
+      (identifier)
+      (constant)))
+  (if_modifier
+    (identifier)
+    (call
+      (identifier)
+      (argument_list
+        (pair
+          (identifier)
+          (identifier)))))
+  (test_pattern
+    (unless_modifier
+      (identifier)
+      (call
+        (identifier)
+        (argument_list
+          (identifier))))
+    (constant))
+  (unless_modifier
+    (identifier)
+    (test_pattern
+      (identifier)
+      (constant)))
+  (unless_modifier
+    (identifier)
+    (call
+      (identifier)
+      (argument_list
+        (pair
+          (identifier)
+          (identifier)))))
+  (test_pattern
+    (while_modifier
+      (identifier)
+      (call
+        (identifier)
+        (argument_list
+          (identifier))))
+    (constant))
+  (while_modifier
+    (identifier)
+    (test_pattern
+      (identifier)
+      (constant)))
+  (while_modifier
+    (identifier)
+    (call
+      (identifier)
+      (argument_list
+        (pair
+          (identifier)
+          (identifier)))))
+  (test_pattern
+    (until_modifier
+      (identifier)
+      (call
+        (identifier)
+        (argument_list
+          (identifier))))
+    (constant))
+  (until_modifier
+    (identifier)
+    (test_pattern
+      (identifier)
+      (constant)))
+  (until_modifier
+    (identifier)
+    (call
+      (identifier)
+      (argument_list
+        (pair
+          (identifier)
+          (identifier)))))
+  (test_pattern
+    (rescue_modifier
+      (identifier)
+      (call
+        (identifier)
+        (argument_list
+          (identifier))))
+    (constant))
+  (rescue_modifier
+    (identifier)
+    (test_pattern
+      (identifier)
+      (constant)))
+  (rescue_modifier
+    (identifier)
+    (call
+      (identifier)
+      (argument_list
+        (pair
+          (identifier)
+          (identifier))))))
+
+========================================
+command pattern boundaries: receiver commands
+========================================
+
+a.b c in Integer
+a::b c in Integer
+a.b c, d in Integer
+foo { x }.bar y in Integer
+
+---
+
+(program
+  (test_pattern
+    (call
+      (identifier)
+      (identifier)
+      (argument_list
+        (identifier)))
+    (constant))
+  (test_pattern
+    (call
+      (identifier)
+      (identifier)
+      (argument_list
+        (identifier)))
+    (constant))
+  (test_pattern
+    (call
+      (identifier)
+      (identifier)
+      (argument_list
+        (identifier)
+        (identifier)))
+    (constant))
+  (test_pattern
+    (call
+      (call
+        (identifier)
+        (block
+          (block_body
+            (identifier))))
+      (identifier)
+      (argument_list
+        (identifier)))
+    (constant)))
+
+========================================
+command pattern boundaries: logical command boundaries
+========================================
+
+a and b c in Integer
+a or b c in Integer
+not b c in Integer
+def a = b c in Integer and d
+def a = b c in Integer or d
+x = b c in Integer and d
+
+---
+
+(program
+  (test_pattern
+    (binary
+      (identifier)
+      (call
+        (identifier)
+        (argument_list
+          (identifier))))
+    (constant))
+  (test_pattern
+    (binary
+      (identifier)
+      (call
+        (identifier)
+        (argument_list
+          (identifier))))
+    (constant))
+  (test_pattern
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (identifier))))
+    (constant))
+  (binary
+    (test_pattern
+      (method
+        (identifier)
+        (call
+          (identifier)
+          (argument_list
+            (identifier))))
+      (constant))
+    (identifier))
+  (binary
+    (test_pattern
+      (method
+        (identifier)
+        (call
+          (identifier)
+          (argument_list
+            (identifier))))
+      (constant))
+    (identifier))
+  (binary
+    (test_pattern
+      (assignment
+        (identifier)
+        (call
+          (identifier)
+          (argument_list
+            (identifier))))
+      (constant))
+    (identifier)))
+
+========================================
+command pattern boundaries: nested negation argument
+========================================
+
+return not not a in Integer
+foo not not a in Integer
+
+---
+
+(program
+  (return (argument_list (unary (unary (test_pattern (identifier) (constant))))))
+  (call (identifier) (argument_list (unary (unary (test_pattern (identifier) (constant)))))))

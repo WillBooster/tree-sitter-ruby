@@ -2476,7 +2476,15 @@
             "named": true
           },
           {
+            "type": "if_modifier",
+            "named": true
+          },
+          {
             "type": "method",
+            "named": true
+          },
+          {
+            "type": "rescue_modifier",
             "named": true
           },
           {
@@ -2485,6 +2493,18 @@
           },
           {
             "type": "singleton_method",
+            "named": true
+          },
+          {
+            "type": "unless_modifier",
+            "named": true
+          },
+          {
+            "type": "until_modifier",
+            "named": true
+          },
+          {
+            "type": "while_modifier",
             "named": true
           }
         ]
@@ -3532,7 +3552,15 @@
             "named": true
           },
           {
+            "type": "if_modifier",
+            "named": true
+          },
+          {
             "type": "method",
+            "named": true
+          },
+          {
+            "type": "rescue_modifier",
             "named": true
           },
           {
@@ -3541,6 +3569,18 @@
           },
           {
             "type": "singleton_method",
+            "named": true
+          },
+          {
+            "type": "unless_modifier",
+            "named": true
+          },
+          {
+            "type": "until_modifier",
+            "named": true
+          },
+          {
+            "type": "while_modifier",
             "named": true
           }
         ]
