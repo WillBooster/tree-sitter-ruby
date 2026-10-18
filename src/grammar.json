@@ -7189,6 +7189,24 @@
                     },
                     "named": true,
                     "value": "unary"
+                  },
+                  {
+                    "type": "ALIAS",
+                    "content": {
+                      "type": "SYMBOL",
+                      "name": "_chained_assignment"
+                    },
+                    "named": true,
+                    "value": "assignment"
+                  },
+                  {
+                    "type": "ALIAS",
+                    "content": {
+                      "type": "SYMBOL",
+                      "name": "_chained_operator_assignment"
+                    },
+                    "named": true,
+                    "value": "operator_assignment"
                   }
                 ]
               }
@@ -7313,7 +7331,7 @@
     },
     "_command_definition_pair": {
       "type": "PREC_DYNAMIC",
-      "value": 1,
+      "value": 2,
       "content": {
         "type": "PREC_RIGHT",
         "value": 0,
@@ -11537,7 +11555,7 @@
     },
     "pair": {
       "type": "PREC_DYNAMIC",
-      "value": 2,
+      "value": 3,
       "content": {
         "type": "PREC_RIGHT",
         "value": 0,

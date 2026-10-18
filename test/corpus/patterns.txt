@@ -2319,3 +2319,97 @@ command pattern boundaries: strong unary before negated command test
           (argument_list
             (identifier)))))
     (constant)))
+
+========================================
+command pattern boundaries: returned setter assignment pair key
+========================================
+
+return b c do end.d = v => w
+
+---
+
+(program
+  (return
+    (argument_list
+      (pair
+        (assignment
+          (call
+            (call
+              (identifier)
+              (argument_list
+                (identifier))
+              (do_block))
+            (identifier))
+          (identifier))
+        (identifier)))))
+
+========================================
+command pattern boundaries: parenthesized operator assignment pair key
+========================================
+
+foo(b c do end.d += v => w)
+
+---
+
+(program
+  (call
+    (identifier)
+    (argument_list
+      (pair
+        (operator_assignment
+          (call
+            (call
+              (identifier)
+              (argument_list
+                (identifier))
+              (do_block))
+            (identifier))
+          (identifier))
+        (identifier)))))
+
+========================================
+command pattern boundaries: returned conditional assignment pair key
+========================================
+
+return b c do end.d ||= v => w
+
+---
+
+(program
+  (return
+    (argument_list
+      (pair
+        (operator_assignment
+          (call
+            (call
+              (identifier)
+              (argument_list
+                (identifier))
+              (do_block))
+            (identifier))
+          (identifier))
+        (identifier)))))
+
+========================================
+command pattern boundaries: parenthesized conditional assignment pair key
+========================================
+
+foo(b c do end.d &&= v => w)
+
+---
+
+(program
+  (call
+    (identifier)
+    (argument_list
+      (pair
+        (operator_assignment
+          (call
+            (call
+              (identifier)
+              (argument_list
+                (identifier))
+              (do_block))
+            (identifier))
+          (identifier))
+        (identifier)))))

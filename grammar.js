@@ -972,7 +972,9 @@ module.exports = grammar({
                 alias($._command_pair_key, $.call),
                 alias($._super_command, $.call),
                 alias($.yield_command, $.yield),
-                alias($._command_not, $.unary)
+                alias($._command_not, $.unary),
+                alias($._chained_assignment, $.assignment),
+                alias($._chained_operator_assignment, $.operator_assignment)
               )
             ),
             '=>',
@@ -1001,7 +1003,7 @@ module.exports = grammar({
 
     _command_definition_pair: ($) =>
       prec.dynamic(
-        1,
+        2,
         prec.right(
           seq(
             field(
@@ -1401,7 +1403,7 @@ module.exports = grammar({
 
     pair: ($) =>
       prec.dynamic(
-        2,
+        3,
         prec.right(
           choice(
             seq(field('key', $._arg), '=>', field('value', $._arg)),
