@@ -2799,3 +2799,27 @@ def f = not ! a.b c in Integer and d
                 (identifier))))
           (constant))))
     (identifier)))
+
+========================================
+command pattern boundaries: outer do block under nested negated super predicate
+========================================
+
+foo not not super c do end && x in Integer
+
+---
+
+(program
+  (test_pattern
+    (binary
+      (call
+        (identifier)
+        (argument_list
+          (unary
+            (unary
+              (call
+                (super)
+                (argument_list
+                  (identifier))))))
+        (do_block))
+      (identifier))
+    (constant)))

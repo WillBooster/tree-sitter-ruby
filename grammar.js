@@ -838,7 +838,16 @@ module.exports = grammar({
     _super_command: ($) =>
       prec.dynamic(
         1,
-        seq(field('method', $.super), field('arguments', alias($._chained_command_argument_list, $.argument_list)))
+        seq(
+          field('method', $.super),
+          field(
+            'arguments',
+            choice(
+              alias($.command_argument_list, $.argument_list),
+              alias($._signed_command_argument_list, $.argument_list)
+            )
+          )
+        )
       ),
 
     _receiver_command: ($) => seq($._call, field('arguments', alias($.command_argument_list, $.argument_list))),
@@ -926,11 +935,11 @@ module.exports = grammar({
     },
 
     _chained_command_argument_list: ($) =>
+      prec.right(choice(commaSep1($._command_argument), $._signed_command_argument_list)),
+
+    _signed_command_argument_list: ($) =>
       prec.right(
-        choice(
-          commaSep1($._command_argument),
-          seq(choice($._chained_plus_arg, alias($._chained_plus_pair, $.pair)), repeat(seq(',', $._command_argument)))
-        )
+        seq(choice($._chained_plus_arg, alias($._chained_plus_pair, $.pair)), repeat(seq(',', $._command_argument)))
       ),
 
     _chained_plus_arg: ($) =>
