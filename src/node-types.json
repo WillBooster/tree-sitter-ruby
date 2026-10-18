@@ -90,6 +90,10 @@
         "named": true
       },
       {
+        "type": "scope_resolution",
+        "named": true
+      },
+      {
         "type": "singleton_method",
         "named": true
       },
@@ -1312,6 +1316,10 @@
           {
             "type": "element_reference",
             "named": true
+          },
+          {
+            "type": "scope_resolution",
+            "named": true
           }
         ]
       }
@@ -1495,6 +1503,10 @@
           },
           {
             "type": "element_reference",
+            "named": true
+          },
+          {
+            "type": "scope_resolution",
             "named": true
           }
         ]
@@ -1682,6 +1694,10 @@
           },
           {
             "type": "element_reference",
+            "named": true
+          },
+          {
+            "type": "scope_resolution",
             "named": true
           }
         ]
@@ -2422,6 +2438,18 @@
           {
             "type": "element_reference",
             "named": true
+          },
+          {
+            "type": "method",
+            "named": true
+          },
+          {
+            "type": "scope_resolution",
+            "named": true
+          },
+          {
+            "type": "singleton_method",
+            "named": true
           }
         ]
       }
@@ -2461,6 +2489,10 @@
           },
           {
             "type": "return",
+            "named": true
+          },
+          {
+            "type": "scope_resolution",
             "named": true
           },
           {
@@ -2845,6 +2877,10 @@
           {
             "type": "element_reference",
             "named": true
+          },
+          {
+            "type": "scope_resolution",
+            "named": true
           }
         ]
       },
@@ -3086,6 +3122,10 @@
           {
             "type": "_primary",
             "named": true
+          },
+          {
+            "type": "element_reference",
+            "named": true
           }
         ]
       }
@@ -3167,6 +3207,10 @@
           },
           {
             "type": "return",
+            "named": true
+          },
+          {
+            "type": "scope_resolution",
             "named": true
           },
           {
@@ -3373,6 +3417,18 @@
           },
           {
             "type": "element_reference",
+            "named": true
+          },
+          {
+            "type": "method",
+            "named": true
+          },
+          {
+            "type": "scope_resolution",
+            "named": true
+          },
+          {
+            "type": "singleton_method",
             "named": true
           }
         ]

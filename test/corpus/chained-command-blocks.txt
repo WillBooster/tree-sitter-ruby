@@ -548,3 +548,199 @@ b c do end.d(e) => x
       (argument_list
         (identifier)))
     (identifier)))
+
+========================================
+composed chained pattern values
+========================================
+
+b c do end.d(e) + y in Integer
+b c do end.d(e) ? y : z => Integer
+
+---
+
+(program
+  (test_pattern
+    (binary
+      (call
+        (call
+          (identifier)
+          (argument_list
+            (identifier))
+          (do_block))
+        (identifier)
+        (argument_list
+          (identifier)))
+      (identifier))
+    (constant))
+  (match_pattern
+    (conditional
+      (call
+        (call
+          (identifier)
+          (argument_list
+            (identifier))
+          (do_block))
+        (identifier)
+        (argument_list
+          (identifier)))
+      (identifier)
+      (identifier))
+    (constant)))
+
+========================================
+chained multiple assignment targets
+========================================
+
+b c do end.d(e)[0], x = v
+b c do end.d(e).f, x, *rest = v
+
+---
+
+(program
+  (assignment
+    (left_assignment_list
+      (element_reference
+        (call
+          (call
+            (identifier)
+            (argument_list
+              (identifier))
+            (do_block))
+          (identifier)
+          (argument_list
+            (identifier)))
+        (integer))
+      (identifier))
+    (identifier))
+  (assignment
+    (left_assignment_list
+      (call
+        (call
+          (call
+            (identifier)
+            (argument_list
+              (identifier))
+            (do_block))
+          (identifier)
+          (argument_list
+            (identifier)))
+        (identifier))
+      (identifier)
+      (rest_assignment
+        (identifier)))
+    (identifier)))
+
+========================================
+chained constant paths and assignment
+========================================
+
+b c do end.d(e)::X
+b c do end.d(e)::X.f
+b c do end.d(e)::X = v
+
+---
+
+(program
+  (scope_resolution
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier)
+      (argument_list
+        (identifier)))
+    (constant))
+  (call
+    (scope_resolution
+      (call
+        (call
+          (identifier)
+          (argument_list
+            (identifier))
+          (do_block))
+        (identifier)
+        (argument_list
+          (identifier)))
+      (constant))
+    (identifier))
+  (assignment
+    (scope_resolution
+      (call
+        (call
+          (identifier)
+          (argument_list
+            (identifier))
+          (do_block))
+        (identifier)
+        (argument_list
+          (identifier)))
+      (constant))
+    (identifier)))
+
+========================================
+outer patterns on endless command definitions
+========================================
+
+def a = b c do end.d(e) in Integer
+def self.a = b c do end.d(e) => Integer
+
+---
+
+(program
+  (test_pattern
+    (method
+      (identifier)
+      (call
+        (call
+          (identifier)
+          (argument_list
+            (identifier))
+          (do_block))
+        (identifier)
+        (argument_list
+          (identifier))))
+    (constant))
+  (match_pattern
+    (singleton_method
+      (self)
+      (identifier)
+      (call
+        (call
+          (identifier)
+          (argument_list
+            (identifier))
+          (do_block))
+        (identifier)
+        (argument_list
+          (identifier))))
+    (constant)))
+
+========================================
+ordinary local variable plus preserves binary ownership
+========================================
+
+a = 1; a +b do end
+def f(a, b); a +b; end
+
+---
+
+(program
+  (assignment
+    (identifier)
+    (integer))
+  (binary
+    (identifier)
+    (call
+      (identifier)
+      (do_block)))
+  (method
+    (identifier)
+    (method_parameters
+      (identifier)
+      (identifier))
+    (body_statement
+      (binary
+        (identifier)
+        (identifier)))))
