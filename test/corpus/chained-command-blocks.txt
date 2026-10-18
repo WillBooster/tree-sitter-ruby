@@ -744,3 +744,168 @@ def f(a, b); a +b; end
       (binary
         (identifier)
         (identifier)))))
+
+========================================
+chained unary plus participates in operator precedence
+========================================
+
+b c do end.d +z * y do end
+b c do end.d +z ** y do end
+b c do end.d +z == y do end
+b c do end.d +z ? y : x do end
+b c do end.d +z..y do end
+
+---
+
+(program
+  (call
+    (call
+      (identifier)
+      (argument_list
+        (identifier))
+      (do_block))
+    (identifier)
+    (argument_list
+      (binary
+        (unary
+          (identifier))
+        (identifier)))
+    (do_block))
+  (call
+    (call
+      (identifier)
+      (argument_list
+        (identifier))
+      (do_block))
+    (identifier)
+    (argument_list
+      (binary
+        (unary
+          (identifier))
+        (identifier)))
+    (do_block))
+  (call
+    (call
+      (identifier)
+      (argument_list
+        (identifier))
+      (do_block))
+    (identifier)
+    (argument_list
+      (binary
+        (unary
+          (identifier))
+        (identifier)))
+    (do_block))
+  (call
+    (call
+      (identifier)
+      (argument_list
+        (identifier))
+      (do_block))
+    (identifier)
+    (argument_list
+      (conditional
+        (unary
+          (identifier))
+        (identifier)
+        (identifier)))
+    (do_block))
+  (call
+    (call
+      (identifier)
+      (argument_list
+        (identifier))
+      (do_block))
+    (identifier)
+    (argument_list
+      (range
+        (unary
+          (identifier))
+        (identifier)))
+    (do_block)))
+
+========================================
+chained unary plus permits pairs and outer operators
+========================================
+
+b c do end.d +z => x
+b c do end.d +z and y
+b c do end.d +z rescue y
+
+---
+
+(program
+  (call
+    (call
+      (identifier)
+      (argument_list
+        (identifier))
+      (do_block))
+    (identifier)
+    (argument_list
+      (pair
+        (unary
+          (identifier))
+        (identifier))))
+  (binary
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier)
+      (argument_list
+        (unary
+          (identifier))))
+    (identifier))
+  (rescue_modifier
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier)
+      (argument_list
+        (unary
+          (identifier))))
+    (identifier)))
+
+========================================
+patterns wrap completed chained signed commands
+========================================
+
+b c do end.d +z in Integer
+b c do end.d +z * y in Integer
+
+---
+
+(program
+  (test_pattern
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier)
+      (argument_list
+        (unary
+          (identifier))))
+    (constant))
+  (test_pattern
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier)
+      (argument_list
+        (binary
+          (unary
+            (identifier))
+          (identifier))))
+    (constant)))

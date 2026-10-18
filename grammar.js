@@ -642,6 +642,7 @@ module.exports = grammar({
             'value',
             choice(
               $._chained_arg,
+              alias($._chained_command, $.call),
               alias($._command_method, $.method),
               alias($._command_singleton_method, $.singleton_method)
             )
@@ -746,8 +747,11 @@ module.exports = grammar({
           choice($._call, field('method', choice($._variable, $._function_identifier))),
           field('arguments', alias($.command_argument_list, $.argument_list))
         ),
-        seq($._chained_command_call, field('arguments', alias($._chained_command_argument_list, $.argument_list)))
+        $._chained_command
       ),
+
+    _chained_command: ($) =>
+      seq($._chained_command_call, field('arguments', alias($._chained_command_argument_list, $.argument_list))),
 
     command_call_with_block: ($) => {
       const receiver = choice($._call, field('method', choice($._variable, $._function_identifier)));
@@ -829,10 +833,25 @@ module.exports = grammar({
 
     _chained_command_argument_list: ($) =>
       prec.right(
-        choice(commaSep1($._argument), seq(alias($._chained_plus_argument, $.unary), repeat(seq(',', $._argument))))
+        choice(
+          commaSep1($._argument),
+          seq(choice($._chained_plus_arg, alias($._chained_plus_pair, $.pair)), repeat(seq(',', $._argument)))
+        )
       ),
+
+    _chained_plus_arg: ($) =>
+      choice(
+        alias($._chained_plus_argument, $.unary),
+        alias($._chained_plus_binary, $.binary),
+        alias($._chained_plus_conditional, $.conditional),
+        alias($._chained_plus_range, $.range)
+      ),
+    _chained_plus_binary: ($) => binaryExpression($, $._chained_plus_arg),
+    _chained_plus_conditional: ($) => conditionalExpression($, $._chained_plus_arg),
+    _chained_plus_range: ($) => rangeExpression($, $._chained_plus_arg, false),
+    _chained_plus_pair: ($) => prec.right(seq(field('key', $._chained_plus_arg), '=>', field('value', $._arg))),
     _chained_plus_argument: ($) =>
-      prec.right(PREC.UNARY_MINUS, seq(field('operator', alias($._unary_plus, '+')), field('operand', $._arg))),
+      prec.right(PREC.COMPLEMENT, seq(field('operator', alias($._unary_plus, '+')), field('operand', $._arg))),
 
     command_argument_list: ($) => prec.right(commaSep1($._argument)),
 
