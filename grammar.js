@@ -988,6 +988,7 @@ module.exports = grammar({
               'key',
               choice(
                 alias($._command_pair_key, $.call),
+                alias($.command_call_with_block, $.call),
                 alias($._super_command, $.call),
                 alias($.yield_command, $.yield),
                 alias($._command_not, $.unary),

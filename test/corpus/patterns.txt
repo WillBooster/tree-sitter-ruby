@@ -2923,3 +2923,36 @@ end
       (if_modifier
         (return (argument_list (super)))
         (constant)))))
+
+===============================
+completed super blocks as keyword pair keys
+===============================
+
+foo(super super c do end => v)
+return super c do end => v
+
+---
+
+(program
+  (call
+    (identifier)
+    (argument_list
+      (pair
+        (call
+          (super)
+          (argument_list
+            (call
+              (super)
+              (argument_list
+                (identifier))))
+          (do_block))
+        (identifier))))
+  (return
+    (argument_list
+      (pair
+        (call
+          (super)
+          (argument_list
+            (identifier))
+          (do_block))
+        (identifier)))))
