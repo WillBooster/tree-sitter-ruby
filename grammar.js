@@ -96,6 +96,10 @@ module.exports = grammar({
     [$._statement, $._chained_test_pattern],
     [$._statement, $.command_binary],
     [$._chained_test_pattern, $.command_call],
+    [$._chained_match_pattern, $.command_call],
+    [$.call, $._variable],
+    [$._primary, $._variable],
+    [$._primary, $._super_command, $.command_call_with_block, $._variable],
     [$._command_value, $._chained_test_pattern],
     [$._non_pattern_expression, $._chained_test_pattern],
     [$._non_pattern_expression, $._chained_match_pattern],
@@ -618,7 +622,7 @@ module.exports = grammar({
 
     _command_value: ($) =>
       choice(
-        alias($._pattern_not, $.unary),
+        alias($._command_not, $.unary),
         alias($._command_method, $.method),
         alias($._command_singleton_method, $.singleton_method),
         alias($.command_assignment, $.assignment),
@@ -652,6 +656,8 @@ module.exports = grammar({
               alias($._command_singleton_method, $.singleton_method),
               alias($.command_binary, $.binary),
               alias($.command_unary, $.unary),
+              alias($.yield_command, $.yield),
+              alias($._super_command, $.call),
               $.if_modifier,
               $.unless_modifier,
               $.while_modifier,
@@ -682,6 +688,8 @@ module.exports = grammar({
               alias($._receiver_command, $.call),
               alias($.command_binary, $.binary),
               alias($.command_unary, $.unary),
+              alias($.yield_command, $.yield),
+              alias($._super_command, $.call),
               $.if_modifier,
               $.unless_modifier,
               $.while_modifier,
@@ -732,6 +740,7 @@ module.exports = grammar({
 
     _primary: ($) =>
       choice(
+        $.super,
         $.parenthesized_statements,
         $._lhs,
         alias($._function_identifier_call, $.call),
@@ -797,9 +806,13 @@ module.exports = grammar({
           field('method', choice($._variable, $._function_identifier)),
           field('arguments', alias($.command_argument_list, $.argument_list))
         ),
+        $._super_command,
         $._receiver_command,
         $._chained_command
       ),
+
+    _super_command: ($) =>
+      seq(field('method', $.super), field('arguments', alias($.command_argument_list, $.argument_list))),
 
     _receiver_command: ($) => seq($._call, field('arguments', alias($.command_argument_list, $.argument_list))),
 
@@ -807,7 +820,7 @@ module.exports = grammar({
       seq($._chained_command_call, field('arguments', alias($._chained_command_argument_list, $.argument_list))),
 
     command_call_with_block: ($) => {
-      const receiver = choice($._call, field('method', choice($._variable, $._function_identifier)));
+      const receiver = choice($._call, field('method', choice($._variable, $._function_identifier, $.super)));
       const args = field('arguments', alias($.command_argument_list, $.argument_list));
       const chainedArgs = field('arguments', alias($._chained_command_argument_list, $.argument_list));
       const block = field('block', $.block);
@@ -865,7 +878,7 @@ module.exports = grammar({
     },
 
     call: ($) => {
-      const receiver = choice($._call, field('method', choice($._variable, $._function_identifier)));
+      const receiver = choice($._call, field('method', choice($._variable, $._function_identifier, $.super)));
 
       const args = field('arguments', $.argument_list);
       const receiverArguments = seq(
@@ -1078,22 +1091,19 @@ module.exports = grammar({
 
     command_unary: ($) => unaryExpression($._expression, choice(alias($._unary_minus, '-'), '+')),
 
-    _pattern_not: ($) =>
-      prec.dynamic(
-        3,
-        prec.right(
-          PREC.NOT,
-          seq(
-            field('operator', 'not'),
-            field(
-              'operand',
-              choice(
-                alias($._pattern_not, $.unary),
-                $.test_pattern,
-                $.match_pattern,
-                alias($._chained_test_pattern, $.test_pattern),
-                alias($._chained_match_pattern, $.match_pattern)
-              )
+    _command_not: ($) =>
+      prec.right(
+        PREC.NOT,
+        seq(
+          field('operator', 'not'),
+          field(
+            'operand',
+            choice(
+              $._command_value,
+              $.test_pattern,
+              $.match_pattern,
+              alias($._chained_test_pattern, $.test_pattern),
+              alias($._chained_match_pattern, $.match_pattern)
             )
           )
         )

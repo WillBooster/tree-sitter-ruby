@@ -512,6 +512,10 @@
         "named": true
       },
       {
+        "type": "super",
+        "named": true
+      },
+      {
         "type": "symbol_array",
         "named": true
       },
@@ -2506,6 +2510,10 @@
           {
             "type": "while_modifier",
             "named": true
+          },
+          {
+            "type": "yield",
+            "named": true
           }
         ]
       }
@@ -3589,6 +3597,10 @@
           },
           {
             "type": "while_modifier",
+            "named": true
+          },
+          {
+            "type": "yield",
             "named": true
           }
         ]

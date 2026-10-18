@@ -1065,3 +1065,376 @@ foo def a = b c rescue d, e => 1
       (pair
         (identifier)
         (integer)))))
+
+========================================
+command pattern boundaries: negated keyword pairs
+========================================
+
+not not b c => value
+not not b.c d => value
+not not b c in Integer
+not not not b c => value
+not not not not not b c => value
+
+---
+
+(program
+  (unary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (pair
+            (identifier)
+            (identifier))))))
+  (unary
+    (unary
+      (call
+        (identifier)
+        (identifier)
+        (argument_list
+          (pair
+            (identifier)
+            (identifier))))))
+  (test_pattern
+    (unary
+      (unary
+        (call
+          (identifier)
+          (argument_list
+            (identifier)))))
+    (constant))
+  (unary
+    (unary
+      (unary
+        (call
+          (identifier)
+          (argument_list
+            (pair
+              (identifier)
+              (identifier)))))))
+  (unary
+    (unary
+      (unary
+        (unary
+          (unary
+            (call
+              (identifier)
+              (argument_list
+                (pair
+                  (identifier)
+                  (identifier))))))))))
+
+========================================
+command pattern boundaries: negated command arguments
+========================================
+
+foo not b c
+foo not b.c d
+foo not not b c
+return not b c
+return not b.c d
+return not not b c
+
+---
+
+(program
+  (call
+    (identifier)
+    (argument_list
+      (unary
+        (call
+          (identifier)
+          (argument_list
+            (identifier))))))
+  (call
+    (identifier)
+    (argument_list
+      (unary
+        (call
+          (identifier)
+          (identifier)
+          (argument_list
+            (identifier))))))
+  (call
+    (identifier)
+    (argument_list
+      (unary
+        (unary
+          (call
+            (identifier)
+            (argument_list
+              (identifier)))))))
+  (return
+    (argument_list
+      (unary
+        (call
+          (identifier)
+          (argument_list
+            (identifier))))))
+  (return
+    (argument_list
+      (unary
+        (call
+          (identifier)
+          (identifier)
+          (argument_list
+            (identifier))))))
+  (return
+    (argument_list
+      (unary
+        (unary
+          (call
+            (identifier)
+            (argument_list
+              (identifier))))))))
+
+========================================
+command pattern boundaries: yield and super
+========================================
+
+def f; yield a in Integer; end
+def f; yield a, b in Integer; end
+def f; yield a => value; end
+def f; yield *a => value; end
+def f; yield a; end
+def f; super a in Integer; end
+def f; super a, b in Integer; end
+def f; super a => value; end
+def f; super *a => value; end
+def f; super &blk => value; end
+def f; super a; end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (test_pattern
+        (yield
+          (argument_list
+            (identifier)))
+        (constant))))
+  (method
+    (identifier)
+    (body_statement
+      (test_pattern
+        (yield
+          (argument_list
+            (identifier)
+            (identifier)))
+        (constant))))
+  (method
+    (identifier)
+    (body_statement
+      (yield
+        (argument_list
+          (pair
+            (identifier)
+            (identifier))))))
+  (method
+    (identifier)
+    (body_statement
+      (match_pattern
+        (yield
+          (argument_list
+            (splat_argument
+              (identifier))))
+        (identifier))))
+  (method
+    (identifier)
+    (body_statement
+      (yield
+        (argument_list
+          (identifier)))))
+  (method
+    (identifier)
+    (body_statement
+      (test_pattern
+        (call
+          (super)
+          (argument_list
+            (identifier)))
+        (constant))))
+  (method
+    (identifier)
+    (body_statement
+      (test_pattern
+        (call
+          (super)
+          (argument_list
+            (identifier)
+            (identifier)))
+        (constant))))
+(method (identifier) (body_statement (call (super) (argument_list (pair (identifier) (identifier))))))
+  (method
+    (identifier)
+    (body_statement
+      (match_pattern
+        (call
+          (super)
+          (argument_list
+            (splat_argument
+              (identifier))))
+        (identifier))))
+  (method
+    (identifier)
+    (body_statement
+      (match_pattern
+        (call
+          (super)
+          (argument_list
+            (block_argument
+              (identifier))))
+        (identifier))))
+(method (identifier) (body_statement (call (super) (argument_list (identifier))))))
+
+========================================
+command pattern boundaries: super continuations
+========================================
+
+def f; super { x }; end
+def f; super do x end; end
+def f; super a { x }; end
+def f; super a do x end; end
+def f; super(); end
+def f; super(a); end
+def f; super(&blk); end
+def f; super a, b; end
+def f; super a + b; end
+def f; super(a) in Integer; end
+def f; super { x } in Integer; end
+def f; super a { x } in Integer; end
+def f; super unless x; end
+def f; super if x; end
+def f; super while x; end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (super)
+        (block
+          (block_body
+            (identifier))))))
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (super)
+        (do_block
+          (body_statement
+            (identifier))))))
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (super)
+        (argument_list
+          (call
+            (identifier)
+            (block
+              (block_body
+                (identifier))))))))
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (super)
+        (argument_list
+          (identifier))
+        (do_block
+          (body_statement
+            (identifier))))))
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (super)
+        (argument_list))))
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (super)
+        (argument_list
+          (identifier)))))
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (super)
+        (argument_list
+          (block_argument
+            (identifier))))))
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (super)
+        (argument_list
+          (identifier)
+          (identifier)))))
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (super)
+        (argument_list
+          (binary
+            (identifier)
+            (identifier))))))
+  (method
+    (identifier)
+    (body_statement
+      (test_pattern
+        (call
+          (super)
+          (argument_list
+            (identifier)))
+        (constant))))
+  (method
+    (identifier)
+    (body_statement
+      (test_pattern
+        (call
+          (super)
+          (block
+            (block_body
+              (identifier))))
+        (constant))))
+  (method
+    (identifier)
+    (body_statement
+      (test_pattern
+        (call
+          (super)
+          (argument_list
+            (call
+              (identifier)
+              (block
+                (block_body
+                  (identifier))))))
+        (constant))))
+  (method
+    (identifier)
+    (body_statement
+      (unless_modifier
+        (super)
+        (identifier))))
+  (method
+    (identifier)
+    (body_statement
+      (if_modifier
+        (super)
+        (identifier))))
+  (method
+    (identifier)
+    (body_statement
+      (while_modifier
+        (super)
+        (identifier)))))
