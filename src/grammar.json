@@ -684,19 +684,6 @@
           "value": "call"
         },
         {
-          "type": "PREC_LEFT",
-          "value": 0,
-          "content": {
-            "type": "ALIAS",
-            "content": {
-              "type": "SYMBOL",
-              "name": "_chained_command_call"
-            },
-            "named": true,
-            "value": "call"
-          }
-        },
-        {
           "type": "ALIAS",
           "content": {
             "type": "SYMBOL",
@@ -3952,19 +3939,6 @@
           "value": "call"
         },
         {
-          "type": "PREC_LEFT",
-          "value": 0,
-          "content": {
-            "type": "ALIAS",
-            "content": {
-              "type": "SYMBOL",
-              "name": "_chained_command_call"
-            },
-            "named": true,
-            "value": "call"
-          }
-        },
-        {
           "type": "ALIAS",
           "content": {
             "type": "SYMBOL",
@@ -4206,6 +4180,19 @@
         {
           "type": "SYMBOL",
           "name": "call"
+        },
+        {
+          "type": "PREC_LEFT",
+          "value": 0,
+          "content": {
+            "type": "ALIAS",
+            "content": {
+              "type": "SYMBOL",
+              "name": "_chained_command_call"
+            },
+            "named": true,
+            "value": "call"
+          }
         },
         {
           "type": "SYMBOL",
@@ -6281,7 +6268,12 @@
                   "type": "CHOICE",
                   "members": [
                     {
-                      "type": "STRING",
+                      "type": "ALIAS",
+                      "content": {
+                        "type": "SYMBOL",
+                        "name": "_binary_plus"
+                      },
+                      "named": false,
                       "value": "+"
                     },
                     {
@@ -6582,7 +6574,21 @@
                       "value": "-"
                     },
                     {
-                      "type": "STRING",
+                      "type": "ALIAS",
+                      "content": {
+                        "type": "SYMBOL",
+                        "name": "_unary_plus"
+                      },
+                      "named": false,
+                      "value": "+"
+                    },
+                    {
+                      "type": "ALIAS",
+                      "content": {
+                        "type": "SYMBOL",
+                        "name": "_binary_plus"
+                      },
+                      "named": false,
                       "value": "+"
                     }
                   ]
@@ -6710,7 +6716,12 @@
                       "value": "-"
                     },
                     {
-                      "type": "STRING",
+                      "type": "ALIAS",
+                      "content": {
+                        "type": "SYMBOL",
+                        "name": "_unary_plus"
+                      },
+                      "named": false,
                       "value": "+"
                     }
                   ]
@@ -8636,6 +8647,14 @@
     {
       "type": "SYMBOL",
       "name": "_splat_star"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_unary_plus"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_binary_plus"
     },
     {
       "type": "SYMBOL",

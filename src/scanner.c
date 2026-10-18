@@ -28,6 +28,8 @@ typedef enum {
     FORWARD_SLASH,
     BLOCK_AMPERSAND,
     SPLAT_STAR,
+    UNARY_PLUS,
+    BINARY_PLUS,
     UNARY_MINUS,
     UNARY_MINUS_NUM,
     BINARY_MINUS,
@@ -960,6 +962,20 @@ static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symb
                     return true;
                 }
                 return false;
+            }
+            break;
+
+        case '+':
+            if (valid_symbols[UNARY_PLUS] || valid_symbols[BINARY_PLUS]) {
+                advance(lexer);
+                if (lexer->lookahead == '=') {
+                    return false;
+                }
+                lexer->result_symbol = valid_symbols[UNARY_PLUS] &&
+                    (!valid_symbols[BINARY_PLUS] ||
+                     (scanner->has_leading_whitespace && !iswspace(lexer->lookahead)))
+                    ? UNARY_PLUS : BINARY_PLUS;
+                return true;
             }
             break;
 

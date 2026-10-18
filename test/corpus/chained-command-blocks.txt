@@ -61,3 +61,132 @@ def a = b c do end.d e do end
       (argument_list
         (identifier))
       (do_block))))
+
+===============================================
+blocks on binary operands after chained commands
+===============================================
+
+b c do end.d + z do end
+b c do end.d - z do end
+b c do end.d * z do end
+b c do end.d / z do end
+b c do end.d == z do end
+def a = b c do end.d + z do end
+
+---
+
+(program
+  (binary
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier))
+    (call
+      (identifier)
+      (do_block)))
+  (binary
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier))
+    (call
+      (identifier)
+      (do_block)))
+  (binary
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier))
+    (call
+      (identifier)
+      (do_block)))
+  (binary
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier))
+    (call
+      (identifier)
+      (do_block)))
+  (binary
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier))
+    (call
+      (identifier)
+      (do_block)))
+  (method
+    (identifier)
+    (binary
+      (call
+        (call
+          (identifier)
+          (argument_list
+            (identifier))
+          (do_block))
+        (identifier))
+      (call
+        (identifier)
+        (do_block)))))
+
+===============================================
+blocks on chained commands with unary arguments
+===============================================
+
+b c do end.d +z do end
+b c do end.d -z do end
+b c do end.d (+ z) do end
+
+---
+
+(program
+  (call
+    (call
+      (identifier)
+      (argument_list
+        (identifier))
+      (do_block))
+    (identifier)
+    (argument_list
+      (unary
+        (identifier)))
+    (do_block))
+  (call
+    (call
+      (identifier)
+      (argument_list
+        (identifier))
+      (do_block))
+    (identifier)
+    (argument_list
+      (unary
+        (identifier)))
+    (do_block))
+  (call
+    (call
+      (identifier)
+      (argument_list
+        (identifier))
+      (do_block))
+    (identifier)
+    (argument_list
+      (parenthesized_statements
+        (unary
+          (identifier))))
+    (do_block)))

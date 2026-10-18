@@ -65,6 +65,8 @@ module.exports = grammar({
     '/',
     $._block_ampersand,
     $._splat_star,
+    $._unary_plus,
+    $._binary_plus,
     $._unary_minus,
     $._unary_minus_num,
     $._binary_minus,
@@ -193,7 +195,6 @@ module.exports = grammar({
       choice(
         alias($.command_call, $.call),
         alias($.command_call_with_block, $.call),
-        prec.left(alias($._chained_command_call, $.call)),
         alias($.return_command, $.return),
         alias($.yield_command, $.yield),
         alias($._endless_command_not, $.unary),
@@ -583,7 +584,6 @@ module.exports = grammar({
         alias($.command_operator_assignment, $.operator_assignment),
         alias($.command_call, $.call),
         alias($.command_call_with_block, $.call),
-        prec.left(alias($._chained_command_call, $.call)),
         alias($.return_command, $.return),
         alias($.yield_command, $.yield),
         alias($.break_command, $.break),
@@ -627,6 +627,7 @@ module.exports = grammar({
         $._lhs,
         alias($._function_identifier_call, $.call),
         $.call,
+        prec.left(alias($._chained_command_call, $.call)),
         $.array,
         $.string_array,
         $.symbol_array,
@@ -843,7 +844,7 @@ module.exports = grammar({
         [prec.left, PREC.COMPARISON, choice('<', '<=', '>', '>=')],
         [prec.left, PREC.BITWISE_AND, alias($._bitwise_and, '&')],
         [prec.left, PREC.BITWISE_OR, choice('^', '|')],
-        [prec.left, PREC.ADDITIVE, choice('+', alias($._binary_minus, '-'))],
+        [prec.left, PREC.ADDITIVE, choice(alias($._binary_plus, '+'), alias($._binary_minus, '-'))],
         [prec.left, PREC.MULTIPLICATIVE, choice('/', '%', alias($._binary_star, '*'))],
         [prec.right, PREC.RELATIONAL, choice('==', '!=', '===', '<=>', '=~', '!~')],
         [prec.right, PREC.EXPONENTIAL, alias($._binary_star_star, '**')],
@@ -862,39 +863,18 @@ module.exports = grammar({
         seq(field('left', $._expression), field('operator', choice('or', 'and')), field('right', $._expression))
       ),
 
-    unary: ($) => {
-      // oxlint-disable typescript/unbound-method -- The DSL's `prec` functions do not use `this`.
-      /** @type {[(precedence: number, rule: RuleOrLiteral) => Rule, number, RuleOrLiteral][]} */
-      const operators = [
-        [prec, PREC.DEFINED, 'defined?'],
-        [prec.right, PREC.NOT, 'not'],
-        [prec.right, PREC.UNARY_MINUS, choice(alias($._unary_minus, '-'), alias($._binary_minus, '-'), '+')],
-        [prec.right, PREC.COMPLEMENT, choice('!', '~')],
-      ];
-      // oxlint-enable typescript/unbound-method
-      return choice(
-        ...operators.map(([fn, precedence, operator]) =>
-          fn(precedence, seq(field('operator', operator), field('operand', $._arg)))
+    unary: ($) =>
+      unaryExpression(
+        $._arg,
+        choice(
+          alias($._unary_minus, '-'),
+          alias($._binary_minus, '-'),
+          alias($._unary_plus, '+'),
+          alias($._binary_plus, '+')
         )
-      );
-    },
+      ),
 
-    command_unary: ($) => {
-      // oxlint-disable typescript/unbound-method -- The DSL's `prec` functions do not use `this`.
-      /** @type {[(precedence: number, rule: RuleOrLiteral) => Rule, number, RuleOrLiteral][]} */
-      const operators = [
-        [prec, PREC.DEFINED, 'defined?'],
-        [prec.right, PREC.NOT, 'not'],
-        [prec.right, PREC.UNARY_MINUS, choice(alias($._unary_minus, '-'), '+')],
-        [prec.right, PREC.COMPLEMENT, choice('!', '~')],
-      ];
-      // oxlint-enable typescript/unbound-method
-      return choice(
-        ...operators.map(([fn, precedence, operator]) =>
-          fn(precedence, seq(field('operator', operator), field('operand', $._expression)))
-        )
-      );
-    },
+    command_unary: ($) => unaryExpression($._expression, choice(alias($._unary_minus, '-'), alias($._unary_plus, '+'))),
 
     parenthesized_unary: ($) =>
       prec(PREC.CALL, seq(field('operator', choice('defined?', 'not')), field('operand', $.parenthesized_statements))),
@@ -1169,4 +1149,17 @@ function commaSep1(rule) {
  */
 function commaSep(rule) {
   return optional(commaSep1(rule));
+}
+
+/**
+ * @param {RuleOrLiteral} operand
+ * @param {RuleOrLiteral} sign
+ */
+function unaryExpression(operand, sign) {
+  return choice(
+    prec(PREC.DEFINED, seq(field('operator', 'defined?'), field('operand', operand))),
+    prec.right(PREC.NOT, seq(field('operator', 'not'), field('operand', operand))),
+    prec.right(PREC.UNARY_MINUS, seq(field('operator', sign), field('operand', operand))),
+    prec.right(PREC.COMPLEMENT, seq(field('operator', choice('!', '~')), field('operand', operand)))
+  );
 }
