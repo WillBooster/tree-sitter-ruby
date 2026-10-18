@@ -58,6 +58,14 @@
         "named": true
       },
       {
+        "type": "conditional",
+        "named": true
+      },
+      {
+        "type": "element_reference",
+        "named": true
+      },
+      {
         "type": "match_pattern",
         "named": true
       },
@@ -74,7 +82,15 @@
         "named": true
       },
       {
+        "type": "range",
+        "named": true
+      },
+      {
         "type": "return",
+        "named": true
+      },
+      {
+        "type": "scope_resolution",
         "named": true
       },
       {
@@ -100,6 +116,10 @@
     "named": true,
     "subtypes": [
       {
+        "type": "_nonlocal_variable",
+        "named": true
+      },
+      {
         "type": "_variable",
         "named": true
       },
@@ -121,6 +141,10 @@
       },
       {
         "type": "scope_resolution",
+        "named": true
+      },
+      {
+        "type": "self",
         "named": true
       },
       {
@@ -586,19 +610,11 @@
     "named": true,
     "subtypes": [
       {
-        "type": "_nonlocal_variable",
-        "named": true
-      },
-      {
         "type": "constant",
         "named": true
       },
       {
         "type": "identifier",
-        "named": true
-      },
-      {
-        "type": "self",
         "named": true
       },
       {
@@ -1296,6 +1312,14 @@
           {
             "type": "_primary",
             "named": true
+          },
+          {
+            "type": "element_reference",
+            "named": true
+          },
+          {
+            "type": "scope_resolution",
+            "named": true
           }
         ]
       }
@@ -1471,6 +1495,18 @@
         "types": [
           {
             "type": "_arg",
+            "named": true
+          },
+          {
+            "type": "call",
+            "named": true
+          },
+          {
+            "type": "element_reference",
+            "named": true
+          },
+          {
+            "type": "scope_resolution",
             "named": true
           }
         ]
@@ -1654,6 +1690,14 @@
         "types": [
           {
             "type": "_primary",
+            "named": true
+          },
+          {
+            "type": "element_reference",
+            "named": true
+          },
+          {
+            "type": "scope_resolution",
             "named": true
           }
         ]
@@ -2386,6 +2430,26 @@
           {
             "type": "_arg",
             "named": true
+          },
+          {
+            "type": "call",
+            "named": true
+          },
+          {
+            "type": "element_reference",
+            "named": true
+          },
+          {
+            "type": "method",
+            "named": true
+          },
+          {
+            "type": "scope_resolution",
+            "named": true
+          },
+          {
+            "type": "singleton_method",
+            "named": true
           }
         ]
       }
@@ -2412,6 +2476,10 @@
             "named": true
           },
           {
+            "type": "element_reference",
+            "named": true
+          },
+          {
             "type": "method",
             "named": true
           },
@@ -2421,6 +2489,10 @@
           },
           {
             "type": "return",
+            "named": true
+          },
+          {
+            "type": "scope_resolution",
             "named": true
           },
           {
@@ -2797,6 +2869,18 @@
           {
             "type": "_pattern_primitive",
             "named": true
+          },
+          {
+            "type": "call",
+            "named": true
+          },
+          {
+            "type": "element_reference",
+            "named": true
+          },
+          {
+            "type": "scope_resolution",
+            "named": true
           }
         ]
       },
@@ -3038,6 +3122,10 @@
           {
             "type": "_primary",
             "named": true
+          },
+          {
+            "type": "element_reference",
+            "named": true
           }
         ]
       }
@@ -3106,6 +3194,10 @@
             "named": true
           },
           {
+            "type": "element_reference",
+            "named": true
+          },
+          {
             "type": "method",
             "named": true
           },
@@ -3115,6 +3207,10 @@
           },
           {
             "type": "return",
+            "named": true
+          },
+          {
+            "type": "scope_resolution",
             "named": true
           },
           {
@@ -3146,7 +3242,15 @@
             "named": true
           },
           {
+            "type": "_nonlocal_variable",
+            "named": true
+          },
+          {
             "type": "_variable",
+            "named": true
+          },
+          {
+            "type": "self",
             "named": true
           }
         ]
@@ -3305,6 +3409,26 @@
         "types": [
           {
             "type": "_arg",
+            "named": true
+          },
+          {
+            "type": "call",
+            "named": true
+          },
+          {
+            "type": "element_reference",
+            "named": true
+          },
+          {
+            "type": "method",
+            "named": true
+          },
+          {
+            "type": "scope_resolution",
+            "named": true
+          },
+          {
+            "type": "singleton_method",
             "named": true
           }
         ]

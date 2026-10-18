@@ -1,0 +1,911 @@
+===============================================
+blocks on calls chained from block-bearing commands
+===============================================
+
+b c do end.d e do end
+b c do end.f do end
+b c do end.f(d) do end
+b c do end.f(d) { }
+def a = b c do end.d e do end
+
+---
+
+(program
+  (call
+    (call
+      (identifier)
+      (argument_list
+        (identifier))
+      (do_block))
+    (identifier)
+    (argument_list
+      (identifier))
+    (do_block))
+  (call
+    (call
+      (identifier)
+      (argument_list
+        (identifier))
+      (do_block))
+    (identifier)
+    (do_block))
+  (call
+    (call
+      (identifier)
+      (argument_list
+        (identifier))
+      (do_block))
+    (identifier)
+    (argument_list
+      (identifier))
+    (do_block))
+  (call
+    (call
+      (identifier)
+      (argument_list
+        (identifier))
+      (do_block))
+    (identifier)
+    (argument_list
+      (identifier))
+    (block))
+  (method
+    (identifier)
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier)
+      (argument_list
+        (identifier))
+      (do_block))))
+
+===============================================
+blocks on binary operands after chained commands
+===============================================
+
+b c do end.d + z do end
+b c do end.d - z do end
+b c do end.d * z do end
+b c do end.d / z do end
+b c do end.d == z do end
+def a = b c do end.d + z do end
+
+---
+
+(program
+  (binary
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier))
+    (call
+      (identifier)
+      (do_block)))
+  (binary
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier))
+    (call
+      (identifier)
+      (do_block)))
+  (binary
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier))
+    (call
+      (identifier)
+      (do_block)))
+  (binary
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier))
+    (call
+      (identifier)
+      (do_block)))
+  (binary
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier))
+    (call
+      (identifier)
+      (do_block)))
+  (method
+    (identifier)
+    (binary
+      (call
+        (call
+          (identifier)
+          (argument_list
+            (identifier))
+          (do_block))
+        (identifier))
+      (call
+        (identifier)
+        (do_block)))))
+
+===============================================
+blocks on chained commands with unary arguments
+===============================================
+
+b c do end.d +z do end
+b c do end.d -z do end
+b c do end.d (+ z) do end
+
+---
+
+(program
+  (call
+    (call
+      (identifier)
+      (argument_list
+        (identifier))
+      (do_block))
+    (identifier)
+    (argument_list
+      (unary
+        (identifier)))
+    (do_block))
+  (call
+    (call
+      (identifier)
+      (argument_list
+        (identifier))
+      (do_block))
+    (identifier)
+    (argument_list
+      (unary
+        (identifier)))
+    (do_block))
+  (call
+    (call
+      (identifier)
+      (argument_list
+        (identifier))
+      (do_block))
+    (identifier)
+    (argument_list
+      (parenthesized_statements
+        (unary
+          (identifier))))
+    (do_block)))
+
+===============================================
+non-callable operands retain tight binary addition
+===============================================
+
+@value +offset
+self +offset
+@@value +offset
+$value +offset
+
+---
+
+(program
+  (binary
+    (instance_variable)
+    (identifier))
+  (binary
+    (self)
+    (identifier))
+  (binary
+    (class_variable)
+    (identifier))
+  (binary
+    (global_variable)
+    (identifier)))
+
+===============================================
+chained calls preserve ordinary hash and arithmetic parsing
+===============================================
+
+{a!:1}
+{a?:1}
+[1].collect { |i| arg + i -1 }
+b c do end.d * z + y
+b c do end.d + z * y
+
+---
+
+(program
+  (hash
+    (pair
+      (hash_key_symbol)
+      (integer)))
+  (hash
+    (pair
+      (hash_key_symbol)
+      (integer)))
+  (call
+    (array
+      (integer))
+    (identifier)
+    (block
+      (block_parameters
+        (identifier))
+      (block_body
+        (binary
+          (binary
+            (identifier)
+            (identifier))
+          (integer)))))
+  (binary
+    (binary
+      (call
+        (call
+          (identifier)
+          (argument_list
+            (identifier))
+          (do_block))
+        (identifier))
+      (identifier))
+    (identifier))
+  (binary
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier))
+    (binary
+      (identifier)
+      (identifier))))
+
+===============================================
+blocks on continued parenthesized chained calls
+===============================================
+
+b c do end.d(e).g do end
+b c do end.d(e).g.h do end
+b c do end.d(e)&.g(f) do end
+b c do end.d(e).g f do end
+def a = b c do end.d(e).g do end
+
+---
+
+(program
+  (call
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier)
+      (argument_list
+        (identifier)))
+    (identifier)
+    (do_block))
+  (call
+    (call
+      (call
+        (call
+          (identifier)
+          (argument_list
+            (identifier))
+          (do_block))
+        (identifier)
+        (argument_list
+          (identifier)))
+      (identifier))
+    (identifier)
+    (do_block))
+  (call
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier)
+      (argument_list
+        (identifier)))
+    (identifier)
+    (argument_list
+      (identifier))
+    (do_block))
+  (call
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier)
+      (argument_list
+        (identifier)))
+    (identifier)
+    (argument_list
+      (identifier))
+    (do_block))
+  (method
+    (identifier)
+    (call
+      (call
+        (call
+          (identifier)
+          (argument_list
+            (identifier))
+          (do_block))
+        (identifier)
+        (argument_list
+          (identifier)))
+      (identifier)
+      (do_block))))
+
+===============================================
+ordinary continuations compose on chained call results
+===============================================
+
+b c do end.d(e).(f) do end
+b c do end.d(e)[0]
+b c do end.d(e) ? y : z do end
+b c do end.d(e)[0].(f).g do end
+b c do end.d(e)..z
+b c do end.d(e)[0] + z * y
+b c do end.d(e) + y ? z : q
+b c do end.d(e) ? y : z..q
+
+b c do end.d(e)[0] = v
+b c do end.d(e).g = v
+b c do end.d(e)[0] += v
+b c do end.d(e) in [x]
+b c do end.d(e) => x
+
+---
+
+(program
+  (call
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier)
+      (argument_list
+        (identifier)))
+    (argument_list
+      (identifier))
+    (do_block))
+  (element_reference
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier)
+      (argument_list
+        (identifier)))
+    (integer))
+  (conditional
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier)
+      (argument_list
+        (identifier)))
+    (identifier)
+    (call
+      (identifier)
+      (do_block)))
+  (call
+    (call
+      (element_reference
+        (call
+          (call
+            (identifier)
+            (argument_list
+              (identifier))
+            (do_block))
+          (identifier)
+          (argument_list
+            (identifier)))
+        (integer))
+      (argument_list
+        (identifier)))
+    (identifier)
+    (do_block))
+  (range
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier)
+      (argument_list
+        (identifier)))
+    (identifier))
+  (binary
+    (element_reference
+      (call
+        (call
+          (identifier)
+          (argument_list
+            (identifier))
+          (do_block))
+        (identifier)
+        (argument_list
+          (identifier)))
+      (integer))
+    (binary
+      (identifier)
+      (identifier)))
+  (conditional
+    (binary
+      (call
+        (call
+          (identifier)
+          (argument_list
+            (identifier))
+          (do_block))
+        (identifier)
+        (argument_list
+          (identifier)))
+      (identifier))
+    (identifier)
+    (identifier))
+  (conditional
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier)
+      (argument_list
+        (identifier)))
+    (identifier)
+    (range
+      (identifier)
+      (identifier)))
+  (assignment
+    (element_reference
+      (call
+        (call
+          (identifier)
+          (argument_list
+            (identifier))
+          (do_block))
+        (identifier)
+        (argument_list
+          (identifier)))
+      (integer))
+    (identifier))
+  (assignment
+    (call
+      (call
+        (call
+          (identifier)
+          (argument_list
+            (identifier))
+          (do_block))
+        (identifier)
+        (argument_list
+          (identifier)))
+      (identifier))
+    (identifier))
+  (operator_assignment
+    (element_reference
+      (call
+        (call
+          (identifier)
+          (argument_list
+            (identifier))
+          (do_block))
+        (identifier)
+        (argument_list
+          (identifier)))
+      (integer))
+    (identifier))
+  (test_pattern
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier)
+      (argument_list
+        (identifier)))
+    (array_pattern
+      (identifier)))
+  (match_pattern
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier)
+      (argument_list
+        (identifier)))
+    (identifier)))
+
+========================================
+composed chained pattern values
+========================================
+
+b c do end.d(e) + y in Integer
+b c do end.d(e) ? y : z => Integer
+
+---
+
+(program
+  (test_pattern
+    (binary
+      (call
+        (call
+          (identifier)
+          (argument_list
+            (identifier))
+          (do_block))
+        (identifier)
+        (argument_list
+          (identifier)))
+      (identifier))
+    (constant))
+  (match_pattern
+    (conditional
+      (call
+        (call
+          (identifier)
+          (argument_list
+            (identifier))
+          (do_block))
+        (identifier)
+        (argument_list
+          (identifier)))
+      (identifier)
+      (identifier))
+    (constant)))
+
+========================================
+chained multiple assignment targets
+========================================
+
+b c do end.d(e)[0], x = v
+b c do end.d(e).f, x, *rest = v
+
+---
+
+(program
+  (assignment
+    (left_assignment_list
+      (element_reference
+        (call
+          (call
+            (identifier)
+            (argument_list
+              (identifier))
+            (do_block))
+          (identifier)
+          (argument_list
+            (identifier)))
+        (integer))
+      (identifier))
+    (identifier))
+  (assignment
+    (left_assignment_list
+      (call
+        (call
+          (call
+            (identifier)
+            (argument_list
+              (identifier))
+            (do_block))
+          (identifier)
+          (argument_list
+            (identifier)))
+        (identifier))
+      (identifier)
+      (rest_assignment
+        (identifier)))
+    (identifier)))
+
+========================================
+chained constant paths and assignment
+========================================
+
+b c do end.d(e)::X
+b c do end.d(e)::X.f
+b c do end.d(e)::X = v
+
+---
+
+(program
+  (scope_resolution
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier)
+      (argument_list
+        (identifier)))
+    (constant))
+  (call
+    (scope_resolution
+      (call
+        (call
+          (identifier)
+          (argument_list
+            (identifier))
+          (do_block))
+        (identifier)
+        (argument_list
+          (identifier)))
+      (constant))
+    (identifier))
+  (assignment
+    (scope_resolution
+      (call
+        (call
+          (identifier)
+          (argument_list
+            (identifier))
+          (do_block))
+        (identifier)
+        (argument_list
+          (identifier)))
+      (constant))
+    (identifier)))
+
+========================================
+outer patterns on endless command definitions
+========================================
+
+def a = b c do end.d(e) in Integer
+def self.a = b c do end.d(e) => Integer
+
+---
+
+(program
+  (test_pattern
+    (method
+      (identifier)
+      (call
+        (call
+          (identifier)
+          (argument_list
+            (identifier))
+          (do_block))
+        (identifier)
+        (argument_list
+          (identifier))))
+    (constant))
+  (match_pattern
+    (singleton_method
+      (self)
+      (identifier)
+      (call
+        (call
+          (identifier)
+          (argument_list
+            (identifier))
+          (do_block))
+        (identifier)
+        (argument_list
+          (identifier))))
+    (constant)))
+
+========================================
+ordinary local variable plus preserves binary ownership
+========================================
+
+a = 1; a +b do end
+def f(a, b); a +b; end
+
+---
+
+(program
+  (assignment
+    (identifier)
+    (integer))
+  (binary
+    (identifier)
+    (call
+      (identifier)
+      (do_block)))
+  (method
+    (identifier)
+    (method_parameters
+      (identifier)
+      (identifier))
+    (body_statement
+      (binary
+        (identifier)
+        (identifier)))))
+
+========================================
+chained unary plus participates in operator precedence
+========================================
+
+b c do end.d +z * y do end
+b c do end.d +z ** y do end
+b c do end.d +z == y do end
+b c do end.d +z ? y : x do end
+b c do end.d +z..y do end
+
+---
+
+(program
+  (call
+    (call
+      (identifier)
+      (argument_list
+        (identifier))
+      (do_block))
+    (identifier)
+    (argument_list
+      (binary
+        (unary
+          (identifier))
+        (identifier)))
+    (do_block))
+  (call
+    (call
+      (identifier)
+      (argument_list
+        (identifier))
+      (do_block))
+    (identifier)
+    (argument_list
+      (binary
+        (unary
+          (identifier))
+        (identifier)))
+    (do_block))
+  (call
+    (call
+      (identifier)
+      (argument_list
+        (identifier))
+      (do_block))
+    (identifier)
+    (argument_list
+      (binary
+        (unary
+          (identifier))
+        (identifier)))
+    (do_block))
+  (call
+    (call
+      (identifier)
+      (argument_list
+        (identifier))
+      (do_block))
+    (identifier)
+    (argument_list
+      (conditional
+        (unary
+          (identifier))
+        (identifier)
+        (identifier)))
+    (do_block))
+  (call
+    (call
+      (identifier)
+      (argument_list
+        (identifier))
+      (do_block))
+    (identifier)
+    (argument_list
+      (range
+        (unary
+          (identifier))
+        (identifier)))
+    (do_block)))
+
+========================================
+chained unary plus permits pairs and outer operators
+========================================
+
+b c do end.d +z => x
+b c do end.d +z and y
+b c do end.d +z rescue y
+
+---
+
+(program
+  (call
+    (call
+      (identifier)
+      (argument_list
+        (identifier))
+      (do_block))
+    (identifier)
+    (argument_list
+      (pair
+        (unary
+          (identifier))
+        (identifier))))
+  (binary
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier)
+      (argument_list
+        (unary
+          (identifier))))
+    (identifier))
+  (rescue_modifier
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier)
+      (argument_list
+        (unary
+          (identifier))))
+    (identifier)))
+
+========================================
+patterns wrap completed chained signed commands
+========================================
+
+b c do end.d +z in Integer
+b c do end.d +z * y in Integer
+
+---
+
+(program
+  (test_pattern
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier)
+      (argument_list
+        (unary
+          (identifier))))
+    (constant))
+  (test_pattern
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier)
+      (argument_list
+        (binary
+          (unary
+            (identifier))
+          (identifier))))
+    (constant)))
