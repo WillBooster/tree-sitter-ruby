@@ -3333,10 +3333,6 @@
           {
             "type": "parenthesized_statements",
             "named": true
-          },
-          {
-            "type": "rescue_modifier",
-            "named": true
           }
         ]
       },

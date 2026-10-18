@@ -41,12 +41,12 @@ def retried = risky value rescue fallback rescue final_fallback
     body: (method name: (identifier)
       body: (call method: (identifier) arguments: (argument_list (identifier))))
     condition: (identifier))
-  (method name: (identifier)
-    body: (rescue_modifier
+  (rescue_modifier
+    body: (method name: (identifier)
       body: (rescue_modifier
         body: (call method: (identifier) arguments: (argument_list (identifier)))
-        handler: (identifier))
-      handler: (identifier))))
+        handler: (identifier)))
+    handler: (identifier)))
 
 ==============================
 endless command bodies with keywords
@@ -66,10 +66,10 @@ def self.invalid? = not valid? value rescue false
       body: (yield (argument_list (identifier)))
       handler: (identifier)))
   (singleton_method object: (self) name: (identifier)
-    body: (unary
-      operand: (rescue_modifier
-        body: (call method: (identifier) arguments: (argument_list (identifier)))
-        handler: (false)))))
+    body: (rescue_modifier
+      body: (unary
+        operand: (call method: (identifier) arguments: (argument_list (identifier))))
+      handler: (false))))
 
 ==============================
 endless command bodies with blocks

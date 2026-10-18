@@ -185,22 +185,25 @@ module.exports = grammar({
         field('body', $._endless_command)
       ),
 
-    _endless_command: ($) =>
+    // Ruby 4.0's default parser (Prism) lets an endless body hold at most one `rescue`, applied outside any `not`; a
+    // further `rescue` applies to the whole definition.
+    _endless_command: ($) => choice($._endless_command_operand, alias($._endless_command_rescue, $.rescue_modifier)),
+
+    _endless_command_operand: ($) =>
       choice(
         alias($.command_call, $.call),
         alias($.command_call_with_block, $.call),
         prec.left(alias($._chained_command_call, $.call)),
         alias($.return_command, $.return),
         alias($.yield_command, $.yield),
-        alias($._endless_command_not, $.unary),
-        alias($._endless_command_rescue, $.rescue_modifier)
+        alias($._endless_command_not, $.unary)
       ),
 
     _endless_command_not: ($) =>
-      prec.right(PREC.NOT, seq(field('operator', 'not'), field('operand', $._endless_command))),
+      prec.right(PREC.NOT, seq(field('operator', 'not'), field('operand', $._endless_command_operand))),
 
     _endless_command_rescue: ($) =>
-      prec(PREC.RESCUE, seq(field('body', $._endless_command), 'rescue', field('handler', $._arg))),
+      prec(PREC.RESCUE, seq(field('body', $._endless_command_operand), 'rescue', field('handler', $._arg))),
 
     parameters: ($) => seq('(', commaSep($._formal_parameter), ')'),
 

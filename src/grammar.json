@@ -648,6 +648,24 @@
       "type": "CHOICE",
       "members": [
         {
+          "type": "SYMBOL",
+          "name": "_endless_command_operand"
+        },
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_endless_command_rescue"
+          },
+          "named": true,
+          "value": "rescue_modifier"
+        }
+      ]
+    },
+    "_endless_command_operand": {
+      "type": "CHOICE",
+      "members": [
+        {
           "type": "ALIAS",
           "content": {
             "type": "SYMBOL",
@@ -704,15 +722,6 @@
           },
           "named": true,
           "value": "unary"
-        },
-        {
-          "type": "ALIAS",
-          "content": {
-            "type": "SYMBOL",
-            "name": "_endless_command_rescue"
-          },
-          "named": true,
-          "value": "rescue_modifier"
         }
       ]
     },
@@ -735,7 +744,7 @@
             "name": "operand",
             "content": {
               "type": "SYMBOL",
-              "name": "_endless_command"
+              "name": "_endless_command_operand"
             }
           }
         ]
@@ -752,7 +761,7 @@
             "name": "body",
             "content": {
               "type": "SYMBOL",
-              "name": "_endless_command"
+              "name": "_endless_command_operand"
             }
           },
           {
