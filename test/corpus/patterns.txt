@@ -2711,3 +2711,91 @@ a or not b unless c d in Integer
         (argument_list
           (identifier))))
     (constant)))
+
+========================================
+command pattern boundaries: outer do block before binary pattern
+========================================
+
+foo super c do end && x => v
+
+---
+
+(program
+  (match_pattern
+    (binary
+      (call
+        (identifier)
+        (argument_list
+          (call
+            (super)
+            (argument_list
+              (identifier))))
+        (do_block))
+      (identifier))
+    (identifier)))
+
+========================================
+command pattern boundaries: parenthesized super block binary pair
+========================================
+
+foo(super c do end && x => v)
+
+---
+
+(program
+  (call
+    (identifier)
+    (argument_list
+      (pair
+        (binary
+          (call
+            (super)
+            (argument_list
+              (identifier))
+            (do_block))
+          (identifier))
+        (identifier)))))
+
+========================================
+command pattern boundaries: negated command match inside logical right operand
+========================================
+
+a and not b c => v => w
+
+---
+
+(program
+  (binary
+    (identifier)
+    (match_pattern
+      (unary
+        (call
+          (identifier)
+          (argument_list
+            (pair
+              (identifier)
+              (identifier)))))
+      (identifier))))
+
+========================================
+command pattern boundaries: endless mixed unary pattern before logical continuation
+========================================
+
+def f = not ! a.b c in Integer and d
+
+---
+
+(program
+  (binary
+    (method
+      (identifier)
+      (unary
+        (test_pattern
+          (unary
+            (call
+              (identifier)
+              (identifier)
+              (argument_list
+                (identifier))))
+          (constant))))
+    (identifier)))

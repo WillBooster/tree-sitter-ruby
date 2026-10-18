@@ -622,6 +622,7 @@ module.exports = grammar({
       choice(
         $._non_pattern_expression,
         alias($._chained_match_pattern, $.match_pattern),
+        alias($._negated_command_match_pattern, $.match_pattern),
         alias($._chained_test_pattern, $.test_pattern),
         $.match_pattern,
         $.test_pattern
@@ -682,6 +683,15 @@ module.exports = grammar({
           field('pattern', $._pattern_top_expr_body)
         )
       ),
+    _negated_command_match_pattern: ($) =>
+      prec(
+        PREC.PATTERN,
+        prec.dynamic(
+          1,
+          seq(field('value', alias($._command_not, $.unary)), '=>', field('pattern', $._pattern_top_expr_body))
+        )
+      ),
+
     _chained_test_pattern: ($) =>
       prec.dynamic(
         1,
@@ -826,7 +836,10 @@ module.exports = grammar({
       ),
 
     _super_command: ($) =>
-      seq(field('method', $.super), field('arguments', alias($._chained_command_argument_list, $.argument_list))),
+      prec.dynamic(
+        1,
+        seq(field('method', $.super), field('arguments', alias($._chained_command_argument_list, $.argument_list)))
+      ),
 
     _receiver_command: ($) => seq($._call, field('arguments', alias($.command_argument_list, $.argument_list))),
 
@@ -1162,7 +1175,13 @@ module.exports = grammar({
 
     unary: ($) => unaryExpression($._arg, choice(alias($._unary_minus, '-'), '+')),
 
-    command_unary: ($) => unaryExpression($._non_pattern_expression, choice(alias($._unary_minus, '-'), '+')),
+    command_unary: ($) => {
+      const operand = choice($._command_value, alias($.command_unary, $.unary));
+      return choice(
+        prec(PREC.DEFINED, seq(field('operator', 'defined?'), field('operand', operand))),
+        strongUnaryExpression(operand, choice(alias($._unary_minus, '-'), '+'))
+      );
+    },
 
     _command_not: ($) =>
       prec.right(
