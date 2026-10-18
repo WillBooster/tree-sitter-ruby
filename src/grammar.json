@@ -5235,37 +5235,238 @@
       "type": "CHOICE",
       "members": [
         {
-          "type": "SEQ",
+          "type": "CHOICE",
           "members": [
             {
-              "type": "CHOICE",
+              "type": "SEQ",
               "members": [
                 {
-                  "type": "SYMBOL",
-                  "name": "_call"
+                  "type": "CHOICE",
+                  "members": [
+                    {
+                      "type": "SYMBOL",
+                      "name": "_call"
+                    },
+                    {
+                      "type": "FIELD",
+                      "name": "method",
+                      "content": {
+                        "type": "CHOICE",
+                        "members": [
+                          {
+                            "type": "SYMBOL",
+                            "name": "_variable"
+                          },
+                          {
+                            "type": "SYMBOL",
+                            "name": "_function_identifier"
+                          },
+                          {
+                            "type": "SYMBOL",
+                            "name": "super"
+                          }
+                        ]
+                      }
+                    }
+                  ]
                 },
                 {
-                  "type": "FIELD",
-                  "name": "method",
+                  "type": "PREC",
+                  "value": 1,
                   "content": {
-                    "type": "CHOICE",
+                    "type": "SEQ",
                     "members": [
                       {
-                        "type": "SYMBOL",
-                        "name": "_variable"
+                        "type": "FIELD",
+                        "name": "arguments",
+                        "content": {
+                          "type": "ALIAS",
+                          "content": {
+                            "type": "SYMBOL",
+                            "name": "command_argument_list"
+                          },
+                          "named": true,
+                          "value": "argument_list"
+                        }
                       },
                       {
-                        "type": "SYMBOL",
-                        "name": "_function_identifier"
-                      },
-                      {
-                        "type": "SYMBOL",
-                        "name": "super"
+                        "type": "FIELD",
+                        "name": "block",
+                        "content": {
+                          "type": "SYMBOL",
+                          "name": "block"
+                        }
                       }
                     ]
                   }
                 }
               ]
+            },
+            {
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "CHOICE",
+                  "members": [
+                    {
+                      "type": "SYMBOL",
+                      "name": "_call"
+                    },
+                    {
+                      "type": "FIELD",
+                      "name": "method",
+                      "content": {
+                        "type": "CHOICE",
+                        "members": [
+                          {
+                            "type": "SYMBOL",
+                            "name": "_variable"
+                          },
+                          {
+                            "type": "SYMBOL",
+                            "name": "_function_identifier"
+                          },
+                          {
+                            "type": "SYMBOL",
+                            "name": "super"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "PREC",
+                  "value": -1,
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "FIELD",
+                        "name": "arguments",
+                        "content": {
+                          "type": "ALIAS",
+                          "content": {
+                            "type": "SYMBOL",
+                            "name": "command_argument_list"
+                          },
+                          "named": true,
+                          "value": "argument_list"
+                        }
+                      },
+                      {
+                        "type": "FIELD",
+                        "name": "block",
+                        "content": {
+                          "type": "SYMBOL",
+                          "name": "do_block"
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "SYMBOL",
+                  "name": "_chained_command_call"
+                },
+                {
+                  "type": "PREC",
+                  "value": 1,
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "FIELD",
+                        "name": "arguments",
+                        "content": {
+                          "type": "ALIAS",
+                          "content": {
+                            "type": "SYMBOL",
+                            "name": "_chained_command_argument_list"
+                          },
+                          "named": true,
+                          "value": "argument_list"
+                        }
+                      },
+                      {
+                        "type": "FIELD",
+                        "name": "block",
+                        "content": {
+                          "type": "SYMBOL",
+                          "name": "block"
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "SYMBOL",
+                  "name": "_chained_command_call"
+                },
+                {
+                  "type": "PREC",
+                  "value": -1,
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "FIELD",
+                        "name": "arguments",
+                        "content": {
+                          "type": "ALIAS",
+                          "content": {
+                            "type": "SYMBOL",
+                            "name": "_chained_command_argument_list"
+                          },
+                          "named": true,
+                          "value": "argument_list"
+                        }
+                      },
+                      {
+                        "type": "FIELD",
+                        "name": "block",
+                        "content": {
+                          "type": "SYMBOL",
+                          "name": "do_block"
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "_super_command_with_block": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "SEQ",
+          "members": [
+            {
+              "type": "FIELD",
+              "name": "method",
+              "content": {
+                "type": "SYMBOL",
+                "name": "super"
+              }
             },
             {
               "type": "PREC",
@@ -5303,34 +5504,12 @@
           "type": "SEQ",
           "members": [
             {
-              "type": "CHOICE",
-              "members": [
-                {
-                  "type": "SYMBOL",
-                  "name": "_call"
-                },
-                {
-                  "type": "FIELD",
-                  "name": "method",
-                  "content": {
-                    "type": "CHOICE",
-                    "members": [
-                      {
-                        "type": "SYMBOL",
-                        "name": "_variable"
-                      },
-                      {
-                        "type": "SYMBOL",
-                        "name": "_function_identifier"
-                      },
-                      {
-                        "type": "SYMBOL",
-                        "name": "super"
-                      }
-                    ]
-                  }
-                }
-              ]
+              "type": "FIELD",
+              "name": "method",
+              "content": {
+                "type": "SYMBOL",
+                "name": "super"
+              }
             },
             {
               "type": "PREC",
@@ -5346,84 +5525,6 @@
                       "content": {
                         "type": "SYMBOL",
                         "name": "command_argument_list"
-                      },
-                      "named": true,
-                      "value": "argument_list"
-                    }
-                  },
-                  {
-                    "type": "FIELD",
-                    "name": "block",
-                    "content": {
-                      "type": "SYMBOL",
-                      "name": "do_block"
-                    }
-                  }
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "type": "SEQ",
-          "members": [
-            {
-              "type": "SYMBOL",
-              "name": "_chained_command_call"
-            },
-            {
-              "type": "PREC",
-              "value": 1,
-              "content": {
-                "type": "SEQ",
-                "members": [
-                  {
-                    "type": "FIELD",
-                    "name": "arguments",
-                    "content": {
-                      "type": "ALIAS",
-                      "content": {
-                        "type": "SYMBOL",
-                        "name": "_chained_command_argument_list"
-                      },
-                      "named": true,
-                      "value": "argument_list"
-                    }
-                  },
-                  {
-                    "type": "FIELD",
-                    "name": "block",
-                    "content": {
-                      "type": "SYMBOL",
-                      "name": "block"
-                    }
-                  }
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "type": "SEQ",
-          "members": [
-            {
-              "type": "SYMBOL",
-              "name": "_chained_command_call"
-            },
-            {
-              "type": "PREC",
-              "value": -1,
-              "content": {
-                "type": "SEQ",
-                "members": [
-                  {
-                    "type": "FIELD",
-                    "name": "arguments",
-                    "content": {
-                      "type": "ALIAS",
-                      "content": {
-                        "type": "SYMBOL",
-                        "name": "_chained_command_argument_list"
                       },
                       "named": true,
                       "value": "argument_list"
@@ -7215,7 +7316,7 @@
                     "type": "ALIAS",
                     "content": {
                       "type": "SYMBOL",
-                      "name": "command_call_with_block"
+                      "name": "_super_command_with_block"
                     },
                     "named": true,
                     "value": "call"
@@ -12213,6 +12314,10 @@
     [
       "_pair_block_argument",
       "block_argument"
+    ],
+    [
+      "command_call_with_block",
+      "_super_command_with_block"
     ],
     [
       "command_call",

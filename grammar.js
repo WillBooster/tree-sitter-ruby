@@ -95,6 +95,7 @@ module.exports = grammar({
   conflicts: ($) => [
     [$._chained_command_argument_list, $.command_argument_list],
     [$._pair_block_argument, $.block_argument],
+    [$.command_call_with_block, $._super_command_with_block],
     [$.command_call, $._command_pair],
     [$._command_value, $._command_pair],
     [$._chained_test_pattern, $._command_not, $._negated_unary_test_pattern],
@@ -857,19 +858,17 @@ module.exports = grammar({
     _chained_command: ($) =>
       seq($._chained_command_call, field('arguments', alias($._chained_command_argument_list, $.argument_list))),
 
-    command_call_with_block: ($) => {
-      const receiver = choice($._call, field('method', choice($._variable, $._function_identifier, $.super)));
-      const args = field('arguments', alias($.command_argument_list, $.argument_list));
-      const chainedArgs = field('arguments', alias($._chained_command_argument_list, $.argument_list));
-      const block = field('block', $.block);
-      const doBlock = field('block', $.do_block);
-      return choice(
-        seq(receiver, prec(PREC.CURLY_BLOCK, seq(args, block))),
-        seq(receiver, prec(PREC.DO_BLOCK, seq(args, doBlock))),
-        seq($._chained_command_call, prec(PREC.CURLY_BLOCK, seq(chainedArgs, block))),
-        seq($._chained_command_call, prec(PREC.DO_BLOCK, seq(chainedArgs, doBlock)))
-      );
-    },
+    command_call_with_block: ($) =>
+      choice(
+        commandCallWithBlock(
+          $,
+          choice($._call, field('method', choice($._variable, $._function_identifier, $.super))),
+          $.command_argument_list
+        ),
+        commandCallWithBlock($, $._chained_command_call, $._chained_command_argument_list)
+      ),
+
+    _super_command_with_block: ($) => commandCallWithBlock($, field('method', $.super), $.command_argument_list),
 
     _chained_arg: ($) =>
       choice(
@@ -988,7 +987,7 @@ module.exports = grammar({
               'key',
               choice(
                 alias($._command_pair_key, $.call),
-                alias($.command_call_with_block, $.call),
+                alias($._super_command_with_block, $.call),
                 alias($._super_command, $.call),
                 alias($.yield_command, $.yield),
                 alias($._command_not, $.unary),
@@ -1637,4 +1636,17 @@ function rangeExpression($, begin, allowBeginless) {
   const operator = field('operator', choice('..', '...'));
   const bounded = seq(field('begin', begin), operator, optional(end));
   return prec.right(PREC.RANGE, allowBeginless ? choice(bounded, seq(operator, end)) : bounded);
+}
+
+/**
+ * @param {GrammarSymbols<string>} $
+ * @param {RuleOrLiteral} receiver
+ * @param {RuleOrLiteral} argumentsRule
+ */
+function commandCallWithBlock($, receiver, argumentsRule) {
+  const args = field('arguments', alias(argumentsRule, $.argument_list));
+  return choice(
+    seq(receiver, prec(PREC.CURLY_BLOCK, seq(args, field('block', $.block)))),
+    seq(receiver, prec(PREC.DO_BLOCK, seq(args, field('block', $.do_block))))
+  );
 }

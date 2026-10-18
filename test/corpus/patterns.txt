@@ -2956,3 +2956,14 @@ return super c do end => v
             (identifier))
           (do_block))
         (identifier)))))
+
+===============================
+reject ordinary block calls as direct return pair keys
+:error
+===============================
+
+return b c do end => v
+
+---
+
+(ERROR)
