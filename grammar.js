@@ -196,7 +196,9 @@ module.exports = grammar({
         prec.left(alias($._chained_command_call, $.call)),
         alias($.return_command, $.return),
         alias($.yield_command, $.yield),
-        alias($._endless_command_not, $.unary)
+        alias($._endless_command_not, $.unary),
+        alias($._command_method, $.method),
+        alias($._command_singleton_method, $.singleton_method)
       ),
 
     _endless_command_not: ($) =>

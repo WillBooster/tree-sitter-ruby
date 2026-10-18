@@ -96,3 +96,21 @@ private def helper = run task do end
       (method name: (identifier)
         body: (call method: (identifier) arguments: (argument_list (identifier)))))
     block: (do_block)))
+
+==============================
+endless command bodies defining methods
+==============================
+
+def define = def self.helper(value) = target value rescue fallback rescue final_fallback
+
+---
+
+(program
+  (method name: (identifier)
+    body: (rescue_modifier
+      body: (singleton_method object: (self) name: (identifier)
+        parameters: (method_parameters (identifier))
+        body: (rescue_modifier
+          body: (call method: (identifier) arguments: (argument_list (identifier)))
+          handler: (identifier)))
+      handler: (identifier))))

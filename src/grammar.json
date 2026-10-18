@@ -722,6 +722,24 @@
           },
           "named": true,
           "value": "unary"
+        },
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_command_method"
+          },
+          "named": true,
+          "value": "method"
+        },
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_command_singleton_method"
+          },
+          "named": true,
+          "value": "singleton_method"
         }
       ]
     },

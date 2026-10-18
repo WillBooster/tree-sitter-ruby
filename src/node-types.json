@@ -2412,11 +2412,19 @@
             "named": true
           },
           {
+            "type": "method",
+            "named": true
+          },
+          {
             "type": "rescue_modifier",
             "named": true
           },
           {
             "type": "return",
+            "named": true
+          },
+          {
+            "type": "singleton_method",
             "named": true
           },
           {
@@ -3098,11 +3106,19 @@
             "named": true
           },
           {
+            "type": "method",
+            "named": true
+          },
+          {
             "type": "rescue_modifier",
             "named": true
           },
           {
             "type": "return",
+            "named": true
+          },
+          {
+            "type": "singleton_method",
             "named": true
           },
           {
