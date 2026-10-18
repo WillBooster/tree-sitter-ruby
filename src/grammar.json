@@ -7166,7 +7166,12 @@
                   "value": "&="
                 },
                 {
-                  "type": "STRING",
+                  "type": "ALIAS",
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "_modulo_assignment"
+                  },
+                  "named": false,
                   "value": "%="
                 },
                 {
@@ -7374,7 +7379,12 @@
                   "value": "&="
                 },
                 {
-                  "type": "STRING",
+                  "type": "ALIAS",
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "_modulo_assignment"
+                  },
+                  "named": false,
                   "value": "%="
                 },
                 {
@@ -7460,7 +7470,12 @@
                   "value": "&="
                 },
                 {
-                  "type": "STRING",
+                  "type": "ALIAS",
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "_modulo_assignment"
+                  },
+                  "named": false,
                   "value": "%="
                 },
                 {
@@ -11036,6 +11051,10 @@
     {
       "type": "SYMBOL",
       "name": "_binary_star_star"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_modulo_assignment"
     },
     {
       "type": "SYMBOL",
