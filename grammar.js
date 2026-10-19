@@ -93,6 +93,15 @@ module.exports = grammar({
   reserved: { global: () => [], variables: () => ['in', 'ensure', 'rescue', 'else'], methodNames: () => [] },
 
   conflicts: ($) => [
+    [$._negated_chained_test_pattern, $._yield_test_pattern],
+    [$._chained_test_pattern, $._negated_chained_test_pattern, $._yield_test_pattern, $._command_not],
+    [$._chained_test_pattern, $._negated_chained_test_pattern, $._command_not],
+    [$._command_not, $._test_pattern_not],
+    [$.unary, $._command_not],
+    [$._pattern_unary, $._yield_pair_unary, $.unary],
+    [$._yield_value, $._yield_pair_body_expr],
+    [$.call, $._yield_pair_primary, $._yield_pair_call],
+    [$._pattern_unary, $._yield_pair_unary],
     [$._yield_pair_unary, $.unary],
     [$.rescue, $._value_rescue],
     [$.then, $._value_then],
@@ -153,7 +162,6 @@ module.exports = grammar({
     [$.command_call_with_block, $._super_command_with_block],
     [$.command_call, $._command_pair],
     [$._command_value, $._command_pair],
-    [$._chained_test_pattern, $._command_not, $._negated_unary_test_pattern],
     [$._statement, $._chained_test_pattern],
     [$._chained_test_pattern, $.command_call],
     [$._command_value, $._chained_test_pattern],
@@ -674,7 +682,7 @@ module.exports = grammar({
                 alias($._receiver_command, $.call),
                 alias($._command_method, $.method),
                 alias($._command_singleton_method, $.singleton_method),
-                alias($.command_binary, $.binary),
+                alias($._pattern_command_binary, $.binary),
                 alias($.command_unary, $.unary),
                 $._command_unary_arg,
                 alias($.yield_command, $.yield),
@@ -700,40 +708,9 @@ module.exports = grammar({
         seq(field('value', alias($._command_not, $.unary)), '=>', field('pattern', $._pattern_top_expr_body))
       ),
 
-    _chained_test_pattern: ($) =>
-      prec.dynamic(
-        1,
-        seq(
-          field(
-            'value',
-            choice(
-              $._chained_arg,
-              alias($._pattern_command_assignment, $.assignment),
-              alias($._pattern_chained_assignment, $.assignment),
-              alias($._chained_operator_assignment, $.operator_assignment),
-              alias($.command_operator_assignment, $.operator_assignment),
-              alias($.command_call_with_block, $.call),
-              alias($._chained_command, $.call),
-              alias($._command_method, $.method),
-              alias($._command_singleton_method, $.singleton_method),
-              alias($._receiver_command, $.call),
-              alias($.command_binary, $.binary),
-              alias($.command_unary, $.unary),
-              $._command_unary_arg,
-              alias($._command_not, $.unary),
-              alias($.yield_command, $.yield),
-              alias($._super_command, $.call),
-              $.if_modifier,
-              $.unless_modifier,
-              $.while_modifier,
-              $.until_modifier,
-              $.rescue_modifier
-            )
-          ),
-          'in',
-          field('pattern', $._pattern_top_expr_body)
-        )
-      ),
+    _chained_test_pattern: ($) => chainedTestPattern($),
+
+    _negated_chained_test_pattern: ($) => prec(PREC.PATTERN, chainedTestPattern($)),
 
     match_pattern: ($) =>
       prec(
@@ -990,7 +967,7 @@ module.exports = grammar({
 
     _yield_value: ($) =>
       choice(
-        $._arg,
+        $._yield_pair_arg,
         alias($._yield_call, $.call),
         alias($._yield_not, $.unary),
         alias($._yield_pattern_not, $.unary),
@@ -1442,6 +1419,16 @@ module.exports = grammar({
 
     binary: ($) => binaryExpression($, $._arg),
 
+    _pattern_command_binary: ($) =>
+      prec.left(
+        1,
+        seq(
+          field('left', $._expression),
+          field('operator', choice('or', 'and')),
+          field('right', alias($.command_call, $.call))
+        )
+      ),
+
     command_binary: ($) =>
       prec.left(
         1,
@@ -1461,7 +1448,7 @@ module.exports = grammar({
           field(
             'operand',
             choice(
-              $._argument_command_value,
+              commandValue($, false),
               alias($.command_operator_assignment, $.operator_assignment),
               alias($._chained_operator_assignment, $.operator_assignment),
               alias($.command_unary, $.unary),
@@ -1484,24 +1471,10 @@ module.exports = grammar({
               'operand',
               choice(
                 $.test_pattern,
-                alias($._negated_unary_test_pattern, $.test_pattern),
-                alias($._chained_test_pattern, $.test_pattern),
+                alias($._negated_chained_test_pattern, $.test_pattern),
                 alias($._test_pattern_not, $.unary)
               )
             )
-          )
-        )
-      ),
-
-    _negated_unary_test_pattern: ($) =>
-      prec(
-        PREC.PATTERN,
-        prec.dynamic(
-          1,
-          seq(
-            field('value', choice(alias($.command_unary, $.unary), $._command_unary_arg)),
-            'in',
-            field('pattern', $._pattern_top_expr_body)
           )
         )
       ),
@@ -2161,5 +2134,42 @@ function commandValue($, allowAssignment) {
     alias($.break_command, $.break),
     alias($.next_command, $.next),
     $._arg
+  );
+}
+
+/** @param {GrammarSymbols<string>} $ */
+function chainedTestPattern($) {
+  return prec.dynamic(
+    1,
+    seq(
+      field(
+        'value',
+        choice(
+          $._chained_arg,
+          alias($._pattern_command_assignment, $.assignment),
+          alias($._pattern_chained_assignment, $.assignment),
+          alias($._chained_operator_assignment, $.operator_assignment),
+          alias($.command_operator_assignment, $.operator_assignment),
+          alias($.command_call_with_block, $.call),
+          alias($._chained_command, $.call),
+          alias($._command_method, $.method),
+          alias($._command_singleton_method, $.singleton_method),
+          alias($._receiver_command, $.call),
+          alias($._pattern_command_binary, $.binary),
+          alias($.command_unary, $.unary),
+          $._command_unary_arg,
+          alias($._command_not, $.unary),
+          alias($.yield_command, $.yield),
+          alias($._super_command, $.call),
+          $.if_modifier,
+          $.unless_modifier,
+          $.while_modifier,
+          $.until_modifier,
+          $.rescue_modifier
+        )
+      ),
+      'in',
+      field('pattern', $._pattern_top_expr_body)
+    )
   );
 }

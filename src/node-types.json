@@ -690,6 +690,26 @@
           "named": true
         },
         {
+          "type": "_nonlocal_variable",
+          "named": true
+        },
+        {
+          "type": "_simple_numeric",
+          "named": true
+        },
+        {
+          "type": "_variable",
+          "named": true
+        },
+        {
+          "type": "array",
+          "named": true
+        },
+        {
+          "type": "begin",
+          "named": true
+        },
+        {
           "type": "block_argument",
           "named": true
         },
@@ -702,7 +722,39 @@
           "named": true
         },
         {
+          "type": "case",
+          "named": true
+        },
+        {
+          "type": "case_match",
+          "named": true
+        },
+        {
+          "type": "chained_string",
+          "named": true
+        },
+        {
+          "type": "character",
+          "named": true
+        },
+        {
+          "type": "class",
+          "named": true
+        },
+        {
+          "type": "delimited_symbol",
+          "named": true
+        },
+        {
           "type": "element_reference",
+          "named": true
+        },
+        {
+          "type": "false",
+          "named": true
+        },
+        {
+          "type": "for",
           "named": true
         },
         {
@@ -710,7 +762,23 @@
           "named": true
         },
         {
+          "type": "hash",
+          "named": true
+        },
+        {
           "type": "hash_splat_argument",
+          "named": true
+        },
+        {
+          "type": "heredoc_beginning",
+          "named": true
+        },
+        {
+          "type": "if",
+          "named": true
+        },
+        {
+          "type": "lambda",
           "named": true
         },
         {
@@ -722,11 +790,35 @@
           "named": true
         },
         {
+          "type": "module",
+          "named": true
+        },
+        {
           "type": "next",
           "named": true
         },
         {
+          "type": "nil",
+          "named": true
+        },
+        {
           "type": "pair",
+          "named": true
+        },
+        {
+          "type": "parenthesized_statements",
+          "named": true
+        },
+        {
+          "type": "redo",
+          "named": true
+        },
+        {
+          "type": "regex",
+          "named": true
+        },
+        {
+          "type": "retry",
           "named": true
         },
         {
@@ -738,6 +830,18 @@
           "named": true
         },
         {
+          "type": "self",
+          "named": true
+        },
+        {
+          "type": "simple_symbol",
+          "named": true
+        },
+        {
+          "type": "singleton_class",
+          "named": true
+        },
+        {
           "type": "singleton_method",
           "named": true
         },
@@ -746,7 +850,39 @@
           "named": true
         },
         {
+          "type": "string",
+          "named": true
+        },
+        {
+          "type": "string_array",
+          "named": true
+        },
+        {
+          "type": "subshell",
+          "named": true
+        },
+        {
+          "type": "symbol_array",
+          "named": true
+        },
+        {
           "type": "test_pattern",
+          "named": true
+        },
+        {
+          "type": "true",
+          "named": true
+        },
+        {
+          "type": "unless",
+          "named": true
+        },
+        {
+          "type": "until",
+          "named": true
+        },
+        {
+          "type": "while",
           "named": true
         },
         {

@@ -4105,3 +4105,658 @@ def else; obj.else; end
       (call
         (identifier)
         (identifier)))))
+
+===============================
+reject ungrouped negated-yield value block continuations
+:error
+===============================
+
+def f; yield not a v do end + x; end
+
+---
+
+(ERROR)
+
+===============================
+reject ungrouped negated-yield indexed block continuations
+:error
+===============================
+
+def f; return yield not a v[0] do end + x; end
+
+---
+
+(ERROR)
+
+===============================
+reject ungrouped negated-yield assignment block continuations
+:error
+===============================
+
+def f; yield not a x += v do end + y; end
+
+---
+
+(ERROR)
+
+===============================
+negated-yield values preserve curly blocks and explicit groups
+===============================
+
+def f; yield not a (v do end + x); end
+def f; yield not a v { } + x; end
+def f; yield not a (v[0] do end + x); end
+def f; yield not a (x = v do end + y); end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (yield
+        (argument_list
+          (unary
+            (call
+              (identifier)
+              (argument_list
+                (parenthesized_statements
+                  (binary
+                    (call
+                      (identifier)
+                      (do_block))
+                    (identifier))))))))))
+  (method
+    (identifier)
+    (body_statement
+      (yield
+        (argument_list
+          (unary
+            (call
+              (identifier)
+              (argument_list
+                (binary
+                  (call
+                    (identifier)
+                    (block))
+                  (identifier)))))))))
+  (method
+    (identifier)
+    (body_statement
+      (yield
+        (argument_list
+          (unary
+            (call
+              (identifier)
+              (argument_list
+                (parenthesized_statements
+                  (binary
+                    (element_reference
+                      (identifier)
+                      (integer)
+                      (do_block))
+                    (identifier))))))))))
+  (method
+    (identifier)
+    (body_statement
+      (yield
+        (argument_list
+          (unary
+            (call
+              (identifier)
+              (argument_list
+                (parenthesized_statements
+                  (assignment
+                    (identifier)
+                    (binary
+                      (call
+                        (identifier)
+                        (do_block))
+                      (identifier))))))))))))
+
+===============================
+logical negation before boolean pattern operand 1
+===============================
+
+not b c do end and x in Integer
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block)))
+    (test_pattern
+      (identifier)
+      (constant))))
+
+===============================
+logical negation before boolean pattern operand 2
+===============================
+
+not b c do end and x => z
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block)))
+    (match_pattern
+      (identifier)
+      (identifier))))
+
+===============================
+logical negation before boolean pattern operand 3
+===============================
+
+not b c do end or x in Integer
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block)))
+    (test_pattern
+      (identifier)
+      (constant))))
+
+===============================
+logical negation before boolean pattern operand 4
+===============================
+
+not b c do end or x => z
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block)))
+    (match_pattern
+      (identifier)
+      (identifier))))
+
+===============================
+logical negation before boolean pattern operand 5
+===============================
+
+not b c {} and x in Integer
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (call
+            (identifier)
+            (block)))))
+    (test_pattern
+      (identifier)
+      (constant))))
+
+===============================
+logical negation before boolean pattern operand 6
+===============================
+
+not b c {} and x => z
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (call
+            (identifier)
+            (block)))))
+    (match_pattern
+      (identifier)
+      (identifier))))
+
+===============================
+logical negation before boolean pattern operand 7
+===============================
+
+not b c {} or x in Integer
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (call
+            (identifier)
+            (block)))))
+    (test_pattern
+      (identifier)
+      (constant))))
+
+===============================
+logical negation before boolean pattern operand 8
+===============================
+
+not b c {} or x => z
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (call
+            (identifier)
+            (block)))))
+    (match_pattern
+      (identifier)
+      (identifier))))
+
+===============================
+logical negation before boolean pattern operand 9
+===============================
+
+not b c => v do end and x in Integer
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (pair
+            (identifier)
+            (identifier)))
+        (do_block)))
+    (test_pattern
+      (identifier)
+      (constant))))
+
+===============================
+logical negation before boolean pattern operand 10
+===============================
+
+not b c => v do end and x => z
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (pair
+            (identifier)
+            (identifier)))
+        (do_block)))
+    (match_pattern
+      (identifier)
+      (identifier))))
+
+===============================
+logical negation before boolean pattern operand 11
+===============================
+
+not b c => v do end or x in Integer
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (pair
+            (identifier)
+            (identifier)))
+        (do_block)))
+    (test_pattern
+      (identifier)
+      (constant))))
+
+===============================
+logical negation before boolean pattern operand 12
+===============================
+
+not b c => v do end or x => z
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (pair
+            (identifier)
+            (identifier)))
+        (do_block)))
+    (match_pattern
+      (identifier)
+      (identifier))))
+
+===============================
+logical negation before boolean pattern operand 13
+===============================
+
+not b c => v {} and x in Integer
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (pair
+            (identifier)
+            (call
+              (identifier)
+              (block))))))
+    (test_pattern
+      (identifier)
+      (constant))))
+
+===============================
+logical negation before boolean pattern operand 14
+===============================
+
+not b c => v {} and x => z
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (pair
+            (identifier)
+            (call
+              (identifier)
+              (block))))))
+    (match_pattern
+      (identifier)
+      (identifier))))
+
+===============================
+logical negation before boolean pattern operand 15
+===============================
+
+not b c => v {} or x in Integer
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (pair
+            (identifier)
+            (call
+              (identifier)
+              (block))))))
+    (test_pattern
+      (identifier)
+      (constant))))
+
+===============================
+logical negation before boolean pattern operand 16
+===============================
+
+not b c => v {} or x => z
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (pair
+            (identifier)
+            (call
+              (identifier)
+              (block))))))
+    (match_pattern
+      (identifier)
+      (identifier))))
+
+===============================
+boolean pattern ownership across statement boundaries 1
+===============================
+
+not b c do end and x => z
+1
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block)))
+    (match_pattern
+      (identifier)
+      (identifier)))
+  (integer))
+
+===============================
+boolean pattern ownership across statement boundaries 4
+===============================
+
+def f; not b c do end and x => z; end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (binary
+        (unary
+          (call
+            (identifier)
+            (argument_list
+              (identifier))
+            (do_block)))
+        (match_pattern
+          (identifier)
+          (identifier))))))
+
+===============================
+boolean pattern ownership across statement boundaries 7
+===============================
+
+not b c do end or x => z
+1
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block)))
+    (match_pattern
+      (identifier)
+      (identifier)))
+  (integer))
+
+===============================
+boolean pattern ownership across statement boundaries 10
+===============================
+
+def f; not b c do end or x => z; end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (binary
+        (unary
+          (call
+            (identifier)
+            (argument_list
+              (identifier))
+            (do_block)))
+        (match_pattern
+          (identifier)
+          (identifier))))))
+
+===============================
+boolean pattern ownership across statement boundaries 13
+===============================
+
+not b c {} and x => z
+1
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (call
+            (identifier)
+            (block)))))
+    (match_pattern
+      (identifier)
+      (identifier)))
+  (integer))
+
+===============================
+boolean pattern ownership across statement boundaries 19
+===============================
+
+not b c => v do end and x => z
+1
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (pair
+            (identifier)
+            (identifier)))
+        (do_block)))
+    (match_pattern
+      (identifier)
+      (identifier)))
+  (integer))
+
+===============================
+boolean predicate ownership after yield command
+===============================
+
+def f; a and yield b c in Integer; end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (binary
+        (identifier)
+        (test_pattern
+          (yield
+            (argument_list
+              (call
+                (identifier)
+                (argument_list
+                  (identifier)))))
+          (constant))))))
+
+===============================
+boolean predicate ownership after operator assignment
+===============================
+
+def f; a or x += b c in Integer; end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (binary
+        (identifier)
+        (test_pattern
+          (operator_assignment
+            (identifier)
+            (call
+              (identifier)
+              (argument_list
+                (identifier))))
+          (constant))))))
+
+===============================
+boolean predicate ownership after nested negation
+===============================
+
+a and ! not b c in Integer
+
+---
+
+(program
+  (binary
+    (identifier)
+    (test_pattern
+      (unary
+        (unary
+          (call
+            (identifier)
+            (argument_list
+              (identifier)))))
+      (constant))))
