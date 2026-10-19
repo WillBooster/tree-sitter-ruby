@@ -632,7 +632,12 @@ module.exports = grammar({
       ),
 
     _non_pattern_expression: ($) =>
-      choice(alias($.command_binary, $.binary), alias($.command_unary, $.unary), $._command_value),
+      choice(
+        alias($.command_binary, $.binary),
+        alias($.command_unary, $.unary),
+        $._command_unary_arg,
+        $._command_value
+      ),
 
     _command_value: ($) =>
       choice(
@@ -673,6 +678,7 @@ module.exports = grammar({
               alias($._command_singleton_method, $.singleton_method),
               alias($.command_binary, $.binary),
               alias($.command_unary, $.unary),
+              $._command_unary_arg,
               alias($.yield_command, $.yield),
               alias($._super_command, $.call),
               $.if_modifier,
@@ -714,6 +720,7 @@ module.exports = grammar({
               alias($._receiver_command, $.call),
               alias($.command_binary, $.binary),
               alias($.command_unary, $.unary),
+              $._command_unary_arg,
               alias($._command_not, $.unary),
               alias($.yield_command, $.yield),
               alias($._super_command, $.call),
@@ -874,7 +881,6 @@ module.exports = grammar({
       choice(
         $._chained_primary,
         alias($._chained_binary, $.binary),
-        alias($._chained_unary, $.unary),
         alias($._chained_conditional, $.conditional),
         alias($._chained_range, $.range)
       ),
@@ -1035,7 +1041,7 @@ module.exports = grammar({
         )
       ),
 
-    _argument: ($) => argument($, choice($._non_pattern_expression, $.match_pattern, $.test_pattern)),
+    _argument: ($) => argument($, choice($._command_value, $.match_pattern, $.test_pattern)),
 
     _unrestricted_argument: ($) => argument($, $._expression),
 
@@ -1160,10 +1166,24 @@ module.exports = grammar({
     _chained_binary: ($) => binaryExpression($, choice($._chained_arg, alias($.command_call_with_block, $.call))),
 
     _chained_unary: ($) =>
-      strongUnaryExpression(
-        choice($._chained_arg, alias($.command_call_with_block, $.call)),
-        choice(alias($._unary_minus, '-'), '+')
+      prec.right(
+        PREC.COMPLEMENT,
+        seq(field('operator', '!'), field('operand', choice($._chained_arg, alias($.command_call_with_block, $.call))))
       ),
+
+    _command_unary_arg: ($) =>
+      choice(
+        alias($._chained_unary, $.unary),
+        alias($._command_unary_binary, $.binary),
+        alias($._command_unary_conditional, $.conditional),
+        alias($._command_unary_range, $.range)
+      ),
+
+    _command_unary_binary: ($) => binaryExpression($, $._command_unary_arg),
+
+    _command_unary_conditional: ($) => conditionalExpression($, $._command_unary_arg),
+
+    _command_unary_range: ($) => rangeExpression($, $._command_unary_arg, false),
 
     binary: ($) => binaryExpression($, $._arg),
 
@@ -1175,13 +1195,11 @@ module.exports = grammar({
 
     unary: ($) => unaryExpression($._arg, choice(alias($._unary_minus, '-'), '+')),
 
-    command_unary: ($) => {
-      const operand = choice($._command_value, alias($.command_unary, $.unary));
-      return choice(
-        prec(PREC.DEFINED, seq(field('operator', 'defined?'), field('operand', operand))),
-        strongUnaryExpression(operand, choice(alias($._unary_minus, '-'), '+'))
-      );
-    },
+    command_unary: ($) =>
+      prec.right(
+        PREC.COMPLEMENT,
+        seq(field('operator', '!'), field('operand', choice($._command_value, alias($.command_unary, $.unary))))
+      ),
 
     _command_not: ($) =>
       prec.right(
@@ -1193,6 +1211,7 @@ module.exports = grammar({
             choice(
               $._command_value,
               alias($.command_unary, $.unary),
+              $._command_unary_arg,
               $.match_pattern,
               alias($._chained_match_pattern, $.match_pattern)
             )
@@ -1225,7 +1244,11 @@ module.exports = grammar({
         PREC.PATTERN,
         prec.dynamic(
           1,
-          seq(field('value', alias($.command_unary, $.unary)), 'in', field('pattern', $._pattern_top_expr_body))
+          seq(
+            field('value', choice(alias($.command_unary, $.unary), $._command_unary_arg)),
+            'in',
+            field('pattern', $._pattern_top_expr_body)
+          )
         )
       ),
 

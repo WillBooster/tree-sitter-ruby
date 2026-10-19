@@ -624,7 +624,6 @@ x = not b in c
 return not a in b
 foo not x in Integer
 not a.b c in Integer
-not a => b
 !x in Integer
 -x in Integer
 defined? x in Integer
@@ -688,10 +687,6 @@ defined? x in Integer
         (argument_list
           (identifier)))
       (constant)))
-  (unary
-    (match_pattern
-      (identifier)
-      (identifier)))
   (test_pattern
     (unary
       (identifier))
@@ -2560,7 +2555,7 @@ def f; foo + super + x; foo - super + x; end
 command pattern boundaries: strong unary retains unspaced super plus argument
 ========================================
 
-def f; ! super +x; ~ super +x; - super +x; + super +x; end
+def f; ! super +x; ~ super(+x); - super(+x); + super(+x); end
 
 ---
 
@@ -2634,22 +2629,15 @@ command pattern boundaries: strong unary before block binary
     (identifier)))
 
 ========================================
-command pattern boundaries: signed unary before block binary
+command pattern boundaries: reject signed unary before block binary
+:error
 ========================================
 
 - b c do end + x
 
 ---
 
-(program
-  (binary
-    (unary
-      (call
-        (identifier)
-        (argument_list
-          (identifier))
-        (do_block)))
-    (identifier)))
+(ERROR)
 
 ========================================
 command pattern boundaries: logical negation over block binary pattern
@@ -3014,4 +3002,47 @@ return(b c d do end in Integer)
               (argument_list
                 (identifier))))
           (do_block))
+        (constant)))))
+
+===============================
+reject ungrouped command negation in endless bodies
+:error
+===============================
+
+def f = ! b c do end
+
+---
+
+(ERROR)
+
+===============================
+command negation groups and nested pattern precedence
+===============================
+
+def f = (! b c do end)
+not not ! b c do end + x in Integer
+
+---
+
+(program
+  (method
+    (identifier)
+    (parenthesized_statements
+      (unary
+        (call
+          (identifier)
+          (argument_list
+            (identifier))
+          (do_block)))))
+  (unary
+    (unary
+      (test_pattern
+        (binary
+          (unary
+            (call
+              (identifier)
+              (argument_list
+                (identifier))
+              (do_block)))
+          (identifier))
         (constant)))))
