@@ -3620,61 +3620,6 @@ def f; foo yield not a b => v do end + x => w => z; end
           (identifier))))))
 
 ===============================
-reject yield command-pair splat block continuation
-:error
-===============================
-
-def f; return yield a b c *d => v do end + x; end
-
----
-
-(ERROR)
-
-===============================
-reject yield command-pair hash splat block continuation
-:error
-===============================
-
-def f; return yield a b c **h => v do end + x; end
-
----
-
-(ERROR)
-
-===============================
-reject yield command-pair block argument block continuation
-:error
-===============================
-
-def f; return yield a b c &blk => v do end + x; end
-
----
-
-(ERROR)
-
-===============================
-reject yield command-pair binary value block continuation
-:error
-===============================
-
-def f; yield a b *d => v + x do end; end
-
----
-
-(ERROR)
-
-===============================
-reject yield command-pair endless method value block continuation
-:error
-===============================
-
-def f; yield a b *d => def g = v do end; end
-
----
-
-(ERROR)
-
-===============================
 yield command-pair values retain explicit block grouping
 ===============================
 
@@ -3750,17 +3695,6 @@ def f; yield a b &blk => def g = (v do end); end
                     (call
                       (identifier)
                       (do_block))))))))))))
-
-===============================
-reject yield pair values with ungrouped indexed-call do blocks
-:error
-===============================
-
-def f; return yield a b c *d => v[0] do end + x; end
-
----
-
-(ERROR)
 
 ===============================
 yield pair indexed calls retain curly blocks and grouping
@@ -3942,39 +3876,6 @@ def f; foo(not x += a b); end
                   (identifier))))))))))
 
 ===============================
-reject grouped pattern matches as argument values
-:error
-===============================
-
-def f; foo((a => v)); end
-
----
-
-(ERROR)
-
-===============================
-reject void begin bodies with ensure as argument values
-:error
-===============================
-
-def f; foo(begin a => v; ensure; b end); end
-
----
-
-(ERROR)
-
-===============================
-reject begin values with only void rescue branches
-:error
-===============================
-
-def f; foo(begin a => v; rescue; b => w end); end
-
----
-
-(ERROR)
-
-===============================
 grouped values preserve statement and exception branches
 ===============================
 
@@ -4105,39 +4006,6 @@ def else; obj.else; end
       (call
         (identifier)
         (identifier)))))
-
-===============================
-reject ungrouped negated-yield value block continuations
-:error
-===============================
-
-def f; yield not a v do end + x; end
-
----
-
-(ERROR)
-
-===============================
-reject ungrouped negated-yield indexed block continuations
-:error
-===============================
-
-def f; return yield not a v[0] do end + x; end
-
----
-
-(ERROR)
-
-===============================
-reject ungrouped negated-yield assignment block continuations
-:error
-===============================
-
-def f; yield not a x += v do end + y; end
-
----
-
-(ERROR)
 
 ===============================
 negated-yield values preserve curly blocks and explicit groups

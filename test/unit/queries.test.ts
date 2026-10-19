@@ -20,3 +20,31 @@ test('queries variable receivers in ordinary and endless singleton methods', asy
     parser.delete();
   }
 });
+
+test('queries expression supertypes inside yield and ordinary arguments', async () => {
+  await Parser.init();
+  const language = await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')));
+  const parser = new Parser();
+  parser.setLanguage(language);
+  const query = new Query(language, '(_arg) @argument\n(_primary) @primary');
+  const source = 'def f; yield 1; end\nfoo(2)\n';
+  const tree = parser.parse(source)!;
+  try {
+    expect(tree.rootNode.hasError).toBe(false);
+    expect(
+      query
+        .captures(tree.rootNode)
+        .filter(({ node }) => node.type === 'integer')
+        .map(({ name, node }) => [name, node.text, node.startIndex, node.endIndex])
+    ).toEqual([
+      ['argument', '1', 13, 14],
+      ['primary', '1', 13, 14],
+      ['argument', '2', 24, 25],
+      ['primary', '2', 24, 25],
+    ]);
+  } finally {
+    tree.delete();
+    query.delete();
+    parser.delete();
+  }
+});

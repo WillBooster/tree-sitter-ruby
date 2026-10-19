@@ -1,0 +1,204 @@
+================================================================================
+defined predicate retains boolean ownership
+================================================================================
+
+def f; defined?(A) && b; end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (binary
+        (unary
+          (parenthesized_statements
+            (constant)))
+        (identifier)))))
+
+================================================================================
+rescue handler owns following match
+================================================================================
+
+foo rescue d => [1]
+x
+
+---
+
+(program
+  (rescue_modifier
+    (identifier)
+    (match_pattern
+      (identifier)
+      (array_pattern
+        (integer))))
+  (identifier))
+
+================================================================================
+boolean operand permits a grouped match
+================================================================================
+
+foo and (d => [1])
+
+---
+
+(program
+  (binary
+    (identifier)
+    (parenthesized_statements
+      (match_pattern
+        (identifier)
+        (array_pattern
+          (integer))))))
+
+================================================================================
+endless negation owns ordinary test before next statement
+================================================================================
+
+def a = not c in [1]
+x
+
+---
+
+(program
+  (method
+    (identifier)
+    (unary
+      (test_pattern
+        (identifier)
+        (array_pattern
+          (integer)))))
+  (identifier))
+
+================================================================================
+defined predicate remains the receiver of a call
+================================================================================
+
+foo(defined?(A).nil?)
+
+---
+
+(program
+  (call
+    (identifier)
+    (argument_list
+      (call
+        (unary
+          (parenthesized_statements
+            (constant)))
+        (identifier)))))
+
+================================================================================
+nested begin keeps modifier rescue
+================================================================================
+
+def m
+ begin
+ a rescue nil
+ end
+end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (begin
+        (rescue_modifier
+          (identifier)
+          (nil))))))
+
+================================================================================
+nested begin and control flow retain body ownership
+================================================================================
+
+def _BlockQuoteRaw
+while true#
+unless _tmp
+end
+while true
+unless _tmp
+if _tmp
+while true
+unless _tmp
+unless _tmp
+result=begin;c;end
+end
+end
+end
+end      end
+result begin  a;end
+end  end#
+def _NonblankIndentedLine
+while      unless _tmp
+end
+end  end
+end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (while
+        (true)
+        (comment)
+        (do
+          (unless
+            (identifier))
+          (while
+            (true)
+            (do
+              (unless
+                (identifier)
+                (then
+                  (if
+                    (identifier)
+                    (then
+                      (while
+                        (true)
+                        (do
+                          (unless
+                            (identifier)
+                            (then
+                              (unless
+                                (identifier)
+                                (then
+                                  (assignment
+                                    (identifier)
+                                    (begin
+                                      (identifier)))))))))))))
+              (call
+                (identifier)
+                (argument_list
+                  (begin
+                    (identifier))))))))
+      (comment)
+      (method
+        (identifier)
+        (body_statement
+          (while
+            (unless
+              (identifier))
+            (do)))))))
+
+================================================================================
+multiline curly call retains a pattern block
+================================================================================
+
+foo {
+ a => c
+}
+
+---
+
+(program
+  (call
+    (identifier)
+    (block
+      (block_body
+        (match_pattern
+          (identifier)
+          (identifier))))))
