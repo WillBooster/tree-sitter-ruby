@@ -3413,3 +3413,88 @@ grouped multiple assignments remain pattern subjects
           (identifier)
           (identifier))))
     (identifier)))
+
+===============================
+reject nested command-pair block continuations in yield arguments
+:error
+===============================
+
+def f; return yield a b c => v do end + x; end
+
+---
+
+(ERROR)
+
+===============================
+explicit grouping retains nested command-pair block continuations in yield
+===============================
+
+def f; return yield (a b c => v do end) + x; end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (return
+        (argument_list
+          (yield
+            (argument_list
+              (binary
+                (parenthesized_statements
+                  (call
+                    (identifier)
+                    (argument_list
+                      (call
+                        (identifier)
+                        (argument_list
+                          (pair
+                            (identifier)
+                            (identifier)))))
+                    (do_block)))
+                (identifier)))))))))
+
+===============================
+yield command-pair block-pass keys retain outer blocks
+===============================
+
+def f; foo yield a &b => v; end
+def f; foo yield a &b => v do end + x; end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (identifier)
+        (argument_list
+          (yield
+            (argument_list
+              (pair
+                (call
+                  (identifier)
+                  (argument_list
+                    (block_argument
+                      (identifier))))
+                (identifier))))))))
+  (method
+    (identifier)
+    (body_statement
+      (binary
+        (call
+          (identifier)
+          (argument_list
+            (yield
+              (argument_list
+                (pair
+                  (call
+                    (identifier)
+                    (argument_list
+                      (block_argument
+                        (identifier))))
+                  (identifier)))))
+          (do_block))
+        (identifier)))))

@@ -93,6 +93,11 @@ module.exports = grammar({
   reserved: { global: () => [], variables: () => ['in'], methodNames: () => [] },
 
   conflicts: ($) => [
+    [$._command_pair_key_arguments, $._yield_command_pair_key_arguments],
+    [$._yield_argument_list, $._yield_call_pair_key_arguments],
+    [$.command_call, $._command_pair, $._yield_command_pair],
+    [$._command_pair, $._yield_command_pair],
+    [$._command_value, $._command_pair, $._yield_command_pair],
     [$._pattern_unary, $.unary],
     [$._arg, $._pattern_arg],
     [$._chained_assignment, $._pattern_chained_assignment],
@@ -977,7 +982,7 @@ module.exports = grammar({
 
     _yield_argument_list: ($) => prec.right(commaSep1($._yield_argument)),
 
-    _yield_argument: ($) => prec.left(1, argument($, $._yield_value)),
+    _yield_argument: ($) => prec.left(1, argument($, $._yield_value, $._yield_command_pair)),
 
     _yield_value: ($) =>
       choice(
@@ -1072,29 +1077,18 @@ module.exports = grammar({
         )
       ),
 
-    _command_pair: ($) =>
-      prec.dynamic(
-        1,
-        prec.right(
-          seq(
-            field(
-              'key',
-              choice(
-                alias($._command_pair_key, $.call),
-                alias($._super_command_with_block, $.call),
-                alias($._super_command, $.call),
-                alias($._yield_pair_key, $.yield),
-                alias($._command_not, $.unary),
-                alias($._chained_assignment, $.assignment),
-                alias($._chained_operator_assignment, $.operator_assignment),
-                $._chained_arg
-              )
-            ),
-            '=>',
-            field('value', $._arg)
-          )
-        )
+    _command_pair: ($) => commandPair($, $._command_pair_key),
+
+    _yield_command_pair: ($) => commandPair($, $._yield_command_pair_key),
+
+    _yield_command_pair_key: ($) =>
+      seq(
+        choice(field('method', choice($._variable, $._function_identifier)), $._call),
+        field('arguments', alias($._yield_command_pair_key_arguments, $.argument_list))
       ),
+
+    _yield_command_pair_key_arguments: ($) =>
+      prec.left(1, choice(alias($._yield_call_pair_key, $.call), alias($._pair_block_argument, $.block_argument))),
 
     _yield_pair_key: ($) => prec.left(seq('yield', alias($._yield_pair_key_arguments, $.argument_list))),
 
@@ -1782,9 +1776,39 @@ function commandCallWithBlock($, receiver, argumentsRule) {
 
 /**
  * @param {GrammarSymbols<string>} $
- * @param {RuleOrLiteral} expression
+ * @param {RuleOrLiteral} key
  */
-function argument($, expression) {
+function commandPair($, key) {
+  return prec.dynamic(
+    1,
+    prec.right(
+      seq(
+        field(
+          'key',
+          choice(
+            alias(key, $.call),
+            alias($._super_command_with_block, $.call),
+            alias($._super_command, $.call),
+            alias($._yield_pair_key, $.yield),
+            alias($._command_not, $.unary),
+            alias($._chained_assignment, $.assignment),
+            alias($._chained_operator_assignment, $.operator_assignment),
+            $._chained_arg
+          )
+        ),
+        '=>',
+        field('value', $._arg)
+      )
+    )
+  );
+}
+
+/**
+ * @param {GrammarSymbols<string>} $
+ * @param {RuleOrLiteral} expression
+ * @param {RuleOrLiteral} commandPairRule
+ */
+function argument($, expression, commandPairRule = $._command_pair) {
   return prec.left(
     choice(
       expression,
@@ -1793,7 +1817,7 @@ function argument($, expression) {
       $.forward_argument,
       $.block_argument,
       $.pair,
-      alias($._command_pair, $.pair),
+      alias(commandPairRule, $.pair),
       alias($._command_definition_pair, $.pair)
     )
   );
