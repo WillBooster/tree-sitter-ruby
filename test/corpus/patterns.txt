@@ -3127,3 +3127,137 @@ end
                         (block))
                       (identifier))))
                 (identifier)))))))))
+
+===============================
+command negation requires grouping for repeated bang
+===============================
+
+def f
+  ! b c do end + x
+  ! (! b c do end) + x
+  ! not ! b c
+  !!super + x
+end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (binary
+        (unary
+          (call
+            (identifier)
+            (argument_list
+              (identifier))
+            (do_block)))
+        (identifier))
+      (binary
+        (unary
+          (parenthesized_statements
+            (unary
+              (call
+                (identifier)
+                (argument_list
+                  (identifier))
+                (do_block)))))
+        (identifier))
+      (unary
+        (unary
+          (unary
+            (call
+              (identifier)
+              (argument_list
+                (identifier))))))
+      (binary
+        (unary
+          (unary
+            (super)))
+        (identifier)))))
+
+===============================
+reject repeated bang over an ungrouped command
+:error
+===============================
+
+def f; !! b c do end + x; end
+
+---
+
+(ERROR)
+
+===============================
+command patterns in first arguments and grouped later values
+===============================
+
+def f
+  foo(not b c do end in Integer, x)
+  foo(x, (not b c do end in Integer))
+  [(not b c do end in Integer)]
+end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (identifier)
+        (argument_list
+          (unary
+            (test_pattern
+              (call
+                (identifier)
+                (argument_list
+                  (identifier))
+                (do_block))
+              (array_pattern
+                (constant)
+                (identifier))))))
+      (call
+        (identifier)
+        (argument_list
+          (identifier)
+          (parenthesized_statements
+            (unary
+              (test_pattern
+                (call
+                  (identifier)
+                  (argument_list
+                    (identifier))
+                  (do_block))
+                (constant))))))
+      (array
+        (parenthesized_statements
+          (unary
+            (test_pattern
+              (call
+                (identifier)
+                (argument_list
+                  (identifier))
+                (do_block))
+              (constant))))))))
+
+===============================
+reject command patterns after an earlier argument
+:error
+===============================
+
+foo(x, not b c do end in Integer)
+
+---
+
+(ERROR)
+
+===============================
+reject ungrouped command patterns as array elements
+:error
+===============================
+
+[not b c do end in Integer]
+
+---
+
+(ERROR)

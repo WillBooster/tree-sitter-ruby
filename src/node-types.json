@@ -721,18 +721,6 @@
           "named": true
         },
         {
-          "type": "break",
-          "named": true
-        },
-        {
-          "type": "call",
-          "named": true
-        },
-        {
-          "type": "element_reference",
-          "named": true
-        },
-        {
           "type": "forward_argument",
           "named": true
         },
@@ -741,43 +729,11 @@
           "named": true
         },
         {
-          "type": "match_pattern",
-          "named": true
-        },
-        {
-          "type": "method",
-          "named": true
-        },
-        {
-          "type": "next",
-          "named": true
-        },
-        {
           "type": "pair",
           "named": true
         },
         {
-          "type": "return",
-          "named": true
-        },
-        {
-          "type": "scope_resolution",
-          "named": true
-        },
-        {
-          "type": "singleton_method",
-          "named": true
-        },
-        {
           "type": "splat_argument",
-          "named": true
-        },
-        {
-          "type": "test_pattern",
-          "named": true
-        },
-        {
-          "type": "yield",
           "named": true
         }
       ]

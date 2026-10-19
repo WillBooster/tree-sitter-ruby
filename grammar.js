@@ -972,7 +972,11 @@ module.exports = grammar({
 
     argument_list: ($) => prec.right(seq(token.immediate('('), optional($._argument_list_with_trailing_comma), ')')),
 
-    _argument_list_with_trailing_comma: ($) => prec.right(seq(commaSep1($._argument), optional(','))),
+    _argument_list_with_trailing_comma: ($) =>
+      prec.right(seq($._argument, repeat(seq(',', $._value_argument)), optional(','))),
+
+    _value_argument: ($) =>
+      prec.left(choice($._arg, $.splat_argument, $.hash_splat_argument, $.forward_argument, $.block_argument, $.pair)),
 
     _command_argument: ($) =>
       prec.left(
@@ -1200,11 +1204,7 @@ module.exports = grammar({
 
     unary: ($) => unaryExpression($._arg, choice(alias($._unary_minus, '-'), '+')),
 
-    command_unary: ($) =>
-      prec.right(
-        PREC.COMPLEMENT,
-        seq(field('operator', '!'), field('operand', choice($._command_value, alias($.command_unary, $.unary))))
-      ),
+    command_unary: ($) => prec.right(PREC.COMPLEMENT, seq(field('operator', '!'), field('operand', $._command_value))),
 
     _command_not: ($) =>
       prec.right(
@@ -1446,7 +1446,7 @@ module.exports = grammar({
         )
       ),
 
-    array: ($) => seq('[', optional($._argument_list_with_trailing_comma), ']'),
+    array: ($) => seq('[', optional(seq(commaSep1($._value_argument), optional(','))), ']'),
 
     hash: ($) => seq('{', optional(seq(commaSep1(choice($.pair, $.hash_splat_argument)), optional(','))), '}'),
 
