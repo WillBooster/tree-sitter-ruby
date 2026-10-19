@@ -3058,11 +3058,14 @@ super pair chains preserve statement and logical boundaries
 
 def f
   super super c => v => w
+  super super super c => v => w
   after
+  super super super c => v => w; after
   a and super c => v => w
   a or super c => v => w
   return super super c => v => w
   foo(super super c { } => v => w)
+  super super super c => v => w
 end
 
 ---
@@ -3082,6 +3085,35 @@ end
                   (identifier)
                   (identifier))))
             (identifier))))
+      (call
+        (super)
+        (argument_list
+          (call
+            (super)
+            (argument_list
+              (pair
+                (call
+                  (super)
+                  (argument_list
+                    (pair
+                      (identifier)
+                      (identifier))))
+                (identifier))))))
+      (identifier)
+      (call
+        (super)
+        (argument_list
+          (call
+            (super)
+            (argument_list
+              (pair
+                (call
+                  (super)
+                  (argument_list
+                    (pair
+                      (identifier)
+                      (identifier))))
+                (identifier))))))
       (identifier)
       (binary
         (identifier)
@@ -3130,6 +3162,20 @@ end
                       (call
                         (identifier)
                         (block))
+                      (identifier))))
+                (identifier))))))
+      (call
+        (super)
+        (argument_list
+          (call
+            (super)
+            (argument_list
+              (pair
+                (call
+                  (super)
+                  (argument_list
+                    (pair
+                      (identifier)
                       (identifier))))
                 (identifier)))))))))
 
@@ -3498,3 +3544,77 @@ def f; foo yield a &b => v do end + x; end
                   (identifier)))))
           (do_block))
         (identifier)))))
+
+===============================
+yield keyword pairs preserve outer blocks across pattern continuations
+===============================
+
+def f; foo yield a b => v do end + x => w; end
+def f; foo yield a b => v do end + x => w => z; end
+def f; foo yield not a b => v do end + x => w => z; end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (match_pattern
+        (binary
+          (call
+            (identifier)
+            (argument_list
+              (yield
+                (argument_list
+                  (call
+                    (identifier)
+                    (argument_list
+                      (pair
+                        (identifier)
+                        (identifier)))))))
+            (do_block))
+          (identifier))
+        (identifier))))
+  (method
+    (identifier)
+    (body_statement
+      (match_pattern
+        (binary
+          (call
+            (identifier)
+            (argument_list
+              (yield
+                (argument_list
+                  (call
+                    (identifier)
+                    (argument_list
+                      (pair
+                        (identifier)
+                        (identifier)))))))
+            (do_block))
+          (identifier))
+        (as_pattern
+          (identifier)
+          (identifier)))))
+  (method
+    (identifier)
+    (body_statement
+      (match_pattern
+        (binary
+          (call
+            (identifier)
+            (argument_list
+              (yield
+                (argument_list
+                  (unary
+                    (call
+                      (identifier)
+                      (argument_list
+                        (pair
+                          (identifier)
+                          (identifier))))))))
+            (do_block))
+          (identifier))
+        (as_pattern
+          (identifier)
+          (identifier))))))

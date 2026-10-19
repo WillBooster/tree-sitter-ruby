@@ -8074,36 +8074,18 @@
       "type": "PREC_DYNAMIC",
       "value": 1,
       "content": {
-        "type": "PREC_RIGHT",
-        "value": 0,
-        "content": {
-          "type": "SEQ",
-          "members": [
-            {
-              "type": "FIELD",
-              "name": "key",
-              "content": {
-                "type": "CHOICE",
-                "members": [
-                  {
-                    "type": "ALIAS",
-                    "content": {
-                      "type": "SYMBOL",
-                      "name": "_command_pair_key"
-                    },
-                    "named": true,
-                    "value": "call"
-                  },
-                  {
-                    "type": "ALIAS",
-                    "content": {
-                      "type": "SYMBOL",
-                      "name": "_super_command_with_block"
-                    },
-                    "named": true,
-                    "value": "call"
-                  },
-                  {
+        "type": "CHOICE",
+        "members": [
+          {
+            "type": "PREC_RIGHT",
+            "value": 6,
+            "content": {
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "FIELD",
+                  "name": "key",
+                  "content": {
                     "type": "ALIAS",
                     "content": {
                       "type": "SYMBOL",
@@ -8111,100 +8093,130 @@
                     },
                     "named": true,
                     "value": "call"
-                  },
-                  {
-                    "type": "ALIAS",
-                    "content": {
-                      "type": "SYMBOL",
-                      "name": "_yield_pair_key"
-                    },
-                    "named": true,
-                    "value": "yield"
-                  },
-                  {
-                    "type": "ALIAS",
-                    "content": {
-                      "type": "SYMBOL",
-                      "name": "_command_not"
-                    },
-                    "named": true,
-                    "value": "unary"
-                  },
-                  {
-                    "type": "ALIAS",
-                    "content": {
-                      "type": "SYMBOL",
-                      "name": "_chained_assignment"
-                    },
-                    "named": true,
-                    "value": "assignment"
-                  },
-                  {
-                    "type": "ALIAS",
-                    "content": {
-                      "type": "SYMBOL",
-                      "name": "_chained_operator_assignment"
-                    },
-                    "named": true,
-                    "value": "operator_assignment"
-                  },
-                  {
-                    "type": "SYMBOL",
-                    "name": "_chained_arg"
                   }
-                ]
-              }
-            },
-            {
-              "type": "STRING",
-              "value": "=>"
-            },
-            {
-              "type": "FIELD",
-              "name": "value",
-              "content": {
-                "type": "SYMBOL",
-                "name": "_arg"
-              }
+                },
+                {
+                  "type": "STRING",
+                  "value": "=>"
+                },
+                {
+                  "type": "FIELD",
+                  "name": "value",
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "_arg"
+                  }
+                }
+              ]
             }
-          ]
-        }
+          },
+          {
+            "type": "PREC_RIGHT",
+            "value": 0,
+            "content": {
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "FIELD",
+                  "name": "key",
+                  "content": {
+                    "type": "CHOICE",
+                    "members": [
+                      {
+                        "type": "ALIAS",
+                        "content": {
+                          "type": "SYMBOL",
+                          "name": "_command_pair_key"
+                        },
+                        "named": true,
+                        "value": "call"
+                      },
+                      {
+                        "type": "ALIAS",
+                        "content": {
+                          "type": "SYMBOL",
+                          "name": "_super_command_with_block"
+                        },
+                        "named": true,
+                        "value": "call"
+                      },
+                      {
+                        "type": "ALIAS",
+                        "content": {
+                          "type": "SYMBOL",
+                          "name": "_yield_pair_key"
+                        },
+                        "named": true,
+                        "value": "yield"
+                      },
+                      {
+                        "type": "ALIAS",
+                        "content": {
+                          "type": "SYMBOL",
+                          "name": "_command_not"
+                        },
+                        "named": true,
+                        "value": "unary"
+                      },
+                      {
+                        "type": "ALIAS",
+                        "content": {
+                          "type": "SYMBOL",
+                          "name": "_chained_assignment"
+                        },
+                        "named": true,
+                        "value": "assignment"
+                      },
+                      {
+                        "type": "ALIAS",
+                        "content": {
+                          "type": "SYMBOL",
+                          "name": "_chained_operator_assignment"
+                        },
+                        "named": true,
+                        "value": "operator_assignment"
+                      },
+                      {
+                        "type": "SYMBOL",
+                        "name": "_chained_arg"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "type": "STRING",
+                  "value": "=>"
+                },
+                {
+                  "type": "FIELD",
+                  "name": "value",
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "_arg"
+                  }
+                }
+              ]
+            }
+          }
+        ]
       }
     },
     "_yield_command_pair": {
       "type": "PREC_DYNAMIC",
       "value": 1,
       "content": {
-        "type": "PREC_RIGHT",
-        "value": 0,
-        "content": {
-          "type": "SEQ",
-          "members": [
-            {
-              "type": "FIELD",
-              "name": "key",
-              "content": {
-                "type": "CHOICE",
-                "members": [
-                  {
-                    "type": "ALIAS",
-                    "content": {
-                      "type": "SYMBOL",
-                      "name": "_yield_command_pair_key"
-                    },
-                    "named": true,
-                    "value": "call"
-                  },
-                  {
-                    "type": "ALIAS",
-                    "content": {
-                      "type": "SYMBOL",
-                      "name": "_super_command_with_block"
-                    },
-                    "named": true,
-                    "value": "call"
-                  },
-                  {
+        "type": "CHOICE",
+        "members": [
+          {
+            "type": "PREC_RIGHT",
+            "value": 6,
+            "content": {
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "FIELD",
+                  "name": "key",
+                  "content": {
                     "type": "ALIAS",
                     "content": {
                       "type": "SYMBOL",
@@ -8212,64 +8224,108 @@
                     },
                     "named": true,
                     "value": "call"
-                  },
-                  {
-                    "type": "ALIAS",
-                    "content": {
-                      "type": "SYMBOL",
-                      "name": "_yield_pair_key"
-                    },
-                    "named": true,
-                    "value": "yield"
-                  },
-                  {
-                    "type": "ALIAS",
-                    "content": {
-                      "type": "SYMBOL",
-                      "name": "_command_not"
-                    },
-                    "named": true,
-                    "value": "unary"
-                  },
-                  {
-                    "type": "ALIAS",
-                    "content": {
-                      "type": "SYMBOL",
-                      "name": "_chained_assignment"
-                    },
-                    "named": true,
-                    "value": "assignment"
-                  },
-                  {
-                    "type": "ALIAS",
-                    "content": {
-                      "type": "SYMBOL",
-                      "name": "_chained_operator_assignment"
-                    },
-                    "named": true,
-                    "value": "operator_assignment"
-                  },
-                  {
-                    "type": "SYMBOL",
-                    "name": "_chained_arg"
                   }
-                ]
-              }
-            },
-            {
-              "type": "STRING",
-              "value": "=>"
-            },
-            {
-              "type": "FIELD",
-              "name": "value",
-              "content": {
-                "type": "SYMBOL",
-                "name": "_arg"
-              }
+                },
+                {
+                  "type": "STRING",
+                  "value": "=>"
+                },
+                {
+                  "type": "FIELD",
+                  "name": "value",
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "_arg"
+                  }
+                }
+              ]
             }
-          ]
-        }
+          },
+          {
+            "type": "PREC_RIGHT",
+            "value": 0,
+            "content": {
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "FIELD",
+                  "name": "key",
+                  "content": {
+                    "type": "CHOICE",
+                    "members": [
+                      {
+                        "type": "ALIAS",
+                        "content": {
+                          "type": "SYMBOL",
+                          "name": "_yield_command_pair_key"
+                        },
+                        "named": true,
+                        "value": "call"
+                      },
+                      {
+                        "type": "ALIAS",
+                        "content": {
+                          "type": "SYMBOL",
+                          "name": "_super_command_with_block"
+                        },
+                        "named": true,
+                        "value": "call"
+                      },
+                      {
+                        "type": "ALIAS",
+                        "content": {
+                          "type": "SYMBOL",
+                          "name": "_yield_pair_key"
+                        },
+                        "named": true,
+                        "value": "yield"
+                      },
+                      {
+                        "type": "ALIAS",
+                        "content": {
+                          "type": "SYMBOL",
+                          "name": "_yield_not"
+                        },
+                        "named": true,
+                        "value": "unary"
+                      },
+                      {
+                        "type": "ALIAS",
+                        "content": {
+                          "type": "SYMBOL",
+                          "name": "_chained_assignment"
+                        },
+                        "named": true,
+                        "value": "assignment"
+                      },
+                      {
+                        "type": "ALIAS",
+                        "content": {
+                          "type": "SYMBOL",
+                          "name": "_chained_operator_assignment"
+                        },
+                        "named": true,
+                        "value": "operator_assignment"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "type": "STRING",
+                  "value": "=>"
+                },
+                {
+                  "type": "FIELD",
+                  "name": "value",
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "_arg"
+                  }
+                }
+              ]
+            }
+          }
+        ]
       }
     },
     "_yield_command_pair_key": {
@@ -8406,7 +8462,7 @@
                 "type": "ALIAS",
                 "content": {
                   "type": "SYMBOL",
-                  "name": "_command_pair"
+                  "name": "_yield_command_pair"
                 },
                 "named": true,
                 "value": "pair"
@@ -8475,7 +8531,7 @@
                 "type": "ALIAS",
                 "content": {
                   "type": "SYMBOL",
-                  "name": "_command_pair"
+                  "name": "_yield_command_pair"
                 },
                 "named": true,
                 "value": "pair"
@@ -14205,6 +14261,10 @@
     [
       "_yield_value",
       "pair"
+    ],
+    [
+      "_yield_value",
+      "_yield_command_pair"
     ],
     [
       "_chained_command_argument_list",

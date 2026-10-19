@@ -116,6 +116,7 @@ module.exports = grammar({
     [$._command_value, $._chained_match_pattern, $._yield_value],
     [$._command_value, $._yield_value],
     [$._yield_value, $.pair],
+    [$._yield_value, $._yield_command_pair],
     [$._chained_command_argument_list, $.command_argument_list],
     [$._pair_block_argument, $.block_argument],
     [$.command_call_with_block, $._super_command_with_block],
@@ -1079,7 +1080,7 @@ module.exports = grammar({
 
     _command_pair: ($) => commandPair($, $._command_pair_key),
 
-    _yield_command_pair: ($) => commandPair($, $._yield_command_pair_key),
+    _yield_command_pair: ($) => commandPair($, $._yield_command_pair_key, false),
 
     _yield_command_pair_key: ($) =>
       seq(
@@ -1777,27 +1778,30 @@ function commandCallWithBlock($, receiver, argumentsRule) {
 /**
  * @param {GrammarSymbols<string>} $
  * @param {RuleOrLiteral} key
+ * @param {boolean} allowBlockContinuation
  */
-function commandPair($, key) {
+function commandPair($, key, allowBlockContinuation = true) {
   return prec.dynamic(
     1,
-    prec.right(
-      seq(
-        field(
-          'key',
-          choice(
-            alias(key, $.call),
-            alias($._super_command_with_block, $.call),
-            alias($._super_command, $.call),
-            alias($._yield_pair_key, $.yield),
-            alias($._command_not, $.unary),
-            alias($._chained_assignment, $.assignment),
-            alias($._chained_operator_assignment, $.operator_assignment),
-            $._chained_arg
-          )
-        ),
-        '=>',
-        field('value', $._arg)
+    choice(
+      prec.right(PREC.PATTERN, seq(field('key', alias($._super_command, $.call)), '=>', field('value', $._arg))),
+      prec.right(
+        seq(
+          field(
+            'key',
+            choice(
+              alias(key, $.call),
+              alias($._super_command_with_block, $.call),
+              alias($._yield_pair_key, $.yield),
+              alias(allowBlockContinuation ? $._command_not : $._yield_not, $.unary),
+              alias($._chained_assignment, $.assignment),
+              alias($._chained_operator_assignment, $.operator_assignment),
+              ...(allowBlockContinuation ? [$._chained_arg] : [])
+            )
+          ),
+          '=>',
+          field('value', $._arg)
+        )
       )
     )
   );
@@ -1867,7 +1871,7 @@ function yieldPairKeyArguments($, allowCall) {
         $.pair,
         $.splat_argument,
         $.hash_splat_argument,
-        alias($._command_pair, $.pair),
+        alias($._yield_command_pair, $.pair),
         alias($._command_definition_pair, $.pair),
         ...(allowCall ? [alias($._yield_call_pair_key, $.call)] : [])
       )
