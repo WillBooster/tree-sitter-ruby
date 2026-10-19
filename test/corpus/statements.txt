@@ -90,3 +90,171 @@ undef :foo, :bar
   (undef (identifier))
   (undef (operator))
   (undef (simple_symbol) (simple_symbol)))
+
+====================
+parenthesized return statement groups
+====================
+
+def f
+  return()
+  return(1; 2)
+  return(foo 1, 2)
+  return (1
+    2)
+  after
+end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (return
+        (argument_list
+          (parenthesized_statements)))
+      (return
+        (argument_list
+          (parenthesized_statements
+            (integer)
+            (integer))))
+      (return
+        (argument_list
+          (parenthesized_statements
+            (call
+              (identifier)
+              (argument_list
+                (integer)
+                (integer))))))
+      (return
+        (argument_list
+          (parenthesized_statements
+            (integer)
+            (integer))))
+      (identifier))))
+
+====================
+parenthesized return value continuations
+====================
+
+def f
+  return(b c rescue d).foo
+  return(b rescue d) == 1
+  return(x if c) if ready
+  return 1, 2
+  yield(1, 2)
+  other(1, 2)
+end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (return
+        (argument_list
+          (call
+            (parenthesized_statements
+              (rescue_modifier
+                (call
+                  (identifier)
+                  (argument_list
+                    (identifier)))
+                (identifier)))
+            (identifier))))
+      (return
+        (argument_list
+          (binary
+            (parenthesized_statements
+              (rescue_modifier
+                (identifier)
+                (identifier)))
+            (integer))))
+      (if_modifier
+        (return
+          (argument_list
+            (parenthesized_statements
+              (if_modifier
+                (identifier)
+                (identifier)))))
+        (identifier))
+      (return
+        (argument_list
+          (integer)
+          (integer)))
+      (yield
+        (argument_list
+          (integer)
+          (integer)))
+      (call
+        (identifier)
+        (argument_list
+          (integer)
+          (integer))))))
+
+====================
+parenthesized return rejects comma-separated values
+:error
+====================
+
+def f; return(1, 2); after; end
+
+---
+
+(ERROR)
+
+====================
+parenthesized return rejects trailing comma
+:error
+====================
+
+def f; return(1,); after; end
+
+---
+
+(ERROR)
+
+====================
+parenthesized return rejects splat
+:error
+====================
+
+def f; return(*xs); after; end
+
+---
+
+(ERROR)
+
+====================
+parenthesized return rejects hash splat
+:error
+====================
+
+def f; return(**h); after; end
+
+---
+
+(ERROR)
+
+====================
+parenthesized return rejects block argument
+:error
+====================
+
+def f; return(&blk); after; end
+
+---
+
+(ERROR)
+
+====================
+parenthesized return rejects keyword argument
+:error
+====================
+
+def f; return(a: 1); after; end
+
+---
+
+(ERROR)
