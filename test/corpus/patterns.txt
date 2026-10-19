@@ -3940,3 +3940,168 @@ def f; foo(not x += a b); end
                 (identifier)
                 (argument_list
                   (identifier))))))))))
+
+===============================
+reject grouped pattern matches as argument values
+:error
+===============================
+
+def f; foo((a => v)); end
+
+---
+
+(ERROR)
+
+===============================
+reject void begin bodies with ensure as argument values
+:error
+===============================
+
+def f; foo(begin a => v; ensure; b end); end
+
+---
+
+(ERROR)
+
+===============================
+reject begin values with only void rescue branches
+:error
+===============================
+
+def f; foo(begin a => v; rescue; b => w end); end
+
+---
+
+(ERROR)
+
+===============================
+grouped values preserve statement and exception branches
+===============================
+
+def f; (a => v); end
+def f; foo((a => v; b; ;)); end
+def f; defined? begin a => v end; end
+def f; foo(begin a => v; rescue; b end); end
+def f; foo(begin a; rescue; b => v; ensure; c end); end
+def f; foo(begin a => v; rescue A; b => w; rescue B; c end); end
+def f; foo(begin a => v; rescue; b => w; else; c end); end
+def ensure; self.ensure; end
+def rescue; obj.rescue; end
+def else; obj.else; end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (parenthesized_statements
+        (match_pattern
+          (identifier)
+          (identifier)))))
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (identifier)
+        (argument_list
+          (parenthesized_statements
+            (match_pattern
+              (identifier)
+              (identifier))
+            (identifier)
+            (empty_statement))))))
+  (method
+    (identifier)
+    (body_statement
+      (unary
+        (begin
+          (match_pattern
+            (identifier)
+            (identifier))))))
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (identifier)
+        (argument_list
+          (begin
+            (match_pattern
+              (identifier)
+              (identifier))
+            (rescue
+              (then
+                (identifier))))))))
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (identifier)
+        (argument_list
+          (begin
+            (identifier)
+            (rescue
+              (then
+                (match_pattern
+                  (identifier)
+                  (identifier))))
+            (ensure
+              (empty_statement)
+              (identifier)))))))
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (identifier)
+        (argument_list
+          (begin
+            (match_pattern
+              (identifier)
+              (identifier))
+            (rescue
+              (exceptions
+                (constant))
+              (then
+                (match_pattern
+                  (identifier)
+                  (identifier))))
+            (rescue
+              (exceptions
+                (constant))
+              (then
+                (identifier))))))))
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (identifier)
+        (argument_list
+          (begin
+            (match_pattern
+              (identifier)
+              (identifier))
+            (rescue
+              (then
+                (match_pattern
+                  (identifier)
+                  (identifier))))
+            (else
+              (identifier)))))))
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (self)
+        (identifier))))
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (identifier)
+        (identifier))))
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (identifier)
+        (identifier)))))

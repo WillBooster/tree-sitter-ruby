@@ -90,9 +90,19 @@ module.exports = grammar({
 
   word: ($) => $.identifier,
 
-  reserved: { global: () => [], variables: () => ['in'], methodNames: () => [] },
+  reserved: { global: () => [], variables: () => ['in', 'ensure', 'rescue', 'else'], methodNames: () => [] },
 
   conflicts: ($) => [
+    [$._yield_pair_unary, $.unary],
+    [$.rescue, $._value_rescue],
+    [$.then, $._value_then],
+    [$._value_statements],
+    [$._body_statement, $._value_begin],
+    [$.begin, $._value_begin],
+    [$._statements, $._value_statements],
+    [$._expression, $._value_statement],
+    [$._statement, $._value_statement],
+    [$._value_parenthesized_statements, $.parenthesized_statements],
     [$._command_value, $._argument_command_value, $._yield_value],
     [$._argument_command_value, $._chained_match_pattern, $._yield_value],
     [$._argument_command_value, $._yield_value, $.pair],
@@ -207,6 +217,8 @@ module.exports = grammar({
         $.rescue_modifier,
         $.begin_block,
         $.end_block,
+        $.parenthesized_statements,
+        $.begin,
         $._expression
       ),
 
@@ -749,7 +761,7 @@ module.exports = grammar({
 
     _pattern_unary: ($) =>
       choice(
-        prec(PREC.DEFINED, seq(field('operator', 'defined?'), field('operand', $._arg))),
+        prec(PREC.DEFINED, seq(field('operator', 'defined?'), field('operand', choice($._arg, $.begin)))),
         strongUnaryExpression($._arg, choice(alias($._unary_minus, '-'), '+'))
       ),
 
@@ -778,6 +790,65 @@ module.exports = grammar({
       ),
 
     _primary: ($) => primaryExpression($, $._lhs, $.call, $.method, $.singleton_method),
+
+    _value_parenthesized_statements: ($) => seq('(', optional($._value_statements), ')'),
+
+    _value_statements: ($) =>
+      choice(
+        repeat1($.empty_statement),
+        seq(
+          repeat(choice(seq($._statement, $._terminator), $.empty_statement)),
+          $._value_statement,
+          optional(seq($._terminator, repeat($.empty_statement)))
+        )
+      ),
+
+    _value_statement: ($) =>
+      choice(
+        $.undef,
+        $.alias,
+        $.if_modifier,
+        $.unless_modifier,
+        $.while_modifier,
+        $.until_modifier,
+        $.rescue_modifier,
+        $.begin_block,
+        $.end_block,
+        $._non_pattern_expression,
+        $.test_pattern,
+        alias($._chained_test_pattern, $.test_pattern)
+      ),
+
+    _value_begin: ($) =>
+      seq(
+        'begin',
+        optional($._terminator),
+        optional(
+          choice(
+            $._value_statements,
+            seq(optional($._value_statements), repeat1(choice($.rescue, $.else, $.ensure))),
+            seq(optional($._statements), repeat($.rescue), alias($._value_rescue, $.rescue), repeat($.rescue)),
+            seq(optional($._statements), repeat1($.rescue), alias($._value_else, $.else))
+          )
+        ),
+        'end'
+      ),
+
+    _value_rescue: ($) =>
+      seq(
+        'rescue',
+        field('exceptions', optional($.exceptions)),
+        field('variable', optional($.exception_variable)),
+        choice($._terminator, field('body', alias($._value_then, $.then)))
+      ),
+
+    _value_then: ($) =>
+      choice(
+        seq($._terminator, $._value_statements),
+        seq(optional($._terminator), 'then', optional($._value_statements))
+      ),
+
+    _value_else: ($) => seq('else', optional($._terminator), optional($._value_statements)),
 
     parenthesized_statements: ($) => seq('(', optional($._statements), ')'),
 
@@ -1097,7 +1168,8 @@ module.exports = grammar({
 
     _yield_pair_binary: ($) => binaryExpression($, $._yield_pair_arg, $._yield_pair_arg),
 
-    _yield_pair_unary: ($) => unaryExpression($._yield_pair_arg, choice(alias($._unary_minus, '-'), '+')),
+    _yield_pair_unary: ($) =>
+      unaryExpression($._yield_pair_arg, choice(alias($._unary_minus, '-'), '+'), choice($._yield_pair_arg, $.begin)),
 
     _yield_pair_conditional: ($) => conditionalExpression($, $._yield_pair_arg, $._yield_pair_arg),
 
@@ -1376,7 +1448,7 @@ module.exports = grammar({
         seq(field('left', $._expression), field('operator', choice('or', 'and')), field('right', $._expression))
       ),
 
-    unary: ($) => unaryExpression($._arg, choice(alias($._unary_minus, '-'), '+')),
+    unary: ($) => unaryExpression($._arg, choice(alias($._unary_minus, '-'), '+'), choice($._arg, $.begin)),
 
     command_unary: ($) =>
       prec.right(PREC.COMPLEMENT, seq(field('operator', '!'), field('operand', $._argument_command_value))),
@@ -1435,7 +1507,16 @@ module.exports = grammar({
       ),
 
     parenthesized_unary: ($) =>
-      prec(PREC.CALL, seq(field('operator', choice('defined?', 'not')), field('operand', $.parenthesized_statements))),
+      choice(
+        prec(PREC.CALL, seq(field('operator', 'defined?'), field('operand', $.parenthesized_statements))),
+        prec(
+          PREC.CALL,
+          seq(
+            field('operator', 'not'),
+            field('operand', alias($._value_parenthesized_statements, $.parenthesized_statements))
+          )
+        )
+      ),
 
     unary_literal: ($) =>
       prec.right(
@@ -1733,10 +1814,11 @@ function assignmentOperator($) {
 /**
  * @param {RuleOrLiteral} operand
  * @param {RuleOrLiteral} sign
+ * @param {RuleOrLiteral} [definedOperand]
  */
-function unaryExpression(operand, sign) {
+function unaryExpression(operand, sign, definedOperand = operand) {
   return choice(
-    prec(PREC.DEFINED, seq(field('operator', 'defined?'), field('operand', operand))),
+    prec(PREC.DEFINED, seq(field('operator', 'defined?'), field('operand', definedOperand))),
     prec.right(PREC.NOT, seq(field('operator', 'not'), field('operand', operand))),
     strongUnaryExpression(operand, sign)
   );
@@ -1955,7 +2037,7 @@ function yieldPairKeyArguments($, allowCall) {
 function primaryExpression($, lhs, call, method, singletonMethod) {
   return choice(
     prec(1, $.super),
-    $.parenthesized_statements,
+    alias($._value_parenthesized_statements, $.parenthesized_statements),
     lhs,
     alias($._function_identifier_call, $.call),
     call,
@@ -1975,7 +2057,7 @@ function primaryExpression($, lhs, call, method, singletonMethod) {
     $.class,
     $.singleton_class,
     $.module,
-    $.begin,
+    alias($._value_begin, $.begin),
     $.while,
     $.until,
     $.if,

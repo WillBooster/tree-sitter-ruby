@@ -576,6 +576,10 @@
         "named": true
       },
       {
+        "type": "begin",
+        "named": true
+      },
+      {
         "type": "begin_block",
         "named": true
       },
@@ -585,6 +589,10 @@
       },
       {
         "type": "if_modifier",
+        "named": true
+      },
+      {
+        "type": "parenthesized_statements",
         "named": true
       },
       {
@@ -1108,7 +1116,23 @@
       "required": false,
       "types": [
         {
+          "type": "_arg",
+          "named": true
+        },
+        {
           "type": "_statement",
+          "named": true
+        },
+        {
+          "type": "break",
+          "named": true
+        },
+        {
+          "type": "call",
+          "named": true
+        },
+        {
+          "type": "element_reference",
           "named": true
         },
         {
@@ -1124,7 +1148,35 @@
           "named": true
         },
         {
+          "type": "method",
+          "named": true
+        },
+        {
+          "type": "next",
+          "named": true
+        },
+        {
           "type": "rescue",
+          "named": true
+        },
+        {
+          "type": "return",
+          "named": true
+        },
+        {
+          "type": "scope_resolution",
+          "named": true
+        },
+        {
+          "type": "singleton_method",
+          "named": true
+        },
+        {
+          "type": "test_pattern",
+          "named": true
+        },
+        {
+          "type": "yield",
           "named": true
         }
       ]
@@ -2827,11 +2879,55 @@
       "required": false,
       "types": [
         {
+          "type": "_arg",
+          "named": true
+        },
+        {
           "type": "_statement",
           "named": true
         },
         {
+          "type": "break",
+          "named": true
+        },
+        {
+          "type": "call",
+          "named": true
+        },
+        {
+          "type": "element_reference",
+          "named": true
+        },
+        {
           "type": "empty_statement",
+          "named": true
+        },
+        {
+          "type": "method",
+          "named": true
+        },
+        {
+          "type": "next",
+          "named": true
+        },
+        {
+          "type": "return",
+          "named": true
+        },
+        {
+          "type": "scope_resolution",
+          "named": true
+        },
+        {
+          "type": "singleton_method",
+          "named": true
+        },
+        {
+          "type": "test_pattern",
+          "named": true
+        },
+        {
+          "type": "yield",
           "named": true
         }
       ]
@@ -4425,11 +4521,55 @@
       "required": false,
       "types": [
         {
+          "type": "_arg",
+          "named": true
+        },
+        {
           "type": "_statement",
           "named": true
         },
         {
+          "type": "break",
+          "named": true
+        },
+        {
+          "type": "call",
+          "named": true
+        },
+        {
+          "type": "element_reference",
+          "named": true
+        },
+        {
           "type": "empty_statement",
+          "named": true
+        },
+        {
+          "type": "method",
+          "named": true
+        },
+        {
+          "type": "next",
+          "named": true
+        },
+        {
+          "type": "return",
+          "named": true
+        },
+        {
+          "type": "scope_resolution",
+          "named": true
+        },
+        {
+          "type": "singleton_method",
+          "named": true
+        },
+        {
+          "type": "test_pattern",
+          "named": true
+        },
+        {
+          "type": "yield",
           "named": true
         }
       ]
@@ -4884,10 +5024,6 @@
             "named": true
           },
           {
-            "type": "begin",
-            "named": true
-          },
-          {
             "type": "break",
             "named": true
           },
@@ -4961,10 +5097,6 @@
           },
           {
             "type": "nil",
-            "named": true
-          },
-          {
-            "type": "parenthesized_statements",
             "named": true
           },
           {
@@ -6140,11 +6272,55 @@
       "required": false,
       "types": [
         {
+          "type": "_arg",
+          "named": true
+        },
+        {
           "type": "_statement",
           "named": true
         },
         {
+          "type": "break",
+          "named": true
+        },
+        {
+          "type": "call",
+          "named": true
+        },
+        {
+          "type": "element_reference",
+          "named": true
+        },
+        {
           "type": "empty_statement",
+          "named": true
+        },
+        {
+          "type": "method",
+          "named": true
+        },
+        {
+          "type": "next",
+          "named": true
+        },
+        {
+          "type": "return",
+          "named": true
+        },
+        {
+          "type": "scope_resolution",
+          "named": true
+        },
+        {
+          "type": "singleton_method",
+          "named": true
+        },
+        {
+          "type": "test_pattern",
+          "named": true
+        },
+        {
+          "type": "yield",
           "named": true
         }
       ]
