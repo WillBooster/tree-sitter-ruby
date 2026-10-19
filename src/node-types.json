@@ -2512,11 +2512,19 @@
         "required": true,
         "types": [
           {
-            "type": "_arg",
+            "type": "_primary",
             "named": true
           },
           {
-            "type": "call",
+            "type": "assignment",
+            "named": true
+          },
+          {
+            "type": "binary",
+            "named": true
+          },
+          {
+            "type": "conditional",
             "named": true
           },
           {
@@ -2528,7 +2536,11 @@
             "named": true
           },
           {
-            "type": "method",
+            "type": "operator_assignment",
+            "named": true
+          },
+          {
+            "type": "range",
             "named": true
           },
           {
@@ -2537,10 +2549,6 @@
           },
           {
             "type": "scope_resolution",
-            "named": true
-          },
-          {
-            "type": "singleton_method",
             "named": true
           },
           {
@@ -2553,10 +2561,6 @@
           },
           {
             "type": "while_modifier",
-            "named": true
-          },
-          {
-            "type": "yield",
             "named": true
           }
         ]
@@ -3616,11 +3620,19 @@
         "required": true,
         "types": [
           {
-            "type": "_arg",
+            "type": "_primary",
             "named": true
           },
           {
-            "type": "call",
+            "type": "assignment",
+            "named": true
+          },
+          {
+            "type": "binary",
+            "named": true
+          },
+          {
+            "type": "conditional",
             "named": true
           },
           {
@@ -3632,7 +3644,11 @@
             "named": true
           },
           {
-            "type": "method",
+            "type": "operator_assignment",
+            "named": true
+          },
+          {
+            "type": "range",
             "named": true
           },
           {
@@ -3641,10 +3657,6 @@
           },
           {
             "type": "scope_resolution",
-            "named": true
-          },
-          {
-            "type": "singleton_method",
             "named": true
           },
           {
@@ -3657,10 +3669,6 @@
           },
           {
             "type": "while_modifier",
-            "named": true
-          },
-          {
-            "type": "yield",
             "named": true
           }
         ]

@@ -3352,3 +3352,63 @@ end
                   (identifier)))))
           (do_block))
         (identifier)))))
+
+===============================
+reject multiple assignment as an ungrouped pattern test subject
+:error
+===============================
+
+a, b = c in Integer
+
+---
+
+(ERROR)
+
+===============================
+reject multiple assignment as an ungrouped match subject
+:error
+===============================
+
+a, b = c => v
+
+---
+
+(ERROR)
+
+===============================
+reject splat assignment as an ungrouped pattern subject
+:error
+===============================
+
+a = *b in Integer
+
+---
+
+(ERROR)
+
+===============================
+grouped multiple assignments remain pattern subjects
+===============================
+
+(a, b = c) in Integer
+(a = b, c) => v
+
+---
+
+(program
+  (test_pattern
+    (parenthesized_statements
+      (assignment
+        (left_assignment_list
+          (identifier)
+          (identifier))
+        (identifier)))
+    (constant))
+  (match_pattern
+    (parenthesized_statements
+      (assignment
+        (identifier)
+        (right_assignment_list
+          (identifier)
+          (identifier))))
+    (identifier)))

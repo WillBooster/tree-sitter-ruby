@@ -93,6 +93,11 @@ module.exports = grammar({
   reserved: { global: () => [], variables: () => ['in'], methodNames: () => [] },
 
   conflicts: ($) => [
+    [$._pattern_unary, $.unary],
+    [$._arg, $._pattern_arg],
+    [$._chained_assignment, $._pattern_chained_assignment],
+    [$.command_assignment, $._pattern_command_assignment],
+    [$.assignment, $._pattern_assignment],
     [$._command_argument, $._yield_call_pair_key_arguments],
     [$._yield_argument, $._yield_call_pair_key_arguments],
     [$._yield_argument, $._command_argument, $._yield_call_pair_key_arguments],
@@ -654,8 +659,8 @@ module.exports = grammar({
               choice(
                 $._chained_arg,
                 alias($._chained_command, $.call),
-                alias($.command_assignment, $.assignment),
-                alias($._chained_assignment, $.assignment),
+                alias($._pattern_command_assignment, $.assignment),
+                alias($._pattern_chained_assignment, $.assignment),
                 alias($._chained_operator_assignment, $.operator_assignment),
                 alias($.command_operator_assignment, $.operator_assignment),
                 alias($.command_call_with_block, $.call),
@@ -685,10 +690,7 @@ module.exports = grammar({
     _negated_command_match_pattern: ($) =>
       prec(
         PREC.PATTERN,
-        prec.dynamic(
-          1,
-          seq(field('value', alias($._command_not, $.unary)), '=>', field('pattern', $._pattern_top_expr_body))
-        )
+        seq(field('value', alias($._command_not, $.unary)), '=>', field('pattern', $._pattern_top_expr_body))
       ),
 
     _chained_test_pattern: ($) =>
@@ -699,8 +701,8 @@ module.exports = grammar({
             'value',
             choice(
               $._chained_arg,
-              alias($.command_assignment, $.assignment),
-              alias($._chained_assignment, $.assignment),
+              alias($._pattern_command_assignment, $.assignment),
+              alias($._pattern_chained_assignment, $.assignment),
               alias($._chained_operator_assignment, $.operator_assignment),
               alias($.command_operator_assignment, $.operator_assignment),
               alias($.command_call_with_block, $.call),
@@ -729,13 +731,31 @@ module.exports = grammar({
     match_pattern: ($) =>
       prec(
         PREC.PATTERN,
-        prec.dynamic(1, seq(field('value', $._arg), '=>', field('pattern', $._pattern_top_expr_body)))
+        prec.dynamic(1, seq(field('value', $._pattern_arg), '=>', field('pattern', $._pattern_top_expr_body)))
       ),
 
     test_pattern: ($) =>
       prec(
         PREC.PATTERN,
-        prec.dynamic(1, seq(field('value', $._arg), 'in', field('pattern', $._pattern_top_expr_body)))
+        prec.dynamic(2, seq(field('value', $._pattern_arg), 'in', field('pattern', $._pattern_top_expr_body)))
+      ),
+
+    _pattern_arg: ($) =>
+      choice(
+        alias($._unary_minus_pow, $.unary),
+        $._primary,
+        $.operator_assignment,
+        $.conditional,
+        $.range,
+        $.binary,
+        alias($._pattern_unary, $.unary),
+        alias($._pattern_assignment, $.assignment)
+      ),
+
+    _pattern_unary: ($) =>
+      choice(
+        prec(PREC.DEFINED, seq(field('operator', 'defined?'), field('operand', $._arg))),
+        strongUnaryExpression($._arg, choice(alias($._unary_minus, '-'), '+'))
       ),
 
     _arg: ($) =>
@@ -1194,6 +1214,28 @@ module.exports = grammar({
         )
       ),
 
+    _pattern_assignment: ($) => prec.right(PREC.ASSIGN, seq(field('left', $._lhs), '=', field('right', $._arg_rhs))),
+
+    _pattern_command_assignment: ($) =>
+      prec.right(
+        PREC.ASSIGN,
+        seq(
+          field('left', $._lhs),
+          '=',
+          field('right', choice($._command_value, alias($._command_value_rescue, $.rescue_modifier)))
+        )
+      ),
+
+    _pattern_chained_assignment: ($) =>
+      prec.right(
+        PREC.ASSIGN,
+        seq(
+          field('left', $._chained_lhs),
+          '=',
+          field('right', choice($._command_value, alias($._command_value_rescue, $.rescue_modifier)))
+        )
+      ),
+
     assignment: ($) =>
       prec.right(
         PREC.ASSIGN,
@@ -1288,7 +1330,7 @@ module.exports = grammar({
               $._command_value,
               alias($.command_unary, $.unary),
               $._command_unary_arg,
-              $.match_pattern,
+              prec.dynamic(3, $.match_pattern),
               alias($._chained_match_pattern, $.match_pattern)
             )
           )
