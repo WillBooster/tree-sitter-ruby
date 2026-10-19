@@ -3046,3 +3046,84 @@ not not ! b c do end + x in Integer
               (do_block)))
           (identifier))
         (constant)))))
+
+====================
+super pair chains preserve statement and logical boundaries
+====================
+
+def f
+  super super c => v => w
+  after
+  a and super c => v => w
+  a or super c => v => w
+  return super super c => v => w
+  foo(super super c { } => v => w)
+end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (super)
+        (argument_list
+          (pair
+            (call
+              (super)
+              (argument_list
+                (pair
+                  (identifier)
+                  (identifier))))
+            (identifier))))
+      (identifier)
+      (binary
+        (identifier)
+        (match_pattern
+          (call
+            (super)
+            (argument_list
+              (pair
+                (identifier)
+                (identifier))))
+          (identifier)))
+      (binary
+        (identifier)
+        (match_pattern
+          (call
+            (super)
+            (argument_list
+              (pair
+                (identifier)
+                (identifier))))
+          (identifier)))
+      (return
+        (argument_list
+          (call
+            (super)
+            (argument_list
+              (pair
+                (call
+                  (super)
+                  (argument_list
+                    (pair
+                      (identifier)
+                      (identifier))))
+                (identifier))))))
+      (call
+        (identifier)
+        (argument_list
+          (call
+            (super)
+            (argument_list
+              (pair
+                (call
+                  (super)
+                  (argument_list
+                    (pair
+                      (call
+                        (identifier)
+                        (block))
+                      (identifier))))
+                (identifier)))))))))

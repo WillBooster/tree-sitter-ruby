@@ -660,36 +660,41 @@ module.exports = grammar({
       ),
 
     _chained_match_pattern: ($) =>
-      prec.dynamic(
-        1,
-        seq(
-          field(
-            'value',
-            choice(
-              $._chained_arg,
-              alias($._chained_command, $.call),
-              alias($.command_assignment, $.assignment),
-              alias($._chained_assignment, $.assignment),
-              alias($._chained_operator_assignment, $.operator_assignment),
-              alias($.command_operator_assignment, $.operator_assignment),
-              alias($.command_call_with_block, $.call),
-              alias($._receiver_command, $.call),
-              alias($._command_method, $.method),
-              alias($._command_singleton_method, $.singleton_method),
-              alias($.command_binary, $.binary),
-              alias($.command_unary, $.unary),
-              $._command_unary_arg,
-              alias($.yield_command, $.yield),
-              alias($._super_command, $.call),
-              $.if_modifier,
-              $.unless_modifier,
-              $.while_modifier,
-              $.until_modifier,
-              $.rescue_modifier
-            )
-          ),
-          '=>',
-          field('pattern', $._pattern_top_expr_body)
+      choice(
+        prec.dynamic(
+          1,
+          seq(
+            field(
+              'value',
+              choice(
+                $._chained_arg,
+                alias($._chained_command, $.call),
+                alias($.command_assignment, $.assignment),
+                alias($._chained_assignment, $.assignment),
+                alias($._chained_operator_assignment, $.operator_assignment),
+                alias($.command_operator_assignment, $.operator_assignment),
+                alias($.command_call_with_block, $.call),
+                alias($._receiver_command, $.call),
+                alias($._command_method, $.method),
+                alias($._command_singleton_method, $.singleton_method),
+                alias($.command_binary, $.binary),
+                alias($.command_unary, $.unary),
+                $._command_unary_arg,
+                alias($.yield_command, $.yield),
+                $.if_modifier,
+                $.unless_modifier,
+                $.while_modifier,
+                $.until_modifier,
+                $.rescue_modifier
+              )
+            ),
+            '=>',
+            field('pattern', $._pattern_top_expr_body)
+          )
+        ),
+        prec(
+          PREC.PATTERN,
+          seq(field('value', alias($._super_command, $.call)), '=>', field('pattern', $._pattern_top_expr_body))
         )
       ),
     _negated_command_match_pattern: ($) =>
