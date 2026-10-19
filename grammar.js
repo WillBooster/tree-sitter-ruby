@@ -93,6 +93,16 @@ module.exports = grammar({
   reserved: { global: () => [], variables: () => ['in', 'ensure', 'rescue', 'else'], methodNames: () => [] },
 
   conflicts: ($) => [
+    [$._chained_match_pattern, $._yield_value],
+    [$._endless_body_rescue, $._yield_pair_method_body_rescue],
+    [$._endless_body_rescue, $._yield_method_body_rescue],
+    [$._endless_body_rescue, $._yield_method_body_rescue, $._yield_pair_method_body_rescue],
+    [$._yield_method_body_rescue, $._yield_pair_method_body_rescue],
+    [$._body_expr, $._yield_method_rest],
+    [$._body_expr, $._yield_method_rest, $._yield_pair_body_expr],
+    [$._body_expr, $._yield_pair_body_expr],
+    [$._yield_method_rest, $._yield_pair_body_expr],
+    [$._pattern_command_not, $._command_not],
     [$._negated_chained_test_pattern, $._yield_test_pattern],
     [$._chained_test_pattern, $._negated_chained_test_pattern, $._yield_test_pattern, $._command_not],
     [$._chained_test_pattern, $._negated_chained_test_pattern, $._command_not],
@@ -236,15 +246,28 @@ module.exports = grammar({
 
     _method_rest: ($) => methodRest($, $._body_expr),
 
-    rescue_modifier_arg: ($) => prec(PREC.RESCUE, seq(field('body', $._arg), 'rescue', field('handler', $._arg))),
+    rescue_modifier_arg: ($) =>
+      prec(
+        PREC.RESCUE,
+        seq(field('body', $._arg), 'rescue', field('handler', choice($._arg, $.parenthesized_statements, $.begin)))
+      ),
 
     _command_value_rescue: ($) =>
-      prec(PREC.RESCUE, seq(field('body', $._command_value), 'rescue', field('handler', $._arg))),
+      prec(
+        PREC.RESCUE,
+        seq(
+          field('body', $._command_value),
+          'rescue',
+          field('handler', choice($._arg, $.parenthesized_statements, $.begin))
+        )
+      ),
 
     rescue_modifier_expression: ($) =>
       prec(PREC.RESCUE, seq(field('body', $._non_pattern_expression), 'rescue', field('handler', $._arg))),
 
-    _body_expr: ($) => seq('=', field('body', choice($._arg, alias($.rescue_modifier_arg, $.rescue_modifier)))),
+    _body_expr: ($) => seq('=', field('body', endlessBody($, $._arg, $._endless_body_rescue))),
+
+    _endless_body_rescue: ($) => endlessBodyRescue($, $._arg),
 
     _command_method: ($) => seq('def', $._command_method_rest),
 
@@ -273,7 +296,14 @@ module.exports = grammar({
     _endless_command_not: ($) => prec.right(PREC.NOT, seq(field('operator', 'not'), field('operand', $._expression))),
 
     _endless_command_rescue: ($) =>
-      prec(PREC.RESCUE, seq(field('body', $._endless_command_operand), 'rescue', field('handler', $._arg))),
+      prec(
+        PREC.RESCUE,
+        seq(
+          field('body', $._endless_command_operand),
+          'rescue',
+          field('handler', choice($._arg, $.parenthesized_statements, $.begin))
+        )
+      ),
 
     parameters: ($) => seq('(', commaSep($._formal_parameter), ')'),
 
@@ -367,7 +397,14 @@ module.exports = grammar({
       prec(PREC.RESCUE, seq(field('body', $._statement), 'until', field('condition', $._expression))),
 
     rescue_modifier: ($) =>
-      prec(PREC.RESCUE, seq(field('body', $._statement), 'rescue', field('handler', $._expression))),
+      prec(
+        PREC.RESCUE,
+        seq(
+          field('body', $._statement),
+          'rescue',
+          field('handler', choice($._expression, $.parenthesized_statements, $.begin))
+        )
+      ),
 
     while: ($) => seq('while', field('condition', $._statement), field('body', $.do)),
 
@@ -705,7 +742,7 @@ module.exports = grammar({
     _negated_command_match_pattern: ($) =>
       prec(
         PREC.PATTERN,
-        seq(field('value', alias($._command_not, $.unary)), '=>', field('pattern', $._pattern_top_expr_body))
+        seq(field('value', alias($._pattern_command_not, $.unary)), '=>', field('pattern', $._pattern_top_expr_body))
       ),
 
     _chained_test_pattern: ($) => chainedTestPattern($),
@@ -1031,7 +1068,9 @@ module.exports = grammar({
 
     _yield_singleton_method: ($) => singletonMethod($, $._yield_method_rest),
 
-    _yield_method_rest: ($) => endlessMethodRest($, choice($._yield_value, alias($._yield_rescue, $.rescue_modifier))),
+    _yield_method_rest: ($) => endlessMethodRest($, endlessBody($, $._yield_value, $._yield_method_body_rescue)),
+
+    _yield_method_body_rescue: ($) => endlessBodyRescue($, $._yield_value),
 
     _yield_rescue: ($) => prec(PREC.RESCUE, seq(field('body', $._yield_value), 'rescue', field('handler', $._arg))),
 
@@ -1198,7 +1237,9 @@ module.exports = grammar({
     _yield_pair_method_rest: ($) => methodRest($, $._yield_pair_body_expr),
 
     _yield_pair_body_expr: ($) =>
-      seq('=', field('body', choice($._yield_pair_arg, alias($._yield_pair_rescue_modifier_arg, $.rescue_modifier)))),
+      seq('=', field('body', endlessBody($, $._yield_pair_arg, $._yield_pair_method_body_rescue))),
+
+    _yield_pair_method_body_rescue: ($) => endlessBodyRescue($, $._yield_pair_arg),
 
     _yield_command_pair: ($) => commandPair($, $._yield_command_pair_key, false),
 
@@ -1440,6 +1481,9 @@ module.exports = grammar({
     command_unary: ($) =>
       prec.right(PREC.COMPLEMENT, seq(field('operator', '!'), field('operand', $._argument_command_value))),
 
+    _pattern_command_not: ($) =>
+      prec.right(PREC.NOT, seq(field('operator', 'not'), field('operand', alias($.command_call, $.call)))),
+
     _command_not: ($) =>
       prec.right(
         PREC.NOT,
@@ -1453,8 +1497,7 @@ module.exports = grammar({
               alias($._chained_operator_assignment, $.operator_assignment),
               alias($.command_unary, $.unary),
               $._command_unary_arg,
-              prec.dynamic(3, $.match_pattern),
-              alias($._chained_match_pattern, $.match_pattern)
+              prec.dynamic(3, $.match_pattern)
             )
           )
         )
@@ -1914,7 +1957,7 @@ function commandPair($, key, allowBlockContinuation = true) {
               alias(key, $.call),
               alias($._super_command_with_block, $.call),
               alias($._yield_pair_key, $.yield),
-              alias(allowBlockContinuation ? $._command_not : $._yield_not, $.unary),
+              alias(allowBlockContinuation ? $._pattern_command_not : $._yield_not, $.unary),
               alias($._chained_assignment, $.assignment),
               alias($._chained_operator_assignment, $.operator_assignment),
               ...(allowBlockContinuation ? [$._chained_arg] : [])
@@ -1976,6 +2019,30 @@ function endlessMethodRest($, body) {
     optional(field('parameters', alias($.parameters, $.method_parameters))),
     '=',
     field('body', body)
+  );
+}
+
+/**
+ * @param {GrammarSymbols<string>} $
+ * @param {RuleOrLiteral} value
+ * @param {RuleOrLiteral} rescue
+ */
+function endlessBody($, value, rescue) {
+  return choice(value, $.parenthesized_statements, $.begin, alias(rescue, $.rescue_modifier));
+}
+
+/**
+ * @param {GrammarSymbols<string>} $
+ * @param {RuleOrLiteral} value
+ */
+function endlessBodyRescue($, value) {
+  return prec(
+    PREC.RESCUE,
+    seq(
+      field('body', choice(value, $.parenthesized_statements, $.begin)),
+      'rescue',
+      field('handler', choice($._arg, $.parenthesized_statements, $.begin))
+    )
   );
 }
 

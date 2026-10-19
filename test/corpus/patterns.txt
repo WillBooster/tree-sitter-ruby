@@ -4760,3 +4760,220 @@ a and ! not b c in Integer
             (argument_list
               (identifier)))))
       (constant))))
+
+===============================
+endless method body permits rightward statement group
+===============================
+
+def f = (a => v)
+
+---
+
+(program
+  (method
+    (identifier)
+    (parenthesized_statements
+      (match_pattern
+        (identifier)
+        (identifier)))))
+
+===============================
+endless singleton body permits rightward begin statement
+===============================
+
+def self.f = begin a => v end
+
+---
+
+(program
+  (singleton_method
+    (self)
+    (identifier)
+    (begin
+      (match_pattern
+        (identifier)
+        (identifier)))))
+
+===============================
+endless method rescues a rightward statement group
+===============================
+
+def f = (a => v) rescue x
+
+---
+
+(program
+  (method
+    (identifier)
+    (rescue_modifier
+      (parenthesized_statements
+        (match_pattern
+          (identifier)
+          (identifier)))
+      (identifier))))
+
+===============================
+nested endless method keeps statement body
+===============================
+
+foo def f = (a => v)
+
+---
+
+(program
+  (call
+    (identifier)
+    (argument_list
+      (method
+        (identifier)
+        (parenthesized_statements
+          (match_pattern
+            (identifier)
+            (identifier)))))))
+
+===============================
+negated block command cannot provide a rightward value
+:error
+===============================
+
+not a b do end => v
+
+---
+
+(ERROR)
+
+===============================
+repeated negation cannot provide a rightward block value
+:error
+===============================
+
+not not a b do end => v
+
+---
+
+(ERROR)
+
+===============================
+endless method rescue handler permits rightward statements
+===============================
+
+def f = a rescue (b => v)
+
+---
+
+(program
+  (method
+    (identifier)
+    (rescue_modifier
+      (identifier)
+      (parenthesized_statements
+        (match_pattern
+          (identifier)
+          (identifier))))))
+
+===============================
+endless command rescue handler permits rightward statements
+===============================
+
+def f = b c rescue begin a => v end
+
+---
+
+(program
+  (method
+    (identifier)
+    (rescue_modifier
+      (call
+        (identifier)
+        (argument_list
+          (identifier)))
+      (begin
+        (match_pattern
+          (identifier)
+          (identifier))))))
+
+===============================
+statement rescue handler permits rightward groups
+===============================
+
+x rescue (a => v)
+
+---
+
+(program
+  (rescue_modifier
+    (identifier)
+    (parenthesized_statements
+      (match_pattern
+        (identifier)
+        (identifier)))))
+
+===============================
+outer endless method rescue permits rightward groups
+===============================
+
+def f = a rescue b rescue (c => v)
+
+---
+
+(program
+  (rescue_modifier
+    (method
+      (identifier)
+      (rescue_modifier
+        (identifier)
+        (identifier)))
+    (parenthesized_statements
+      (match_pattern
+        (identifier)
+        (identifier)))))
+
+===============================
+assignment rescue handler permits rightward statement group
+===============================
+
+x = a rescue (b => v)
+
+---
+
+(program
+  (assignment
+    (identifier)
+    (rescue_modifier
+      (identifier)
+      (parenthesized_statements
+        (match_pattern
+          (identifier)
+          (identifier))))))
+
+===============================
+command assignment rescue handler permits rightward begin statement
+===============================
+
+x = b c rescue begin a => v end
+
+---
+
+(program
+  (assignment
+    (identifier)
+    (rescue_modifier
+      (call
+        (identifier)
+        (argument_list
+          (identifier)))
+      (begin
+        (match_pattern
+          (identifier)
+          (identifier))))))
+
+===============================
+nested negation cannot turn a curly pair tail into a command key
+:error
+===============================
+
+foo not not a b => v {} => w
+
+---
+
+(ERROR)
