@@ -3850,3 +3850,93 @@ def f; return yield (a b c *d => v[0] do end) + x; end
                           (integer))))
                     (do_block)))
                 (identifier)))))))))
+
+===============================
+reject ungrouped command assignments inside call arguments
+:error
+===============================
+
+def f; foo(x = a b do end + c); end
+
+---
+
+(ERROR)
+
+===============================
+reject command assignments as ungrouped receiver-call arguments
+:error
+===============================
+
+a.b c.x = b c **h => v
+
+---
+
+(ERROR)
+
+===============================
+command assignment values retain grouping and statement positions
+===============================
+
+def f; foo(x = (a b do end + c)); end
+def f; x = a b do end + c; end
+def f; not (x = a b do end + c); end
+def f; foo(not x += a b); end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (identifier)
+        (argument_list
+          (assignment
+            (identifier)
+            (parenthesized_statements
+              (binary
+                (call
+                  (identifier)
+                  (argument_list
+                    (identifier))
+                  (do_block))
+                (identifier))))))))
+  (method
+    (identifier)
+    (body_statement
+      (assignment
+        (identifier)
+        (binary
+          (call
+            (identifier)
+            (argument_list
+              (identifier))
+            (do_block))
+          (identifier)))))
+  (method
+    (identifier)
+    (body_statement
+      (unary
+        (parenthesized_statements
+          (assignment
+            (identifier)
+            (binary
+              (call
+                (identifier)
+                (argument_list
+                  (identifier))
+                (do_block))
+              (identifier)))))))
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (identifier)
+        (argument_list
+          (unary
+            (operator_assignment
+              (identifier)
+              (call
+                (identifier)
+                (argument_list
+                  (identifier))))))))))

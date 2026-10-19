@@ -93,6 +93,16 @@ module.exports = grammar({
   reserved: { global: () => [], variables: () => ['in'], methodNames: () => [] },
 
   conflicts: ($) => [
+    [$._command_value, $._argument_command_value, $._yield_value],
+    [$._argument_command_value, $._chained_match_pattern, $._yield_value],
+    [$._argument_command_value, $._yield_value, $.pair],
+    [$._argument_command_value, $._yield_value],
+    [$._argument_command_value, $._command_pair],
+    [$._argument_command_value, $.pair],
+    [$._argument_command_value, $._command_definition_pair],
+    [$._argument_command_value, $._chained_match_pattern],
+    [$._argument_command_value, $._chained_test_pattern],
+    [$._command_value, $._argument_command_value],
     [$._method_rest, $._yield_pair_method_rest],
     [$._primary, $.call, $._yield_pair_primary, $._yield_pair_call],
     [$.call, $._yield_pair_call],
@@ -630,25 +640,9 @@ module.exports = grammar({
         $._command_value
       ),
 
-    _command_value: ($) =>
-      choice(
-        alias($._command_not, $.unary),
-        alias($._test_pattern_not, $.unary),
-        alias($._command_method, $.method),
-        alias($._command_singleton_method, $.singleton_method),
-        alias($.command_assignment, $.assignment),
-        alias($.command_operator_assignment, $.operator_assignment),
-        alias($.command_call, $.call),
-        alias($.command_call_with_block, $.call),
-        $._chained_arg,
-        alias($._chained_assignment, $.assignment),
-        alias($._chained_operator_assignment, $.operator_assignment),
-        alias($.return_command, $.return),
-        alias($.yield_command, $.yield),
-        alias($.break_command, $.break),
-        alias($.next_command, $.next),
-        $._arg
-      ),
+    _command_value: ($) => commandValue($, true),
+
+    _argument_command_value: ($) => commandValue($, false),
 
     _chained_match_pattern: ($) =>
       choice(
@@ -1005,7 +999,7 @@ module.exports = grammar({
       prec.left(
         1,
         choice(
-          $._command_value,
+          $._argument_command_value,
           $.splat_argument,
           $.hash_splat_argument,
           $.forward_argument,
@@ -1213,7 +1207,7 @@ module.exports = grammar({
         )
       ),
 
-    _argument: ($) => argument($, choice($._command_value, $.match_pattern, $.test_pattern)),
+    _argument: ($) => argument($, choice($._argument_command_value, $.match_pattern, $.test_pattern)),
 
     forward_argument: () => '...',
     splat_argument: ($) => prec.right(seq(alias($._splat_star, '*'), optional($._arg))),
@@ -1384,7 +1378,8 @@ module.exports = grammar({
 
     unary: ($) => unaryExpression($._arg, choice(alias($._unary_minus, '-'), '+')),
 
-    command_unary: ($) => prec.right(PREC.COMPLEMENT, seq(field('operator', '!'), field('operand', $._command_value))),
+    command_unary: ($) =>
+      prec.right(PREC.COMPLEMENT, seq(field('operator', '!'), field('operand', $._argument_command_value))),
 
     _command_not: ($) =>
       prec.right(
@@ -1394,7 +1389,9 @@ module.exports = grammar({
           field(
             'operand',
             choice(
-              $._command_value,
+              $._argument_command_value,
+              alias($.command_operator_assignment, $.operator_assignment),
+              alias($._chained_operator_assignment, $.operator_assignment),
               alias($.command_unary, $.unary),
               $._command_unary_arg,
               prec.dynamic(3, $.match_pattern),
@@ -2055,5 +2052,32 @@ function methodRest($, bodyExpression) {
         'end'
       )
     )
+  );
+}
+
+/**
+ * @param {GrammarSymbols<string>} $
+ * @param {boolean} allowAssignment
+ */
+function commandValue($, allowAssignment) {
+  return choice(
+    alias($._command_not, $.unary),
+    alias($._test_pattern_not, $.unary),
+    alias($._command_method, $.method),
+    alias($._command_singleton_method, $.singleton_method),
+    ...(allowAssignment
+      ? [alias($.command_assignment, $.assignment), alias($.command_operator_assignment, $.operator_assignment)]
+      : []),
+    alias($.command_call, $.call),
+    alias($.command_call_with_block, $.call),
+    $._chained_arg,
+    ...(allowAssignment
+      ? [alias($._chained_assignment, $.assignment), alias($._chained_operator_assignment, $.operator_assignment)]
+      : []),
+    alias($.return_command, $.return),
+    alias($.yield_command, $.yield),
+    alias($.break_command, $.break),
+    alias($.next_command, $.next),
+    $._arg
   );
 }
