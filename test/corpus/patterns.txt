@@ -3618,3 +3618,135 @@ def f; foo yield not a b => v do end + x => w => z; end
         (as_pattern
           (identifier)
           (identifier))))))
+
+===============================
+reject yield command-pair splat block continuation
+:error
+===============================
+
+def f; return yield a b c *d => v do end + x; end
+
+---
+
+(ERROR)
+
+===============================
+reject yield command-pair hash splat block continuation
+:error
+===============================
+
+def f; return yield a b c **h => v do end + x; end
+
+---
+
+(ERROR)
+
+===============================
+reject yield command-pair block argument block continuation
+:error
+===============================
+
+def f; return yield a b c &blk => v do end + x; end
+
+---
+
+(ERROR)
+
+===============================
+reject yield command-pair binary value block continuation
+:error
+===============================
+
+def f; yield a b *d => v + x do end; end
+
+---
+
+(ERROR)
+
+===============================
+reject yield command-pair endless method value block continuation
+:error
+===============================
+
+def f; yield a b *d => def g = v do end; end
+
+---
+
+(ERROR)
+
+===============================
+yield command-pair values retain explicit block grouping
+===============================
+
+def f; return yield a b c *d => (v do end) + x; end
+def f; yield a b **h => v(x do end); end
+def f; yield a b &blk => def g = (v do end); end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (return
+        (argument_list
+          (yield
+            (argument_list
+              (call
+                (identifier)
+                (argument_list
+                  (pair
+                    (call
+                      (identifier)
+                      (argument_list
+                        (call
+                          (identifier)
+                          (argument_list
+                            (splat_argument
+                              (identifier))))))
+                    (binary
+                      (parenthesized_statements
+                        (call
+                          (identifier)
+                          (do_block)))
+                      (identifier)))))))))))
+  (method
+    (identifier)
+    (body_statement
+      (yield
+        (argument_list
+          (pair
+            (call
+              (identifier)
+              (argument_list
+                (call
+                  (identifier)
+                  (argument_list
+                    (hash_splat_argument
+                      (identifier))))))
+            (call
+              (identifier)
+              (argument_list
+                (call
+                  (identifier)
+                  (do_block)))))))))
+  (method
+    (identifier)
+    (body_statement
+      (yield
+        (argument_list
+          (call
+            (identifier)
+            (argument_list
+              (pair
+                (call
+                  (identifier)
+                  (argument_list
+                    (block_argument
+                      (identifier))))
+                (method
+                  (identifier)
+                  (parenthesized_statements
+                    (call
+                      (identifier)
+                      (do_block))))))))))))

@@ -866,6 +866,26 @@
             "named": true
           },
           {
+            "type": "_nonlocal_variable",
+            "named": true
+          },
+          {
+            "type": "_simple_numeric",
+            "named": true
+          },
+          {
+            "type": "_variable",
+            "named": true
+          },
+          {
+            "type": "array",
+            "named": true
+          },
+          {
+            "type": "begin",
+            "named": true
+          },
+          {
             "type": "break",
             "named": true
           },
@@ -874,7 +894,55 @@
             "named": true
           },
           {
+            "type": "case",
+            "named": true
+          },
+          {
+            "type": "case_match",
+            "named": true
+          },
+          {
+            "type": "chained_string",
+            "named": true
+          },
+          {
+            "type": "character",
+            "named": true
+          },
+          {
+            "type": "class",
+            "named": true
+          },
+          {
+            "type": "delimited_symbol",
+            "named": true
+          },
+          {
             "type": "element_reference",
+            "named": true
+          },
+          {
+            "type": "false",
+            "named": true
+          },
+          {
+            "type": "for",
+            "named": true
+          },
+          {
+            "type": "hash",
+            "named": true
+          },
+          {
+            "type": "heredoc_beginning",
+            "named": true
+          },
+          {
+            "type": "if",
+            "named": true
+          },
+          {
+            "type": "lambda",
             "named": true
           },
           {
@@ -882,11 +950,35 @@
             "named": true
           },
           {
+            "type": "module",
+            "named": true
+          },
+          {
             "type": "next",
             "named": true
           },
           {
+            "type": "nil",
+            "named": true
+          },
+          {
+            "type": "parenthesized_statements",
+            "named": true
+          },
+          {
+            "type": "redo",
+            "named": true
+          },
+          {
+            "type": "regex",
+            "named": true
+          },
+          {
             "type": "rescue_modifier",
+            "named": true
+          },
+          {
+            "type": "retry",
             "named": true
           },
           {
@@ -902,11 +994,55 @@
             "named": true
           },
           {
+            "type": "self",
+            "named": true
+          },
+          {
+            "type": "simple_symbol",
+            "named": true
+          },
+          {
+            "type": "singleton_class",
+            "named": true
+          },
+          {
             "type": "singleton_method",
             "named": true
           },
           {
             "type": "splat_argument",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          },
+          {
+            "type": "string_array",
+            "named": true
+          },
+          {
+            "type": "subshell",
+            "named": true
+          },
+          {
+            "type": "symbol_array",
+            "named": true
+          },
+          {
+            "type": "true",
+            "named": true
+          },
+          {
+            "type": "unless",
+            "named": true
+          },
+          {
+            "type": "until",
+            "named": true
+          },
+          {
+            "type": "while",
             "named": true
           },
           {
@@ -1026,7 +1162,139 @@
             "named": true
           },
           {
+            "type": "_nonlocal_variable",
+            "named": true
+          },
+          {
             "type": "_simple_numeric",
+            "named": true
+          },
+          {
+            "type": "_variable",
+            "named": true
+          },
+          {
+            "type": "array",
+            "named": true
+          },
+          {
+            "type": "begin",
+            "named": true
+          },
+          {
+            "type": "case",
+            "named": true
+          },
+          {
+            "type": "case_match",
+            "named": true
+          },
+          {
+            "type": "chained_string",
+            "named": true
+          },
+          {
+            "type": "character",
+            "named": true
+          },
+          {
+            "type": "class",
+            "named": true
+          },
+          {
+            "type": "delimited_symbol",
+            "named": true
+          },
+          {
+            "type": "false",
+            "named": true
+          },
+          {
+            "type": "for",
+            "named": true
+          },
+          {
+            "type": "hash",
+            "named": true
+          },
+          {
+            "type": "heredoc_beginning",
+            "named": true
+          },
+          {
+            "type": "if",
+            "named": true
+          },
+          {
+            "type": "lambda",
+            "named": true
+          },
+          {
+            "type": "module",
+            "named": true
+          },
+          {
+            "type": "nil",
+            "named": true
+          },
+          {
+            "type": "parenthesized_statements",
+            "named": true
+          },
+          {
+            "type": "redo",
+            "named": true
+          },
+          {
+            "type": "regex",
+            "named": true
+          },
+          {
+            "type": "retry",
+            "named": true
+          },
+          {
+            "type": "self",
+            "named": true
+          },
+          {
+            "type": "simple_symbol",
+            "named": true
+          },
+          {
+            "type": "singleton_class",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          },
+          {
+            "type": "string_array",
+            "named": true
+          },
+          {
+            "type": "subshell",
+            "named": true
+          },
+          {
+            "type": "symbol_array",
+            "named": true
+          },
+          {
+            "type": "true",
+            "named": true
+          },
+          {
+            "type": "unless",
+            "named": true
+          },
+          {
+            "type": "until",
+            "named": true
+          },
+          {
+            "type": "while",
             "named": true
           }
         ]
@@ -1143,6 +1411,142 @@
         "types": [
           {
             "type": "_expression",
+            "named": true
+          },
+          {
+            "type": "_nonlocal_variable",
+            "named": true
+          },
+          {
+            "type": "_simple_numeric",
+            "named": true
+          },
+          {
+            "type": "_variable",
+            "named": true
+          },
+          {
+            "type": "array",
+            "named": true
+          },
+          {
+            "type": "begin",
+            "named": true
+          },
+          {
+            "type": "case",
+            "named": true
+          },
+          {
+            "type": "case_match",
+            "named": true
+          },
+          {
+            "type": "chained_string",
+            "named": true
+          },
+          {
+            "type": "character",
+            "named": true
+          },
+          {
+            "type": "class",
+            "named": true
+          },
+          {
+            "type": "delimited_symbol",
+            "named": true
+          },
+          {
+            "type": "false",
+            "named": true
+          },
+          {
+            "type": "for",
+            "named": true
+          },
+          {
+            "type": "hash",
+            "named": true
+          },
+          {
+            "type": "heredoc_beginning",
+            "named": true
+          },
+          {
+            "type": "if",
+            "named": true
+          },
+          {
+            "type": "lambda",
+            "named": true
+          },
+          {
+            "type": "module",
+            "named": true
+          },
+          {
+            "type": "nil",
+            "named": true
+          },
+          {
+            "type": "parenthesized_statements",
+            "named": true
+          },
+          {
+            "type": "redo",
+            "named": true
+          },
+          {
+            "type": "regex",
+            "named": true
+          },
+          {
+            "type": "retry",
+            "named": true
+          },
+          {
+            "type": "self",
+            "named": true
+          },
+          {
+            "type": "simple_symbol",
+            "named": true
+          },
+          {
+            "type": "singleton_class",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          },
+          {
+            "type": "string_array",
+            "named": true
+          },
+          {
+            "type": "subshell",
+            "named": true
+          },
+          {
+            "type": "symbol_array",
+            "named": true
+          },
+          {
+            "type": "true",
+            "named": true
+          },
+          {
+            "type": "unless",
+            "named": true
+          },
+          {
+            "type": "until",
+            "named": true
+          },
+          {
+            "type": "while",
             "named": true
           }
         ]
@@ -1394,7 +1798,15 @@
         "required": false,
         "types": [
           {
+            "type": "_nonlocal_variable",
+            "named": true
+          },
+          {
             "type": "_primary",
+            "named": true
+          },
+          {
+            "type": "_variable",
             "named": true
           },
           {
@@ -1402,7 +1814,23 @@
             "named": true
           },
           {
+            "type": "false",
+            "named": true
+          },
+          {
+            "type": "nil",
+            "named": true
+          },
+          {
             "type": "scope_resolution",
+            "named": true
+          },
+          {
+            "type": "self",
+            "named": true
+          },
+          {
+            "type": "true",
             "named": true
           }
         ]
@@ -1570,6 +1998,178 @@
           {
             "type": "_arg",
             "named": true
+          },
+          {
+            "type": "_nonlocal_variable",
+            "named": true
+          },
+          {
+            "type": "_simple_numeric",
+            "named": true
+          },
+          {
+            "type": "_variable",
+            "named": true
+          },
+          {
+            "type": "array",
+            "named": true
+          },
+          {
+            "type": "begin",
+            "named": true
+          },
+          {
+            "type": "break",
+            "named": true
+          },
+          {
+            "type": "call",
+            "named": true
+          },
+          {
+            "type": "case",
+            "named": true
+          },
+          {
+            "type": "case_match",
+            "named": true
+          },
+          {
+            "type": "chained_string",
+            "named": true
+          },
+          {
+            "type": "character",
+            "named": true
+          },
+          {
+            "type": "class",
+            "named": true
+          },
+          {
+            "type": "delimited_symbol",
+            "named": true
+          },
+          {
+            "type": "element_reference",
+            "named": true
+          },
+          {
+            "type": "false",
+            "named": true
+          },
+          {
+            "type": "for",
+            "named": true
+          },
+          {
+            "type": "hash",
+            "named": true
+          },
+          {
+            "type": "heredoc_beginning",
+            "named": true
+          },
+          {
+            "type": "if",
+            "named": true
+          },
+          {
+            "type": "lambda",
+            "named": true
+          },
+          {
+            "type": "method",
+            "named": true
+          },
+          {
+            "type": "module",
+            "named": true
+          },
+          {
+            "type": "next",
+            "named": true
+          },
+          {
+            "type": "nil",
+            "named": true
+          },
+          {
+            "type": "parenthesized_statements",
+            "named": true
+          },
+          {
+            "type": "redo",
+            "named": true
+          },
+          {
+            "type": "regex",
+            "named": true
+          },
+          {
+            "type": "retry",
+            "named": true
+          },
+          {
+            "type": "return",
+            "named": true
+          },
+          {
+            "type": "scope_resolution",
+            "named": true
+          },
+          {
+            "type": "self",
+            "named": true
+          },
+          {
+            "type": "simple_symbol",
+            "named": true
+          },
+          {
+            "type": "singleton_class",
+            "named": true
+          },
+          {
+            "type": "singleton_method",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          },
+          {
+            "type": "string_array",
+            "named": true
+          },
+          {
+            "type": "subshell",
+            "named": true
+          },
+          {
+            "type": "symbol_array",
+            "named": true
+          },
+          {
+            "type": "true",
+            "named": true
+          },
+          {
+            "type": "unless",
+            "named": true
+          },
+          {
+            "type": "until",
+            "named": true
+          },
+          {
+            "type": "while",
+            "named": true
+          },
+          {
+            "type": "yield",
+            "named": true
           }
         ]
       },
@@ -1582,7 +2182,55 @@
             "named": true
           },
           {
+            "type": "_nonlocal_variable",
+            "named": true
+          },
+          {
+            "type": "_simple_numeric",
+            "named": true
+          },
+          {
+            "type": "_variable",
+            "named": true
+          },
+          {
+            "type": "array",
+            "named": true
+          },
+          {
+            "type": "begin",
+            "named": true
+          },
+          {
+            "type": "break",
+            "named": true
+          },
+          {
             "type": "call",
+            "named": true
+          },
+          {
+            "type": "case",
+            "named": true
+          },
+          {
+            "type": "case_match",
+            "named": true
+          },
+          {
+            "type": "chained_string",
+            "named": true
+          },
+          {
+            "type": "character",
+            "named": true
+          },
+          {
+            "type": "class",
+            "named": true
+          },
+          {
+            "type": "delimited_symbol",
             "named": true
           },
           {
@@ -1590,7 +2238,119 @@
             "named": true
           },
           {
+            "type": "false",
+            "named": true
+          },
+          {
+            "type": "for",
+            "named": true
+          },
+          {
+            "type": "hash",
+            "named": true
+          },
+          {
+            "type": "heredoc_beginning",
+            "named": true
+          },
+          {
+            "type": "if",
+            "named": true
+          },
+          {
+            "type": "lambda",
+            "named": true
+          },
+          {
+            "type": "method",
+            "named": true
+          },
+          {
+            "type": "module",
+            "named": true
+          },
+          {
+            "type": "next",
+            "named": true
+          },
+          {
+            "type": "nil",
+            "named": true
+          },
+          {
+            "type": "parenthesized_statements",
+            "named": true
+          },
+          {
+            "type": "redo",
+            "named": true
+          },
+          {
+            "type": "regex",
+            "named": true
+          },
+          {
+            "type": "retry",
+            "named": true
+          },
+          {
+            "type": "return",
+            "named": true
+          },
+          {
             "type": "scope_resolution",
+            "named": true
+          },
+          {
+            "type": "self",
+            "named": true
+          },
+          {
+            "type": "simple_symbol",
+            "named": true
+          },
+          {
+            "type": "singleton_class",
+            "named": true
+          },
+          {
+            "type": "singleton_method",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          },
+          {
+            "type": "string_array",
+            "named": true
+          },
+          {
+            "type": "subshell",
+            "named": true
+          },
+          {
+            "type": "symbol_array",
+            "named": true
+          },
+          {
+            "type": "true",
+            "named": true
+          },
+          {
+            "type": "unless",
+            "named": true
+          },
+          {
+            "type": "until",
+            "named": true
+          },
+          {
+            "type": "while",
+            "named": true
+          },
+          {
+            "type": "yield",
             "named": true
           }
         ]
@@ -1601,6 +2361,178 @@
         "types": [
           {
             "type": "_arg",
+            "named": true
+          },
+          {
+            "type": "_nonlocal_variable",
+            "named": true
+          },
+          {
+            "type": "_simple_numeric",
+            "named": true
+          },
+          {
+            "type": "_variable",
+            "named": true
+          },
+          {
+            "type": "array",
+            "named": true
+          },
+          {
+            "type": "begin",
+            "named": true
+          },
+          {
+            "type": "break",
+            "named": true
+          },
+          {
+            "type": "call",
+            "named": true
+          },
+          {
+            "type": "case",
+            "named": true
+          },
+          {
+            "type": "case_match",
+            "named": true
+          },
+          {
+            "type": "chained_string",
+            "named": true
+          },
+          {
+            "type": "character",
+            "named": true
+          },
+          {
+            "type": "class",
+            "named": true
+          },
+          {
+            "type": "delimited_symbol",
+            "named": true
+          },
+          {
+            "type": "element_reference",
+            "named": true
+          },
+          {
+            "type": "false",
+            "named": true
+          },
+          {
+            "type": "for",
+            "named": true
+          },
+          {
+            "type": "hash",
+            "named": true
+          },
+          {
+            "type": "heredoc_beginning",
+            "named": true
+          },
+          {
+            "type": "if",
+            "named": true
+          },
+          {
+            "type": "lambda",
+            "named": true
+          },
+          {
+            "type": "method",
+            "named": true
+          },
+          {
+            "type": "module",
+            "named": true
+          },
+          {
+            "type": "next",
+            "named": true
+          },
+          {
+            "type": "nil",
+            "named": true
+          },
+          {
+            "type": "parenthesized_statements",
+            "named": true
+          },
+          {
+            "type": "redo",
+            "named": true
+          },
+          {
+            "type": "regex",
+            "named": true
+          },
+          {
+            "type": "retry",
+            "named": true
+          },
+          {
+            "type": "return",
+            "named": true
+          },
+          {
+            "type": "scope_resolution",
+            "named": true
+          },
+          {
+            "type": "self",
+            "named": true
+          },
+          {
+            "type": "simple_symbol",
+            "named": true
+          },
+          {
+            "type": "singleton_class",
+            "named": true
+          },
+          {
+            "type": "singleton_method",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          },
+          {
+            "type": "string_array",
+            "named": true
+          },
+          {
+            "type": "subshell",
+            "named": true
+          },
+          {
+            "type": "symbol_array",
+            "named": true
+          },
+          {
+            "type": "true",
+            "named": true
+          },
+          {
+            "type": "unless",
+            "named": true
+          },
+          {
+            "type": "until",
+            "named": true
+          },
+          {
+            "type": "while",
+            "named": true
+          },
+          {
+            "type": "yield",
             "named": true
           }
         ]
@@ -1773,7 +2705,15 @@
         "required": true,
         "types": [
           {
+            "type": "_nonlocal_variable",
+            "named": true
+          },
+          {
             "type": "_primary",
+            "named": true
+          },
+          {
+            "type": "_variable",
             "named": true
           },
           {
@@ -1781,7 +2721,23 @@
             "named": true
           },
           {
+            "type": "false",
+            "named": true
+          },
+          {
+            "type": "nil",
+            "named": true
+          },
+          {
             "type": "scope_resolution",
+            "named": true
+          },
+          {
+            "type": "self",
+            "named": true
+          },
+          {
+            "type": "true",
             "named": true
           }
         ]
@@ -2624,7 +3580,31 @@
             "named": true
           },
           {
+            "type": "_nonlocal_variable",
+            "named": true
+          },
+          {
+            "type": "_simple_numeric",
+            "named": true
+          },
+          {
+            "type": "_variable",
+            "named": true
+          },
+          {
+            "type": "array",
+            "named": true
+          },
+          {
+            "type": "begin",
+            "named": true
+          },
+          {
             "type": "body_statement",
+            "named": true
+          },
+          {
+            "type": "break",
             "named": true
           },
           {
@@ -2632,7 +3612,55 @@
             "named": true
           },
           {
+            "type": "case",
+            "named": true
+          },
+          {
+            "type": "case_match",
+            "named": true
+          },
+          {
+            "type": "chained_string",
+            "named": true
+          },
+          {
+            "type": "character",
+            "named": true
+          },
+          {
+            "type": "class",
+            "named": true
+          },
+          {
+            "type": "delimited_symbol",
+            "named": true
+          },
+          {
             "type": "element_reference",
+            "named": true
+          },
+          {
+            "type": "false",
+            "named": true
+          },
+          {
+            "type": "for",
+            "named": true
+          },
+          {
+            "type": "hash",
+            "named": true
+          },
+          {
+            "type": "heredoc_beginning",
+            "named": true
+          },
+          {
+            "type": "if",
+            "named": true
+          },
+          {
+            "type": "lambda",
             "named": true
           },
           {
@@ -2640,7 +3668,35 @@
             "named": true
           },
           {
+            "type": "module",
+            "named": true
+          },
+          {
+            "type": "next",
+            "named": true
+          },
+          {
+            "type": "nil",
+            "named": true
+          },
+          {
+            "type": "parenthesized_statements",
+            "named": true
+          },
+          {
+            "type": "redo",
+            "named": true
+          },
+          {
+            "type": "regex",
+            "named": true
+          },
+          {
             "type": "rescue_modifier",
+            "named": true
+          },
+          {
+            "type": "retry",
             "named": true
           },
           {
@@ -2652,7 +3708,51 @@
             "named": true
           },
           {
+            "type": "self",
+            "named": true
+          },
+          {
+            "type": "simple_symbol",
+            "named": true
+          },
+          {
+            "type": "singleton_class",
+            "named": true
+          },
+          {
             "type": "singleton_method",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          },
+          {
+            "type": "string_array",
+            "named": true
+          },
+          {
+            "type": "subshell",
+            "named": true
+          },
+          {
+            "type": "symbol_array",
+            "named": true
+          },
+          {
+            "type": "true",
+            "named": true
+          },
+          {
+            "type": "unless",
+            "named": true
+          },
+          {
+            "type": "until",
+            "named": true
+          },
+          {
+            "type": "while",
             "named": true
           },
           {
@@ -2866,6 +3966,26 @@
             "named": true
           },
           {
+            "type": "_nonlocal_variable",
+            "named": true
+          },
+          {
+            "type": "_simple_numeric",
+            "named": true
+          },
+          {
+            "type": "_variable",
+            "named": true
+          },
+          {
+            "type": "array",
+            "named": true
+          },
+          {
+            "type": "begin",
+            "named": true
+          },
+          {
             "type": "break",
             "named": true
           },
@@ -2874,7 +3994,55 @@
             "named": true
           },
           {
+            "type": "case",
+            "named": true
+          },
+          {
+            "type": "case_match",
+            "named": true
+          },
+          {
+            "type": "chained_string",
+            "named": true
+          },
+          {
+            "type": "character",
+            "named": true
+          },
+          {
+            "type": "class",
+            "named": true
+          },
+          {
+            "type": "delimited_symbol",
+            "named": true
+          },
+          {
             "type": "element_reference",
+            "named": true
+          },
+          {
+            "type": "false",
+            "named": true
+          },
+          {
+            "type": "for",
+            "named": true
+          },
+          {
+            "type": "hash",
+            "named": true
+          },
+          {
+            "type": "heredoc_beginning",
+            "named": true
+          },
+          {
+            "type": "if",
+            "named": true
+          },
+          {
+            "type": "lambda",
             "named": true
           },
           {
@@ -2882,11 +4050,35 @@
             "named": true
           },
           {
+            "type": "module",
+            "named": true
+          },
+          {
             "type": "next",
             "named": true
           },
           {
+            "type": "nil",
+            "named": true
+          },
+          {
+            "type": "parenthesized_statements",
+            "named": true
+          },
+          {
+            "type": "redo",
+            "named": true
+          },
+          {
+            "type": "regex",
+            "named": true
+          },
+          {
             "type": "rescue_modifier",
+            "named": true
+          },
+          {
+            "type": "retry",
             "named": true
           },
           {
@@ -2898,7 +4090,51 @@
             "named": true
           },
           {
+            "type": "self",
+            "named": true
+          },
+          {
+            "type": "simple_symbol",
+            "named": true
+          },
+          {
+            "type": "singleton_class",
+            "named": true
+          },
+          {
             "type": "singleton_method",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          },
+          {
+            "type": "string_array",
+            "named": true
+          },
+          {
+            "type": "subshell",
+            "named": true
+          },
+          {
+            "type": "symbol_array",
+            "named": true
+          },
+          {
+            "type": "true",
+            "named": true
+          },
+          {
+            "type": "unless",
+            "named": true
+          },
+          {
+            "type": "until",
+            "named": true
+          },
+          {
+            "type": "while",
             "named": true
           },
           {
@@ -2987,6 +4223,178 @@
         "types": [
           {
             "type": "_arg",
+            "named": true
+          },
+          {
+            "type": "_nonlocal_variable",
+            "named": true
+          },
+          {
+            "type": "_simple_numeric",
+            "named": true
+          },
+          {
+            "type": "_variable",
+            "named": true
+          },
+          {
+            "type": "array",
+            "named": true
+          },
+          {
+            "type": "begin",
+            "named": true
+          },
+          {
+            "type": "break",
+            "named": true
+          },
+          {
+            "type": "call",
+            "named": true
+          },
+          {
+            "type": "case",
+            "named": true
+          },
+          {
+            "type": "case_match",
+            "named": true
+          },
+          {
+            "type": "chained_string",
+            "named": true
+          },
+          {
+            "type": "character",
+            "named": true
+          },
+          {
+            "type": "class",
+            "named": true
+          },
+          {
+            "type": "delimited_symbol",
+            "named": true
+          },
+          {
+            "type": "element_reference",
+            "named": true
+          },
+          {
+            "type": "false",
+            "named": true
+          },
+          {
+            "type": "for",
+            "named": true
+          },
+          {
+            "type": "hash",
+            "named": true
+          },
+          {
+            "type": "heredoc_beginning",
+            "named": true
+          },
+          {
+            "type": "if",
+            "named": true
+          },
+          {
+            "type": "lambda",
+            "named": true
+          },
+          {
+            "type": "method",
+            "named": true
+          },
+          {
+            "type": "module",
+            "named": true
+          },
+          {
+            "type": "next",
+            "named": true
+          },
+          {
+            "type": "nil",
+            "named": true
+          },
+          {
+            "type": "parenthesized_statements",
+            "named": true
+          },
+          {
+            "type": "redo",
+            "named": true
+          },
+          {
+            "type": "regex",
+            "named": true
+          },
+          {
+            "type": "retry",
+            "named": true
+          },
+          {
+            "type": "return",
+            "named": true
+          },
+          {
+            "type": "scope_resolution",
+            "named": true
+          },
+          {
+            "type": "self",
+            "named": true
+          },
+          {
+            "type": "simple_symbol",
+            "named": true
+          },
+          {
+            "type": "singleton_class",
+            "named": true
+          },
+          {
+            "type": "singleton_method",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          },
+          {
+            "type": "string_array",
+            "named": true
+          },
+          {
+            "type": "subshell",
+            "named": true
+          },
+          {
+            "type": "symbol_array",
+            "named": true
+          },
+          {
+            "type": "true",
+            "named": true
+          },
+          {
+            "type": "unless",
+            "named": true
+          },
+          {
+            "type": "until",
+            "named": true
+          },
+          {
+            "type": "while",
+            "named": true
+          },
+          {
+            "type": "yield",
             "named": true
           }
         ]
@@ -3083,7 +4491,27 @@
             "named": true
           },
           {
+            "type": "_nonlocal_variable",
+            "named": true
+          },
+          {
             "type": "_pattern_primitive",
+            "named": true
+          },
+          {
+            "type": "_variable",
+            "named": true
+          },
+          {
+            "type": "array",
+            "named": true
+          },
+          {
+            "type": "begin",
+            "named": true
+          },
+          {
+            "type": "break",
             "named": true
           },
           {
@@ -3091,11 +4519,95 @@
             "named": true
           },
           {
+            "type": "case",
+            "named": true
+          },
+          {
+            "type": "case_match",
+            "named": true
+          },
+          {
+            "type": "chained_string",
+            "named": true
+          },
+          {
+            "type": "character",
+            "named": true
+          },
+          {
+            "type": "class",
+            "named": true
+          },
+          {
             "type": "element_reference",
             "named": true
           },
           {
+            "type": "for",
+            "named": true
+          },
+          {
+            "type": "hash",
+            "named": true
+          },
+          {
+            "type": "if",
+            "named": true
+          },
+          {
+            "type": "method",
+            "named": true
+          },
+          {
+            "type": "module",
+            "named": true
+          },
+          {
+            "type": "next",
+            "named": true
+          },
+          {
+            "type": "parenthesized_statements",
+            "named": true
+          },
+          {
+            "type": "redo",
+            "named": true
+          },
+          {
+            "type": "retry",
+            "named": true
+          },
+          {
+            "type": "return",
+            "named": true
+          },
+          {
             "type": "scope_resolution",
+            "named": true
+          },
+          {
+            "type": "singleton_class",
+            "named": true
+          },
+          {
+            "type": "singleton_method",
+            "named": true
+          },
+          {
+            "type": "unless",
+            "named": true
+          },
+          {
+            "type": "until",
+            "named": true
+          },
+          {
+            "type": "while",
+            "named": true
+          },
+          {
+            "type": "yield",
             "named": true
           }
         ]
@@ -3109,7 +4621,123 @@
             "named": true
           },
           {
+            "type": "_nonlocal_variable",
+            "named": true
+          },
+          {
             "type": "_pattern_primitive",
+            "named": true
+          },
+          {
+            "type": "_variable",
+            "named": true
+          },
+          {
+            "type": "array",
+            "named": true
+          },
+          {
+            "type": "begin",
+            "named": true
+          },
+          {
+            "type": "break",
+            "named": true
+          },
+          {
+            "type": "call",
+            "named": true
+          },
+          {
+            "type": "case",
+            "named": true
+          },
+          {
+            "type": "case_match",
+            "named": true
+          },
+          {
+            "type": "chained_string",
+            "named": true
+          },
+          {
+            "type": "character",
+            "named": true
+          },
+          {
+            "type": "class",
+            "named": true
+          },
+          {
+            "type": "element_reference",
+            "named": true
+          },
+          {
+            "type": "for",
+            "named": true
+          },
+          {
+            "type": "hash",
+            "named": true
+          },
+          {
+            "type": "if",
+            "named": true
+          },
+          {
+            "type": "method",
+            "named": true
+          },
+          {
+            "type": "module",
+            "named": true
+          },
+          {
+            "type": "next",
+            "named": true
+          },
+          {
+            "type": "parenthesized_statements",
+            "named": true
+          },
+          {
+            "type": "redo",
+            "named": true
+          },
+          {
+            "type": "retry",
+            "named": true
+          },
+          {
+            "type": "return",
+            "named": true
+          },
+          {
+            "type": "scope_resolution",
+            "named": true
+          },
+          {
+            "type": "singleton_class",
+            "named": true
+          },
+          {
+            "type": "singleton_method",
+            "named": true
+          },
+          {
+            "type": "unless",
+            "named": true
+          },
+          {
+            "type": "until",
+            "named": true
+          },
+          {
+            "type": "while",
+            "named": true
+          },
+          {
+            "type": "yield",
             "named": true
           }
         ]
@@ -3236,7 +4864,27 @@
             "named": true
           },
           {
+            "type": "_nonlocal_variable",
+            "named": true
+          },
+          {
+            "type": "_simple_numeric",
+            "named": true
+          },
+          {
             "type": "_statement",
+            "named": true
+          },
+          {
+            "type": "_variable",
+            "named": true
+          },
+          {
+            "type": "array",
+            "named": true
+          },
+          {
+            "type": "begin",
             "named": true
           },
           {
@@ -3248,7 +4896,55 @@
             "named": true
           },
           {
+            "type": "case",
+            "named": true
+          },
+          {
+            "type": "case_match",
+            "named": true
+          },
+          {
+            "type": "chained_string",
+            "named": true
+          },
+          {
+            "type": "character",
+            "named": true
+          },
+          {
+            "type": "class",
+            "named": true
+          },
+          {
+            "type": "delimited_symbol",
+            "named": true
+          },
+          {
             "type": "element_reference",
+            "named": true
+          },
+          {
+            "type": "false",
+            "named": true
+          },
+          {
+            "type": "for",
+            "named": true
+          },
+          {
+            "type": "hash",
+            "named": true
+          },
+          {
+            "type": "heredoc_beginning",
+            "named": true
+          },
+          {
+            "type": "if",
+            "named": true
+          },
+          {
+            "type": "lambda",
             "named": true
           },
           {
@@ -3256,7 +4952,31 @@
             "named": true
           },
           {
+            "type": "module",
+            "named": true
+          },
+          {
             "type": "next",
+            "named": true
+          },
+          {
+            "type": "nil",
+            "named": true
+          },
+          {
+            "type": "parenthesized_statements",
+            "named": true
+          },
+          {
+            "type": "redo",
+            "named": true
+          },
+          {
+            "type": "regex",
+            "named": true
+          },
+          {
+            "type": "retry",
             "named": true
           },
           {
@@ -3268,7 +4988,51 @@
             "named": true
           },
           {
+            "type": "self",
+            "named": true
+          },
+          {
+            "type": "simple_symbol",
+            "named": true
+          },
+          {
+            "type": "singleton_class",
+            "named": true
+          },
+          {
             "type": "singleton_method",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          },
+          {
+            "type": "string_array",
+            "named": true
+          },
+          {
+            "type": "subshell",
+            "named": true
+          },
+          {
+            "type": "symbol_array",
+            "named": true
+          },
+          {
+            "type": "true",
+            "named": true
+          },
+          {
+            "type": "unless",
+            "named": true
+          },
+          {
+            "type": "until",
+            "named": true
+          },
+          {
+            "type": "while",
             "named": true
           },
           {
@@ -3283,6 +5047,142 @@
         "types": [
           {
             "type": "_expression",
+            "named": true
+          },
+          {
+            "type": "_nonlocal_variable",
+            "named": true
+          },
+          {
+            "type": "_simple_numeric",
+            "named": true
+          },
+          {
+            "type": "_variable",
+            "named": true
+          },
+          {
+            "type": "array",
+            "named": true
+          },
+          {
+            "type": "begin",
+            "named": true
+          },
+          {
+            "type": "case",
+            "named": true
+          },
+          {
+            "type": "case_match",
+            "named": true
+          },
+          {
+            "type": "chained_string",
+            "named": true
+          },
+          {
+            "type": "character",
+            "named": true
+          },
+          {
+            "type": "class",
+            "named": true
+          },
+          {
+            "type": "delimited_symbol",
+            "named": true
+          },
+          {
+            "type": "false",
+            "named": true
+          },
+          {
+            "type": "for",
+            "named": true
+          },
+          {
+            "type": "hash",
+            "named": true
+          },
+          {
+            "type": "heredoc_beginning",
+            "named": true
+          },
+          {
+            "type": "if",
+            "named": true
+          },
+          {
+            "type": "lambda",
+            "named": true
+          },
+          {
+            "type": "module",
+            "named": true
+          },
+          {
+            "type": "nil",
+            "named": true
+          },
+          {
+            "type": "parenthesized_statements",
+            "named": true
+          },
+          {
+            "type": "redo",
+            "named": true
+          },
+          {
+            "type": "regex",
+            "named": true
+          },
+          {
+            "type": "retry",
+            "named": true
+          },
+          {
+            "type": "self",
+            "named": true
+          },
+          {
+            "type": "simple_symbol",
+            "named": true
+          },
+          {
+            "type": "singleton_class",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          },
+          {
+            "type": "string_array",
+            "named": true
+          },
+          {
+            "type": "subshell",
+            "named": true
+          },
+          {
+            "type": "symbol_array",
+            "named": true
+          },
+          {
+            "type": "true",
+            "named": true
+          },
+          {
+            "type": "unless",
+            "named": true
+          },
+          {
+            "type": "until",
+            "named": true
+          },
+          {
+            "type": "while",
             "named": true
           }
         ]
@@ -3347,7 +5247,179 @@
           "named": true
         },
         {
+          "type": "_nonlocal_variable",
+          "named": true
+        },
+        {
+          "type": "_simple_numeric",
+          "named": true
+        },
+        {
+          "type": "_variable",
+          "named": true
+        },
+        {
+          "type": "array",
+          "named": true
+        },
+        {
+          "type": "begin",
+          "named": true
+        },
+        {
+          "type": "break",
+          "named": true
+        },
+        {
+          "type": "call",
+          "named": true
+        },
+        {
+          "type": "case",
+          "named": true
+        },
+        {
+          "type": "case_match",
+          "named": true
+        },
+        {
+          "type": "chained_string",
+          "named": true
+        },
+        {
+          "type": "character",
+          "named": true
+        },
+        {
+          "type": "class",
+          "named": true
+        },
+        {
+          "type": "delimited_symbol",
+          "named": true
+        },
+        {
+          "type": "element_reference",
+          "named": true
+        },
+        {
+          "type": "false",
+          "named": true
+        },
+        {
+          "type": "for",
+          "named": true
+        },
+        {
+          "type": "hash",
+          "named": true
+        },
+        {
+          "type": "heredoc_beginning",
+          "named": true
+        },
+        {
+          "type": "if",
+          "named": true
+        },
+        {
+          "type": "lambda",
+          "named": true
+        },
+        {
+          "type": "method",
+          "named": true
+        },
+        {
+          "type": "module",
+          "named": true
+        },
+        {
+          "type": "next",
+          "named": true
+        },
+        {
+          "type": "nil",
+          "named": true
+        },
+        {
+          "type": "parenthesized_statements",
+          "named": true
+        },
+        {
+          "type": "redo",
+          "named": true
+        },
+        {
+          "type": "regex",
+          "named": true
+        },
+        {
+          "type": "retry",
+          "named": true
+        },
+        {
+          "type": "return",
+          "named": true
+        },
+        {
+          "type": "scope_resolution",
+          "named": true
+        },
+        {
+          "type": "self",
+          "named": true
+        },
+        {
+          "type": "simple_symbol",
+          "named": true
+        },
+        {
+          "type": "singleton_class",
+          "named": true
+        },
+        {
+          "type": "singleton_method",
+          "named": true
+        },
+        {
           "type": "splat_argument",
+          "named": true
+        },
+        {
+          "type": "string",
+          "named": true
+        },
+        {
+          "type": "string_array",
+          "named": true
+        },
+        {
+          "type": "subshell",
+          "named": true
+        },
+        {
+          "type": "symbol_array",
+          "named": true
+        },
+        {
+          "type": "true",
+          "named": true
+        },
+        {
+          "type": "unless",
+          "named": true
+        },
+        {
+          "type": "until",
+          "named": true
+        },
+        {
+          "type": "while",
+          "named": true
+        },
+        {
+          "type": "yield",
           "named": true
         }
       ]
@@ -3372,6 +5444,10 @@
         "required": false,
         "types": [
           {
+            "type": "_nonlocal_variable",
+            "named": true
+          },
+          {
             "type": "_pattern_constant",
             "named": true
           },
@@ -3380,7 +5456,27 @@
             "named": true
           },
           {
+            "type": "_variable",
+            "named": true
+          },
+          {
             "type": "element_reference",
+            "named": true
+          },
+          {
+            "type": "false",
+            "named": true
+          },
+          {
+            "type": "nil",
+            "named": true
+          },
+          {
+            "type": "self",
+            "named": true
+          },
+          {
+            "type": "true",
             "named": true
           }
         ]
@@ -3442,7 +5538,31 @@
             "named": true
           },
           {
+            "type": "_nonlocal_variable",
+            "named": true
+          },
+          {
+            "type": "_simple_numeric",
+            "named": true
+          },
+          {
+            "type": "_variable",
+            "named": true
+          },
+          {
+            "type": "array",
+            "named": true
+          },
+          {
+            "type": "begin",
+            "named": true
+          },
+          {
             "type": "body_statement",
+            "named": true
+          },
+          {
+            "type": "break",
             "named": true
           },
           {
@@ -3450,7 +5570,55 @@
             "named": true
           },
           {
+            "type": "case",
+            "named": true
+          },
+          {
+            "type": "case_match",
+            "named": true
+          },
+          {
+            "type": "chained_string",
+            "named": true
+          },
+          {
+            "type": "character",
+            "named": true
+          },
+          {
+            "type": "class",
+            "named": true
+          },
+          {
+            "type": "delimited_symbol",
+            "named": true
+          },
+          {
             "type": "element_reference",
+            "named": true
+          },
+          {
+            "type": "false",
+            "named": true
+          },
+          {
+            "type": "for",
+            "named": true
+          },
+          {
+            "type": "hash",
+            "named": true
+          },
+          {
+            "type": "heredoc_beginning",
+            "named": true
+          },
+          {
+            "type": "if",
+            "named": true
+          },
+          {
+            "type": "lambda",
             "named": true
           },
           {
@@ -3458,7 +5626,35 @@
             "named": true
           },
           {
+            "type": "module",
+            "named": true
+          },
+          {
+            "type": "next",
+            "named": true
+          },
+          {
+            "type": "nil",
+            "named": true
+          },
+          {
+            "type": "parenthesized_statements",
+            "named": true
+          },
+          {
+            "type": "redo",
+            "named": true
+          },
+          {
+            "type": "regex",
+            "named": true
+          },
+          {
             "type": "rescue_modifier",
+            "named": true
+          },
+          {
+            "type": "retry",
             "named": true
           },
           {
@@ -3470,7 +5666,51 @@
             "named": true
           },
           {
+            "type": "self",
+            "named": true
+          },
+          {
+            "type": "simple_symbol",
+            "named": true
+          },
+          {
+            "type": "singleton_class",
+            "named": true
+          },
+          {
             "type": "singleton_method",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          },
+          {
+            "type": "string_array",
+            "named": true
+          },
+          {
+            "type": "subshell",
+            "named": true
+          },
+          {
+            "type": "symbol_array",
+            "named": true
+          },
+          {
+            "type": "true",
+            "named": true
+          },
+          {
+            "type": "unless",
+            "named": true
+          },
+          {
+            "type": "until",
+            "named": true
+          },
+          {
+            "type": "while",
             "named": true
           },
           {
@@ -3533,6 +5773,178 @@
       "types": [
         {
           "type": "_arg",
+          "named": true
+        },
+        {
+          "type": "_nonlocal_variable",
+          "named": true
+        },
+        {
+          "type": "_simple_numeric",
+          "named": true
+        },
+        {
+          "type": "_variable",
+          "named": true
+        },
+        {
+          "type": "array",
+          "named": true
+        },
+        {
+          "type": "begin",
+          "named": true
+        },
+        {
+          "type": "break",
+          "named": true
+        },
+        {
+          "type": "call",
+          "named": true
+        },
+        {
+          "type": "case",
+          "named": true
+        },
+        {
+          "type": "case_match",
+          "named": true
+        },
+        {
+          "type": "chained_string",
+          "named": true
+        },
+        {
+          "type": "character",
+          "named": true
+        },
+        {
+          "type": "class",
+          "named": true
+        },
+        {
+          "type": "delimited_symbol",
+          "named": true
+        },
+        {
+          "type": "element_reference",
+          "named": true
+        },
+        {
+          "type": "false",
+          "named": true
+        },
+        {
+          "type": "for",
+          "named": true
+        },
+        {
+          "type": "hash",
+          "named": true
+        },
+        {
+          "type": "heredoc_beginning",
+          "named": true
+        },
+        {
+          "type": "if",
+          "named": true
+        },
+        {
+          "type": "lambda",
+          "named": true
+        },
+        {
+          "type": "method",
+          "named": true
+        },
+        {
+          "type": "module",
+          "named": true
+        },
+        {
+          "type": "next",
+          "named": true
+        },
+        {
+          "type": "nil",
+          "named": true
+        },
+        {
+          "type": "parenthesized_statements",
+          "named": true
+        },
+        {
+          "type": "redo",
+          "named": true
+        },
+        {
+          "type": "regex",
+          "named": true
+        },
+        {
+          "type": "retry",
+          "named": true
+        },
+        {
+          "type": "return",
+          "named": true
+        },
+        {
+          "type": "scope_resolution",
+          "named": true
+        },
+        {
+          "type": "self",
+          "named": true
+        },
+        {
+          "type": "simple_symbol",
+          "named": true
+        },
+        {
+          "type": "singleton_class",
+          "named": true
+        },
+        {
+          "type": "singleton_method",
+          "named": true
+        },
+        {
+          "type": "string",
+          "named": true
+        },
+        {
+          "type": "string_array",
+          "named": true
+        },
+        {
+          "type": "subshell",
+          "named": true
+        },
+        {
+          "type": "symbol_array",
+          "named": true
+        },
+        {
+          "type": "true",
+          "named": true
+        },
+        {
+          "type": "unless",
+          "named": true
+        },
+        {
+          "type": "until",
+          "named": true
+        },
+        {
+          "type": "while",
+          "named": true
+        },
+        {
+          "type": "yield",
           "named": true
         }
       ]
@@ -3751,11 +6163,139 @@
             "named": true
           },
           {
+            "type": "_nonlocal_variable",
+            "named": true
+          },
+          {
             "type": "_simple_numeric",
             "named": true
           },
           {
+            "type": "_variable",
+            "named": true
+          },
+          {
+            "type": "array",
+            "named": true
+          },
+          {
+            "type": "begin",
+            "named": true
+          },
+          {
+            "type": "case",
+            "named": true
+          },
+          {
+            "type": "case_match",
+            "named": true
+          },
+          {
+            "type": "chained_string",
+            "named": true
+          },
+          {
+            "type": "character",
+            "named": true
+          },
+          {
+            "type": "class",
+            "named": true
+          },
+          {
+            "type": "delimited_symbol",
+            "named": true
+          },
+          {
+            "type": "false",
+            "named": true
+          },
+          {
+            "type": "for",
+            "named": true
+          },
+          {
+            "type": "hash",
+            "named": true
+          },
+          {
+            "type": "heredoc_beginning",
+            "named": true
+          },
+          {
+            "type": "if",
+            "named": true
+          },
+          {
+            "type": "lambda",
+            "named": true
+          },
+          {
+            "type": "module",
+            "named": true
+          },
+          {
+            "type": "nil",
+            "named": true
+          },
+          {
             "type": "parenthesized_statements",
+            "named": true
+          },
+          {
+            "type": "redo",
+            "named": true
+          },
+          {
+            "type": "regex",
+            "named": true
+          },
+          {
+            "type": "retry",
+            "named": true
+          },
+          {
+            "type": "self",
+            "named": true
+          },
+          {
+            "type": "simple_symbol",
+            "named": true
+          },
+          {
+            "type": "singleton_class",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          },
+          {
+            "type": "string_array",
+            "named": true
+          },
+          {
+            "type": "subshell",
+            "named": true
+          },
+          {
+            "type": "symbol_array",
+            "named": true
+          },
+          {
+            "type": "true",
+            "named": true
+          },
+          {
+            "type": "unless",
+            "named": true
+          },
+          {
+            "type": "until",
+            "named": true
+          },
+          {
+            "type": "while",
             "named": true
           }
         ]

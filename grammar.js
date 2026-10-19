@@ -42,7 +42,7 @@ const ALPHA_CHAR = /[^\x00-\x1F\s0-9:;`"'@$#.,|^&<=>+\-*/\\%?!~()\[\]{}]/;
 // oxlint-disable-next-line unicorn/prefer-module -- This package is CommonJS, so tree-sitter loads grammar.js as CommonJS.
 module.exports = grammar({
   name: 'ruby',
-  inline: ($) => [$._arg_rhs, $._call_operator],
+  inline: ($) => [$._arg_rhs, $._yield_pair_arg_rhs, $._call_operator],
   externals: ($) => [
     $._line_break,
     $._no_line_break,
@@ -93,6 +93,17 @@ module.exports = grammar({
   reserved: { global: () => [], variables: () => ['in'], methodNames: () => [] },
 
   conflicts: ($) => [
+    [$._method_rest, $._yield_pair_method_rest],
+    [$._primary, $.call, $._yield_pair_primary, $._yield_pair_call],
+    [$.call, $._yield_pair_call],
+    [$._yield_pair_range, $.range],
+    [$.scope_resolution, $._yield_pair_scope_resolution],
+    [$._yield_pair_primary, $._yield_pair_call],
+    [$._yield_pair_lhs, $._lhs],
+    [$.call, $._yield_pair_call, $._variable],
+    [$._primary, $.call, $._yield_pair_call],
+    [$._yield_pair_rest_assignment, $.rest_assignment],
+    [$._primary, $._yield_pair_primary],
     [$._command_pair_key_arguments, $._yield_command_pair_key_arguments],
     [$._yield_argument_list, $._yield_call_pair_key_arguments],
     [$.command_call, $._command_pair, $._yield_command_pair],
@@ -193,23 +204,7 @@ module.exports = grammar({
 
     singleton_method: ($) => singletonMethod($, $._method_rest),
 
-    _method_rest: ($) =>
-      seq(
-        field('name', $._method_name),
-        choice(
-          $._body_expr,
-          seq(
-            field('parameters', alias($.parameters, $.method_parameters)),
-            choice(seq(optional($._terminator), optional(field('body', $.body_statement)), 'end'), $._body_expr)
-          ),
-          seq(
-            optional(field('parameters', alias($.bare_parameters, $.method_parameters))),
-            $._terminator,
-            optional(field('body', $.body_statement)),
-            'end'
-          )
-        )
-      ),
+    _method_rest: ($) => methodRest($, $._body_expr),
 
     rescue_modifier_arg: ($) => prec(PREC.RESCUE, seq(field('body', $._arg), 'rescue', field('handler', $._arg))),
 
@@ -788,46 +783,7 @@ module.exports = grammar({
         )
       ),
 
-    _primary: ($) =>
-      choice(
-        prec(1, $.super),
-        $.parenthesized_statements,
-        $._lhs,
-        alias($._function_identifier_call, $.call),
-        $.call,
-        $.array,
-        $.string_array,
-        $.symbol_array,
-        $.hash,
-        $.subshell,
-        $._literal,
-        $.string,
-        $.character,
-        $.chained_string,
-        $.regex,
-        $.lambda,
-        $.method,
-        $.singleton_method,
-        $.class,
-        $.singleton_class,
-        $.module,
-        $.begin,
-        $.while,
-        $.until,
-        $.if,
-        $.unless,
-        $.for,
-        $.case,
-        $.case_match,
-        $.return,
-        $.yield,
-        $.break,
-        $.next,
-        $.redo,
-        $.retry,
-        alias($.parenthesized_unary, $.unary),
-        $.heredoc_beginning
-      ),
+    _primary: ($) => primaryExpression($, $._lhs, $.call, $.method, $.singleton_method),
 
     parenthesized_statements: ($) => seq('(', optional($._statements), ')'),
 
@@ -937,25 +893,7 @@ module.exports = grammar({
       );
     },
 
-    call: ($) => {
-      const receiver = choice($._call, field('method', choice($._variable, $._function_identifier, $.super)));
-
-      const args = field('arguments', $.argument_list);
-      const receiverArguments = seq(
-        choice(receiver, prec.left(PREC.CALL, seq(field('receiver', $._primary), field('operator', $._call_operator)))),
-        args
-      );
-
-      const block = field('block', $.block);
-      const doBlock = field('block', $.do_block);
-      return choice(
-        receiverArguments,
-        prec(PREC.CURLY_BLOCK, seq(receiverArguments, block)),
-        prec(PREC.DO_BLOCK, seq(receiverArguments, doBlock)),
-        prec(PREC.CURLY_BLOCK, seq(receiver, block)),
-        prec(PREC.DO_BLOCK, seq(receiver, doBlock))
-      );
-    },
+    call: ($) => callExpression($, $._primary, $._call),
 
     _chained_command_argument_list: ($) =>
       prec.right(choice(commaSep1($._command_argument), $._signed_command_argument_list)),
@@ -1079,6 +1017,145 @@ module.exports = grammar({
       ),
 
     _command_pair: ($) => commandPair($, $._command_pair_key),
+
+    _yield_pair_arg: ($) =>
+      choice(
+        alias($._yield_pair_unary_minus_pow, $.unary),
+        $._yield_pair_primary,
+        alias($._yield_pair_assignment, $.assignment),
+        alias($._yield_pair_operator_assignment, $.operator_assignment),
+        alias($._yield_pair_conditional, $.conditional),
+        alias($._yield_pair_range, $.range),
+        alias($._yield_pair_binary, $.binary),
+        alias($._yield_pair_unary, $.unary)
+      ),
+
+    _yield_pair_primary: ($) =>
+      primaryExpression(
+        $,
+        $._yield_pair_lhs,
+        alias($._yield_pair_call, $.call),
+        alias($._yield_pair_method, $.method),
+        alias($._yield_pair_singleton_method, $.singleton_method)
+      ),
+
+    _yield_pair_lhs: ($) =>
+      leftHandSide(
+        $,
+        alias($._yield_pair_scope_resolution, $.scope_resolution),
+        alias($._yield_pair_element_reference, $.element_reference),
+        alias($._yield_pair_member, $.call)
+      ),
+
+    _yield_pair_member: ($) =>
+      prec.left(
+        PREC.CALL,
+        seq(
+          field('receiver', $._yield_pair_primary),
+          field('operator', $._call_operator),
+          field('method', choice($.identifier, $.operator, $.constant, $._function_identifier))
+        )
+      ),
+
+    _yield_pair_call: ($) => callExpression($, $._yield_pair_primary, $._yield_pair_member, false),
+
+    _yield_pair_element_reference: ($) => elementReference($, $._yield_pair_primary),
+
+    _yield_pair_scope_resolution: ($) =>
+      prec.left(
+        PREC.CALL + 1,
+        seq(choice('::', seq(field('scope', $._yield_pair_primary), token.immediate('::'))), field('name', $.constant))
+      ),
+
+    _yield_pair_assignment: ($) =>
+      prec.right(
+        PREC.ASSIGN,
+        choice(
+          seq(
+            field('left', choice($._yield_pair_lhs, alias($._yield_pair_left_assignment_list, $.left_assignment_list))),
+            '=',
+            field(
+              'right',
+              choice(
+                $._yield_pair_arg_rhs,
+                alias($._yield_pair_splat_argument, $.splat_argument),
+                alias($._yield_pair_right_assignment_list, $.right_assignment_list)
+              )
+            )
+          )
+        )
+      ),
+
+    _yield_pair_operator_assignment: ($) =>
+      prec.right(
+        PREC.ASSIGN,
+        seq(
+          field('left', $._yield_pair_lhs),
+          field('operator', assignmentOperator($)),
+          field('right', $._yield_pair_arg_rhs)
+        )
+      ),
+
+    _yield_pair_arg_rhs: ($) => choice($._yield_pair_arg, alias($._yield_pair_rescue_modifier_arg, $.rescue_modifier)),
+
+    _yield_pair_rescue_modifier_arg: ($) =>
+      prec(PREC.RESCUE, seq(field('body', $._yield_pair_arg), 'rescue', field('handler', $._yield_pair_arg))),
+
+    _yield_pair_binary: ($) => binaryExpression($, $._yield_pair_arg, $._yield_pair_arg),
+
+    _yield_pair_unary: ($) => unaryExpression($._yield_pair_arg, choice(alias($._unary_minus, '-'), '+')),
+
+    _yield_pair_conditional: ($) => conditionalExpression($, $._yield_pair_arg, $._yield_pair_arg),
+
+    _yield_pair_range: ($) => rangeExpression($, $._yield_pair_arg, true, $._yield_pair_arg),
+
+    _yield_pair_unary_minus_pow: ($) =>
+      seq(field('operator', alias($._unary_minus_num, '-')), field('operand', alias($._yield_pair_pow, $.binary))),
+
+    _yield_pair_pow: ($) =>
+      prec.right(
+        PREC.EXPONENTIAL,
+        seq(
+          field('left', $._simple_numeric),
+          field('operator', alias($._binary_star_star, '**')),
+          field('right', $._yield_pair_arg)
+        )
+      ),
+
+    _yield_pair_splat_argument: ($) => prec.right(seq(alias($._splat_star, '*'), optional($._yield_pair_arg))),
+
+    _yield_pair_right_assignment_list: ($) =>
+      prec(-1, commaSep1(choice($._yield_pair_arg, alias($._yield_pair_splat_argument, $.splat_argument)))),
+
+    _yield_pair_left_assignment_list: ($) => $._yield_pair_mlhs,
+
+    _yield_pair_mlhs: ($) =>
+      prec.left(
+        -1,
+        seq(
+          commaSep1(
+            choice(
+              $._yield_pair_lhs,
+              alias($._yield_pair_rest_assignment, $.rest_assignment),
+              alias($._yield_pair_destructured_left_assignment, $.destructured_left_assignment)
+            )
+          ),
+          optional(',')
+        )
+      ),
+
+    _yield_pair_rest_assignment: ($) => prec(-1, seq('*', optional($._yield_pair_lhs))),
+
+    _yield_pair_destructured_left_assignment: ($) => prec(-1, seq('(', $._yield_pair_mlhs, ')')),
+
+    _yield_pair_method: ($) => seq('def', $._yield_pair_method_rest),
+
+    _yield_pair_singleton_method: ($) => singletonMethod($, $._yield_pair_method_rest),
+
+    _yield_pair_method_rest: ($) => methodRest($, $._yield_pair_body_expr),
+
+    _yield_pair_body_expr: ($) =>
+      seq('=', field('body', choice($._yield_pair_arg, alias($._yield_pair_rescue_modifier_arg, $.rescue_modifier)))),
 
     _yield_command_pair: ($) => commandPair($, $._yield_command_pair_key, false),
 
@@ -1386,20 +1463,7 @@ module.exports = grammar({
 
     _function_identifier: ($) => choice(alias($.identifier_suffix, $.identifier), alias($.constant_suffix, $.constant)),
     _function_identifier_call: ($) => prec.left(field('method', $._function_identifier)),
-    _lhs: ($) =>
-      prec.left(
-        choice(
-          $._variable,
-          $.self,
-          $._nonlocal_variable,
-          $.true,
-          $.false,
-          $.nil,
-          $.scope_resolution,
-          $.element_reference,
-          alias($._call, $.call)
-        )
-      ),
+    _lhs: ($) => leftHandSide($, $.scope_resolution, $.element_reference, alias($._call, $.call)),
 
     _variable: ($) => prec.right(choice($.super, reserved('variables', $.identifier), $.constant)),
 
@@ -1695,8 +1759,9 @@ function strongUnaryExpression(operand, sign) {
 /**
  * @param {GrammarSymbols<string>} $
  * @param {RuleOrLiteral} left
+ * @param {RuleOrLiteral} right
  */
-function binaryExpression($, left) {
+function binaryExpression($, left, right = $._arg) {
   // oxlint-disable typescript/unbound-method -- The DSL's `prec` functions do not use `this`.
   /** @type {[(precedence: number, rule: RuleOrLiteral) => Rule, number, RuleOrLiteral][]} */
   const operators = [
@@ -1717,7 +1782,7 @@ function binaryExpression($, left) {
 
   return choice(
     ...operators.map(([fn, precedence, operator]) =>
-      fn(precedence, seq(field('left', left), field('operator', operator), field('right', $._arg)))
+      fn(precedence, seq(field('left', left), field('operator', operator), field('right', right)))
     )
   );
 }
@@ -1742,11 +1807,12 @@ function elementReference($, object) {
 /**
  * @param {GrammarSymbols<string>} $
  * @param {RuleOrLiteral} condition
+ * @param {RuleOrLiteral} branch
  */
-function conditionalExpression($, condition) {
+function conditionalExpression($, condition, branch = $._arg) {
   return prec.right(
     PREC.CONDITIONAL,
-    seq(field('condition', condition), '?', field('consequence', $._arg), ':', field('alternative', $._arg))
+    seq(field('condition', condition), '?', field('consequence', branch), ':', field('alternative', branch))
   );
 }
 
@@ -1754,9 +1820,10 @@ function conditionalExpression($, condition) {
  * @param {GrammarSymbols<string>} $
  * @param {RuleOrLiteral} begin
  * @param {boolean} allowBeginless
+ * @param {RuleOrLiteral} endValue
  */
-function rangeExpression($, begin, allowBeginless) {
-  const end = field('end', choice($._arg, alias($._range_sign, $.unary)));
+function rangeExpression($, begin, allowBeginless, endValue = $._arg) {
+  const end = field('end', choice(endValue, alias($._range_sign, $.unary)));
   const operator = field('operator', choice('..', '...'));
   const bounded = seq(field('begin', begin), operator, optional(end));
   return prec.right(PREC.RANGE, allowBeginless ? choice(bounded, seq(operator, end)) : bounded);
@@ -1781,10 +1848,11 @@ function commandCallWithBlock($, receiver, argumentsRule) {
  * @param {boolean} allowBlockContinuation
  */
 function commandPair($, key, allowBlockContinuation = true) {
+  const value = allowBlockContinuation ? $._arg : $._yield_pair_arg;
   return prec.dynamic(
     1,
     choice(
-      prec.right(PREC.PATTERN, seq(field('key', alias($._super_command, $.call)), '=>', field('value', $._arg))),
+      prec.right(PREC.PATTERN, seq(field('key', alias($._super_command, $.call)), '=>', field('value', value))),
       prec.right(
         seq(
           field(
@@ -1800,7 +1868,7 @@ function commandPair($, key, allowBlockContinuation = true) {
             )
           ),
           '=>',
-          field('value', $._arg)
+          field('value', value)
         )
       )
     )
@@ -1874,6 +1942,116 @@ function yieldPairKeyArguments($, allowCall) {
         alias($._yield_command_pair, $.pair),
         alias($._command_definition_pair, $.pair),
         ...(allowCall ? [alias($._yield_call_pair_key, $.call)] : [])
+      )
+    )
+  );
+}
+
+/**
+ * @param {GrammarSymbols<string>} $
+ * @param {RuleOrLiteral} lhs
+ * @param {RuleOrLiteral} call
+ * @param {RuleOrLiteral} method
+ * @param {RuleOrLiteral} singletonMethod
+ */
+function primaryExpression($, lhs, call, method, singletonMethod) {
+  return choice(
+    prec(1, $.super),
+    $.parenthesized_statements,
+    lhs,
+    alias($._function_identifier_call, $.call),
+    call,
+    $.array,
+    $.string_array,
+    $.symbol_array,
+    $.hash,
+    $.subshell,
+    $._literal,
+    $.string,
+    $.character,
+    $.chained_string,
+    $.regex,
+    $.lambda,
+    method,
+    singletonMethod,
+    $.class,
+    $.singleton_class,
+    $.module,
+    $.begin,
+    $.while,
+    $.until,
+    $.if,
+    $.unless,
+    $.for,
+    $.case,
+    $.case_match,
+    $.return,
+    $.yield,
+    $.break,
+    $.next,
+    $.redo,
+    $.retry,
+    alias($.parenthesized_unary, $.unary),
+    $.heredoc_beginning
+  );
+}
+
+/**
+ * @param {GrammarSymbols<string>} $
+ * @param {RuleOrLiteral} scopeResolution
+ * @param {RuleOrLiteral} elementReference
+ * @param {RuleOrLiteral} member
+ */
+function leftHandSide($, scopeResolution, elementReference, member) {
+  return prec.left(
+    choice($._variable, $.self, $._nonlocal_variable, $.true, $.false, $.nil, scopeResolution, elementReference, member)
+  );
+}
+
+/**
+ * @param {GrammarSymbols<string>} $
+ * @param {RuleOrLiteral} primary
+ * @param {RuleOrLiteral} member
+ * @param {boolean} allowDoBlock
+ */
+function callExpression($, primary, member, allowDoBlock = true) {
+  const receiver = choice(member, field('method', choice($._variable, $._function_identifier, $.super)));
+
+  const args = field('arguments', $.argument_list);
+  const receiverArguments = seq(
+    choice(receiver, prec.left(PREC.CALL, seq(field('receiver', primary), field('operator', $._call_operator)))),
+    args
+  );
+
+  const block = field('block', $.block);
+  const doBlock = field('block', $.do_block);
+  return choice(
+    receiverArguments,
+    prec(PREC.CURLY_BLOCK, seq(receiverArguments, block)),
+    ...(allowDoBlock ? [prec(PREC.DO_BLOCK, seq(receiverArguments, doBlock))] : []),
+    prec(PREC.CURLY_BLOCK, seq(receiver, block)),
+    ...(allowDoBlock ? [prec(PREC.DO_BLOCK, seq(receiver, doBlock))] : [])
+  );
+}
+
+/**
+ * @param {GrammarSymbols<string>} $
+ * @param {RuleOrLiteral} bodyExpression
+ */
+function methodRest($, bodyExpression) {
+  return seq(
+    field('name', $._method_name),
+    choice(
+      bodyExpression,
+      seq(
+        field('parameters', alias($.parameters, $.method_parameters)),
+        choice(seq(optional($._terminator), optional(field('body', $.body_statement)), 'end'), bodyExpression)
+      ),
+      seq(
+        optional(field('parameters', alias($.bare_parameters, $.method_parameters))),
+        $._terminator,
+        optional(field('body', $.body_statement)),
+        'end'
       )
     )
   );
