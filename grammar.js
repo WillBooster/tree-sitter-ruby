@@ -1059,7 +1059,7 @@ module.exports = grammar({
 
     _yield_pair_call: ($) => callExpression($, $._yield_pair_primary, $._yield_pair_member, false),
 
-    _yield_pair_element_reference: ($) => elementReference($, $._yield_pair_primary),
+    _yield_pair_element_reference: ($) => elementReference($, $._yield_pair_primary, false),
 
     _yield_pair_scope_resolution: ($) =>
       prec.left(
@@ -1790,8 +1790,9 @@ function binaryExpression($, left, right = $._arg) {
 /**
  * @param {GrammarSymbols<string>} $
  * @param {RuleOrLiteral} object
+ * @param {boolean} allowDoBlock
  */
-function elementReference($, object) {
+function elementReference($, object, allowDoBlock = true) {
   return prec.left(
     1,
     seq(
@@ -1799,7 +1800,7 @@ function elementReference($, object) {
       alias($._element_reference_bracket, '['),
       optional($._argument_list_with_trailing_comma),
       ']',
-      optional(field('block', choice($.block, $.do_block)))
+      optional(field('block', allowDoBlock ? choice($.block, $.do_block) : $.block))
     )
   );
 }

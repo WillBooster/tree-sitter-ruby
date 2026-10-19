@@ -8826,17 +8826,8 @@
                 "type": "FIELD",
                 "name": "block",
                 "content": {
-                  "type": "CHOICE",
-                  "members": [
-                    {
-                      "type": "SYMBOL",
-                      "name": "block"
-                    },
-                    {
-                      "type": "SYMBOL",
-                      "name": "do_block"
-                    }
-                  ]
+                  "type": "SYMBOL",
+                  "name": "block"
                 }
               },
               {

@@ -3750,3 +3750,103 @@ def f; yield a b &blk => def g = (v do end); end
                     (call
                       (identifier)
                       (do_block))))))))))))
+
+===============================
+reject yield pair values with ungrouped indexed-call do blocks
+:error
+===============================
+
+def f; return yield a b c *d => v[0] do end + x; end
+
+---
+
+(ERROR)
+
+===============================
+yield pair indexed calls retain curly blocks and grouping
+===============================
+
+def f; return yield a b c *d => v[0] { } + x; end
+def f; return yield a b c *d => (v[0] do end) + x; end
+def f; return yield (a b c *d => v[0] do end) + x; end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (return
+        (argument_list
+          (yield
+            (argument_list
+              (call
+                (identifier)
+                (argument_list
+                  (pair
+                    (call
+                      (identifier)
+                      (argument_list
+                        (call
+                          (identifier)
+                          (argument_list
+                            (splat_argument
+                              (identifier))))))
+                    (binary
+                      (element_reference
+                        (identifier)
+                        (integer)
+                        (block))
+                      (identifier)))))))))))
+  (method
+    (identifier)
+    (body_statement
+      (return
+        (argument_list
+          (yield
+            (argument_list
+              (call
+                (identifier)
+                (argument_list
+                  (pair
+                    (call
+                      (identifier)
+                      (argument_list
+                        (call
+                          (identifier)
+                          (argument_list
+                            (splat_argument
+                              (identifier))))))
+                    (binary
+                      (parenthesized_statements
+                        (element_reference
+                          (identifier)
+                          (integer)
+                          (do_block)))
+                      (identifier)))))))))))
+  (method
+    (identifier)
+    (body_statement
+      (return
+        (argument_list
+          (yield
+            (argument_list
+              (binary
+                (parenthesized_statements
+                  (call
+                    (identifier)
+                    (argument_list
+                      (pair
+                        (call
+                          (identifier)
+                          (argument_list
+                            (call
+                              (identifier)
+                              (argument_list
+                                (splat_argument
+                                  (identifier))))))
+                        (element_reference
+                          (identifier)
+                          (integer))))
+                    (do_block)))
+                (identifier)))))))))
