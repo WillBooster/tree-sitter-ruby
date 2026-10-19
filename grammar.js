@@ -317,7 +317,7 @@ module.exports = grammar({
     yield_command: ($) => prec.left(seq('yield', alias($._yield_argument_list, $.argument_list))),
     break_command: ($) => prec.left(seq('break', alias($.command_argument_list, $.argument_list))),
     next_command: ($) => prec.left(seq('next', alias($.command_argument_list, $.argument_list))),
-    return: ($) => prec.left(seq('return', optional(alias($._return_argument_list, $.argument_list)))),
+    return: () => prec.left('return'),
     yield: ($) => prec.left(seq('yield', optional($.argument_list))),
     break: ($) => prec.left(seq('break', optional($.argument_list))),
     next: ($) => prec.left(seq('next', optional($.argument_list))),
@@ -1142,11 +1142,6 @@ module.exports = grammar({
       ),
 
     _argument: ($) => argument($, choice($._command_value, $.match_pattern, $.test_pattern)),
-
-    _unrestricted_argument: ($) => argument($, $._expression),
-
-    _return_argument_list: ($) =>
-      seq(token.immediate('('), optional(seq(commaSep1($._unrestricted_argument), optional(','))), ')'),
 
     forward_argument: () => '...',
     splat_argument: ($) => prec.right(seq(alias($._splat_star, '*'), optional($._arg))),

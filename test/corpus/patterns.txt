@@ -2997,16 +2997,17 @@ return(b c d do end in Integer)
           (constant)))))
   (return
     (argument_list
-      (test_pattern
-        (call
-          (identifier)
-          (argument_list
-            (call
-              (identifier)
-              (argument_list
-                (identifier))))
-          (do_block))
-        (constant)))))
+      (parenthesized_statements
+        (test_pattern
+          (call
+            (identifier)
+            (argument_list
+              (call
+                (identifier)
+                (argument_list
+                  (identifier))))
+            (do_block))
+          (constant))))))
 
 ===============================
 reject ungrouped command negation in endless bodies
