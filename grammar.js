@@ -93,6 +93,19 @@ module.exports = grammar({
   reserved: { global: () => [], variables: () => ['in'], methodNames: () => [] },
 
   conflicts: ($) => [
+    [$._command_argument, $._yield_call_pair_key_arguments],
+    [$._yield_argument, $._yield_call_pair_key_arguments],
+    [$._yield_argument, $._command_argument, $._yield_call_pair_key_arguments],
+    [$._yield_argument, $._yield_pair_key_arguments],
+    [$._yield_pattern_not, $._test_pattern_not],
+    [$._yield_argument_list, $._yield_pair_key_arguments],
+    [$._body_expr, $._yield_value],
+    [$._endless_command_operand, $._yield_value],
+    [$._yield_argument, $._command_argument],
+    [$._command_value, $._yield_value, $.pair],
+    [$._command_value, $._chained_match_pattern, $._yield_value],
+    [$._command_value, $._yield_value],
+    [$._yield_value, $.pair],
     [$._chained_command_argument_list, $.command_argument_list],
     [$._pair_block_argument, $.block_argument],
     [$.command_call_with_block, $._super_command_with_block],
@@ -167,18 +180,7 @@ module.exports = grammar({
 
     method: ($) => seq('def', $._method_rest),
 
-    singleton_method: ($) =>
-      seq(
-        'def',
-        seq(
-          choice(
-            field('object', choice($._variable, $.self, $._nonlocal_variable)),
-            seq('(', field('object', $._arg), ')')
-          ),
-          choice('.', '::')
-        ),
-        $._method_rest
-      ),
+    singleton_method: ($) => singletonMethod($, $._method_rest),
 
     _method_rest: ($) =>
       seq(
@@ -210,26 +212,9 @@ module.exports = grammar({
 
     _command_method: ($) => seq('def', $._command_method_rest),
 
-    _command_singleton_method: ($) =>
-      seq(
-        'def',
-        seq(
-          choice(
-            field('object', choice($._variable, $.self, $._nonlocal_variable)),
-            seq('(', field('object', $._arg), ')')
-          ),
-          choice('.', '::')
-        ),
-        $._command_method_rest
-      ),
+    _command_singleton_method: ($) => singletonMethod($, $._command_method_rest),
 
-    _command_method_rest: ($) =>
-      seq(
-        field('name', $._method_name),
-        optional(field('parameters', alias($.parameters, $.method_parameters))),
-        '=',
-        field('body', $._endless_command)
-      ),
+    _command_method_rest: ($) => endlessMethodRest($, $._endless_command),
 
     // Ruby 4.0's default parser (Prism) lets an endless body hold at most one `rescue`, applied outside any `not`; a
     // further `rescue` applies to the whole definition.
@@ -324,7 +309,7 @@ module.exports = grammar({
       ),
 
     return_command: ($) => prec.left(seq('return', alias($.command_argument_list, $.argument_list))),
-    yield_command: ($) => prec.left(seq('yield', alias($.command_argument_list, $.argument_list))),
+    yield_command: ($) => prec.left(seq('yield', alias($._yield_argument_list, $.argument_list))),
     break_command: ($) => prec.left(seq('break', alias($.command_argument_list, $.argument_list))),
     next_command: ($) => prec.left(seq('next', alias($.command_argument_list, $.argument_list))),
     return: ($) => prec.left(seq('return', optional(alias($._return_argument_list, $.argument_list)))),
@@ -970,6 +955,80 @@ module.exports = grammar({
 
     command_argument_list: ($) => prec.right(commaSep1($._command_argument)),
 
+    _yield_argument_list: ($) => prec.right(commaSep1($._yield_argument)),
+
+    _yield_argument: ($) => prec.left(1, argument($, $._yield_value)),
+
+    _yield_value: ($) =>
+      choice(
+        $._arg,
+        alias($._yield_call, $.call),
+        alias($._yield_not, $.unary),
+        alias($._yield_pattern_not, $.unary),
+        alias($._yield_method, $.method),
+        alias($._yield_singleton_method, $.singleton_method),
+        alias($.yield_command, $.yield)
+      ),
+
+    _yield_call: ($) =>
+      seq(
+        choice(field('method', choice($._variable, $._function_identifier, $.super)), $._call),
+        field('arguments', alias($._yield_argument_list, $.argument_list))
+      ),
+
+    _yield_not: ($) =>
+      prec.right(
+        PREC.NOT,
+        seq(field('operator', 'not'), field('operand', choice($._yield_value, alias($._yield_unary, $.unary))))
+      ),
+
+    _yield_unary: ($) => prec.right(PREC.COMPLEMENT, seq(field('operator', '!'), field('operand', $._yield_value))),
+
+    _yield_pattern_not: ($) =>
+      prec.dynamic(
+        3,
+        prec.right(
+          PREC.NOT,
+          seq(
+            field('operator', 'not'),
+            field(
+              'operand',
+              choice($.test_pattern, alias($._yield_test_pattern, $.test_pattern), alias($._yield_pattern_not, $.unary))
+            )
+          )
+        )
+      ),
+
+    _yield_test_pattern: ($) =>
+      prec(
+        PREC.PATTERN,
+        prec.dynamic(
+          1,
+          seq(
+            field(
+              'value',
+              choice(
+                alias($._yield_not, $.unary),
+                alias($._yield_unary, $.unary),
+                alias($._yield_method, $.method),
+                alias($._yield_singleton_method, $.singleton_method),
+                alias($.yield_command, $.yield)
+              )
+            ),
+            'in',
+            field('pattern', $._pattern_top_expr_body)
+          )
+        )
+      ),
+
+    _yield_method: ($) => seq('def', $._yield_method_rest),
+
+    _yield_singleton_method: ($) => singletonMethod($, $._yield_method_rest),
+
+    _yield_method_rest: ($) => endlessMethodRest($, choice($._yield_value, alias($._yield_rescue, $.rescue_modifier))),
+
+    _yield_rescue: ($) => prec(PREC.RESCUE, seq(field('body', $._yield_value), 'rescue', field('handler', $._arg))),
+
     argument_list: ($) => prec.right(seq(token.immediate('('), optional($._argument_list_with_trailing_comma), ')')),
 
     _argument_list_with_trailing_comma: ($) =>
@@ -1004,7 +1063,7 @@ module.exports = grammar({
                 alias($._command_pair_key, $.call),
                 alias($._super_command_with_block, $.call),
                 alias($._super_command, $.call),
-                alias($.yield_command, $.yield),
+                alias($._yield_pair_key, $.yield),
                 alias($._command_not, $.unary),
                 alias($._chained_assignment, $.assignment),
                 alias($._chained_operator_assignment, $.operator_assignment),
@@ -1015,6 +1074,18 @@ module.exports = grammar({
             field('value', $._arg)
           )
         )
+      ),
+
+    _yield_pair_key: ($) => prec.left(seq('yield', alias($._yield_pair_key_arguments, $.argument_list))),
+
+    _yield_pair_key_arguments: ($) => yieldPairKeyArguments($, true),
+
+    _yield_call_pair_key_arguments: ($) => yieldPairKeyArguments($, false),
+
+    _yield_call_pair_key: ($) =>
+      seq(
+        choice(field('method', choice($._variable, $._function_identifier, $.super)), $._call),
+        field('arguments', alias($._yield_call_pair_key_arguments, $.argument_list))
       ),
 
     _command_pair_key: ($) =>
@@ -1668,7 +1739,7 @@ function commandCallWithBlock($, receiver, argumentsRule) {
   const args = field('arguments', alias(argumentsRule, $.argument_list));
   return choice(
     seq(receiver, prec(PREC.CURLY_BLOCK, seq(args, field('block', $.block)))),
-    seq(receiver, prec(PREC.DO_BLOCK, seq(args, field('block', $.do_block))))
+    prec.dynamic(1, seq(receiver, prec(PREC.DO_BLOCK, seq(args, field('block', $.do_block)))))
   );
 }
 
@@ -1687,6 +1758,58 @@ function argument($, expression) {
       $.pair,
       alias($._command_pair, $.pair),
       alias($._command_definition_pair, $.pair)
+    )
+  );
+}
+
+/**
+ * @param {GrammarSymbols<string>} $
+ * @param {RuleOrLiteral} rest
+ */
+function singletonMethod($, rest) {
+  return seq(
+    'def',
+    seq(
+      choice(
+        field('object', choice($._variable, $.self, $._nonlocal_variable)),
+        seq('(', field('object', $._arg), ')')
+      ),
+      choice('.', '::')
+    ),
+    rest
+  );
+}
+
+/**
+ * @param {GrammarSymbols<string>} $
+ * @param {RuleOrLiteral} body
+ */
+function endlessMethodRest($, body) {
+  return seq(
+    field('name', $._method_name),
+    optional(field('parameters', alias($.parameters, $.method_parameters))),
+    '=',
+    field('body', body)
+  );
+}
+
+/**
+ * @param {GrammarSymbols<string>} $
+ * @param {boolean} allowCall
+ */
+function yieldPairKeyArguments($, allowCall) {
+  return prec.right(
+    1,
+    seq(
+      repeat(seq($._yield_argument, ',')),
+      choice(
+        $.pair,
+        $.splat_argument,
+        $.hash_splat_argument,
+        alias($._command_pair, $.pair),
+        alias($._command_definition_pair, $.pair),
+        ...(allowCall ? [alias($._yield_call_pair_key, $.call)] : [])
+      )
     )
   );
 }

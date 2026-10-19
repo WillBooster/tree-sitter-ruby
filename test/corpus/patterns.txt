@@ -2434,29 +2434,33 @@ return not b c => v do end +b == d
           (identifier))))))
 
 ========================================
-command pattern boundaries: yield block call retains inner pair before arithmetic
+command pattern boundaries: grouped yield block call retains inner pair before arithmetic
 ========================================
 
-return yield a b => v do end +b == d
+def f; return yield (a b => v do end) +b == d; end
 
 ---
 
 (program
-  (return
-    (argument_list
-      (yield
+  (method
+    (identifier)
+    (body_statement
+      (return
         (argument_list
-          (binary
-            (binary
-              (call
-                (identifier)
-                (argument_list
-                  (pair
-                    (identifier)
-                    (identifier)))
-                (do_block))
-              (identifier))
-            (identifier)))))))
+          (yield
+            (argument_list
+              (binary
+                (binary
+                  (parenthesized_statements
+                    (call
+                      (identifier)
+                      (argument_list
+                        (pair
+                          (identifier)
+                          (identifier)))
+                      (do_block)))
+                  (identifier))
+                (identifier)))))))))
 
 ========================================
 command pattern boundaries: negated block call retains inner pair before boolean operator
@@ -3261,3 +3265,90 @@ reject ungrouped command patterns as array elements
 ---
 
 (ERROR)
+
+===============================
+reject ungrouped yield block arithmetic
+:error
+===============================
+
+def f; return yield a b => v do end +b == d; end
+
+---
+
+(ERROR)
+
+===============================
+yield negation definitions and completed pair keys
+===============================
+
+def f
+  yield not not a b in Integer
+  yield not ! a b
+  yield def self.m = a b rescue c
+  foo yield a b c => v => w
+  super yield a, b => v do end => w
+end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (yield
+        (argument_list
+          (unary
+            (test_pattern
+              (unary
+                (call
+                  (identifier)
+                  (argument_list
+                    (identifier))))
+              (constant)))))
+      (yield
+        (argument_list
+          (unary
+            (unary
+              (call
+                (identifier)
+                (argument_list
+                  (identifier)))))))
+      (yield
+        (argument_list
+          (singleton_method
+            (self)
+            (identifier)
+            (rescue_modifier
+              (call
+                (identifier)
+                (argument_list
+                  (identifier)))
+              (identifier)))))
+      (call
+        (identifier)
+        (argument_list
+          (yield
+            (argument_list
+              (pair
+                (call
+                  (identifier)
+                  (argument_list
+                    (call
+                      (identifier)
+                      (argument_list
+                        (pair
+                          (identifier)
+                          (identifier))))))
+                (identifier))))))
+      (match_pattern
+        (call
+          (super)
+          (argument_list
+            (yield
+              (argument_list
+                (identifier)
+                (pair
+                  (identifier)
+                  (identifier)))))
+          (do_block))
+        (identifier)))))
