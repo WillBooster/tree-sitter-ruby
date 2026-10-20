@@ -4179,102 +4179,125 @@
       "type": "CHOICE",
       "members": [
         {
-          "type": "ALIAS",
-          "content": {
-            "type": "SYMBOL",
-            "name": "_command_not"
-          },
-          "named": true,
-          "value": "unary"
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "ALIAS",
+              "content": {
+                "type": "SYMBOL",
+                "name": "_command_not"
+              },
+              "named": true,
+              "value": "unary"
+            },
+            {
+              "type": "ALIAS",
+              "content": {
+                "type": "SYMBOL",
+                "name": "_test_pattern_not"
+              },
+              "named": true,
+              "value": "unary"
+            },
+            {
+              "type": "ALIAS",
+              "content": {
+                "type": "SYMBOL",
+                "name": "_command_method"
+              },
+              "named": true,
+              "value": "method"
+            },
+            {
+              "type": "ALIAS",
+              "content": {
+                "type": "SYMBOL",
+                "name": "_command_singleton_method"
+              },
+              "named": true,
+              "value": "singleton_method"
+            },
+            {
+              "type": "ALIAS",
+              "content": {
+                "type": "SYMBOL",
+                "name": "command_call"
+              },
+              "named": true,
+              "value": "call"
+            },
+            {
+              "type": "ALIAS",
+              "content": {
+                "type": "SYMBOL",
+                "name": "command_call_with_block"
+              },
+              "named": true,
+              "value": "call"
+            },
+            {
+              "type": "SYMBOL",
+              "name": "_chained_arg"
+            },
+            {
+              "type": "ALIAS",
+              "content": {
+                "type": "SYMBOL",
+                "name": "return_command"
+              },
+              "named": true,
+              "value": "return"
+            },
+            {
+              "type": "ALIAS",
+              "content": {
+                "type": "SYMBOL",
+                "name": "yield_command"
+              },
+              "named": true,
+              "value": "yield"
+            },
+            {
+              "type": "ALIAS",
+              "content": {
+                "type": "SYMBOL",
+                "name": "break_command"
+              },
+              "named": true,
+              "value": "break"
+            },
+            {
+              "type": "ALIAS",
+              "content": {
+                "type": "SYMBOL",
+                "name": "next_command"
+              },
+              "named": true,
+              "value": "next"
+            },
+            {
+              "type": "SYMBOL",
+              "name": "_arg"
+            }
+          ]
         },
         {
           "type": "ALIAS",
           "content": {
             "type": "SYMBOL",
-            "name": "_test_pattern_not"
+            "name": "_ordinary_chained_assignment"
           },
           "named": true,
-          "value": "unary"
+          "value": "assignment"
         },
         {
           "type": "ALIAS",
           "content": {
             "type": "SYMBOL",
-            "name": "_command_method"
+            "name": "_ordinary_chained_operator_assignment"
           },
           "named": true,
-          "value": "method"
-        },
-        {
-          "type": "ALIAS",
-          "content": {
-            "type": "SYMBOL",
-            "name": "_command_singleton_method"
-          },
-          "named": true,
-          "value": "singleton_method"
-        },
-        {
-          "type": "ALIAS",
-          "content": {
-            "type": "SYMBOL",
-            "name": "command_call"
-          },
-          "named": true,
-          "value": "call"
-        },
-        {
-          "type": "ALIAS",
-          "content": {
-            "type": "SYMBOL",
-            "name": "command_call_with_block"
-          },
-          "named": true,
-          "value": "call"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "_chained_arg"
-        },
-        {
-          "type": "ALIAS",
-          "content": {
-            "type": "SYMBOL",
-            "name": "return_command"
-          },
-          "named": true,
-          "value": "return"
-        },
-        {
-          "type": "ALIAS",
-          "content": {
-            "type": "SYMBOL",
-            "name": "yield_command"
-          },
-          "named": true,
-          "value": "yield"
-        },
-        {
-          "type": "ALIAS",
-          "content": {
-            "type": "SYMBOL",
-            "name": "break_command"
-          },
-          "named": true,
-          "value": "break"
-        },
-        {
-          "type": "ALIAS",
-          "content": {
-            "type": "SYMBOL",
-            "name": "next_command"
-          },
-          "named": true,
-          "value": "next"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "_arg"
+          "value": "operator_assignment"
         }
       ]
     },
@@ -12888,31 +12911,8 @@
             "type": "FIELD",
             "name": "operand",
             "content": {
-              "type": "CHOICE",
-              "members": [
-                {
-                  "type": "SYMBOL",
-                  "name": "_argument_command_value"
-                },
-                {
-                  "type": "ALIAS",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "_negated_chained_assignment"
-                  },
-                  "named": true,
-                  "value": "assignment"
-                },
-                {
-                  "type": "ALIAS",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "_negated_chained_operator_assignment"
-                  },
-                  "named": true,
-                  "value": "operator_assignment"
-                }
-              ]
+              "type": "SYMBOL",
+              "name": "_argument_command_value"
             }
           }
         ]
@@ -13075,7 +13075,7 @@
                   "type": "ALIAS",
                   "content": {
                     "type": "SYMBOL",
-                    "name": "_negated_chained_assignment"
+                    "name": "_ordinary_chained_assignment"
                   },
                   "named": true,
                   "value": "assignment"
@@ -13125,7 +13125,7 @@
         ]
       }
     },
-    "_negated_chained_assignment": {
+    "_ordinary_chained_assignment": {
       "type": "PREC_RIGHT",
       "value": 15,
       "content": {
@@ -13154,7 +13154,7 @@
         ]
       }
     },
-    "_negated_chained_operator_assignment": {
+    "_ordinary_chained_operator_assignment": {
       "type": "PREC_RIGHT",
       "value": 15,
       "content": {

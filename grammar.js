@@ -648,7 +648,12 @@ module.exports = grammar({
 
     _command_value: ($) => commandValue($, true),
 
-    _argument_command_value: ($) => commandValue($, false),
+    _argument_command_value: ($) =>
+      choice(
+        commandValue($, false),
+        alias($._ordinary_chained_assignment, $.assignment),
+        alias($._ordinary_chained_operator_assignment, $.operator_assignment)
+      ),
 
     _chained_match_pattern: ($) =>
       choice(
@@ -1296,20 +1301,7 @@ module.exports = grammar({
     unary: ($) => unaryExpression($._arg, choice(alias($._unary_minus, '-'), '+'), choice($._arg, $.begin)),
 
     command_unary: ($) =>
-      prec.right(
-        PREC.COMPLEMENT,
-        seq(
-          field('operator', '!'),
-          field(
-            'operand',
-            choice(
-              $._argument_command_value,
-              alias($._negated_chained_assignment, $.assignment),
-              alias($._negated_chained_operator_assignment, $.operator_assignment)
-            )
-          )
-        )
-      ),
+      prec.right(PREC.COMPLEMENT, seq(field('operator', '!'), field('operand', $._argument_command_value))),
 
     _pattern_command_not: ($) =>
       prec.right(PREC.NOT, seq(field('operator', 'not'), field('operand', alias($.command_call, $.call)))),
@@ -1323,7 +1315,7 @@ module.exports = grammar({
             'operand',
             choice(
               commandValue($, false),
-              alias($._negated_chained_assignment, $.assignment),
+              alias($._ordinary_chained_assignment, $.assignment),
               alias($.command_operator_assignment, $.operator_assignment),
               alias($._chained_operator_assignment, $.operator_assignment),
               alias($.command_unary, $.unary),
@@ -1334,10 +1326,10 @@ module.exports = grammar({
         )
       ),
 
-    _negated_chained_assignment: ($) =>
+    _ordinary_chained_assignment: ($) =>
       prec.right(PREC.ASSIGN, seq(field('left', $._chained_lhs), '=', field('right', $._arg_rhs))),
 
-    _negated_chained_operator_assignment: ($) =>
+    _ordinary_chained_operator_assignment: ($) =>
       prec.right(
         PREC.ASSIGN,
         seq(field('left', $._chained_lhs), field('operator', assignmentOperator($)), field('right', $._arg_rhs))

@@ -168,3 +168,62 @@ test('yield retains signed super arguments and the enclosing call block', async 
     parser.delete();
   }
 });
+
+test('accepts ordinary completed-command assignments as first arguments and return values', async () => {
+  await Parser.init();
+  const parser = new Parser().setLanguage(
+    await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')))
+  );
+  try {
+    for (const operator of ['=', '+=', '||=']) {
+      for (const source of [
+        `foo(b c do end.d ${operator} 1)`,
+        `foo(b c do end.d[0] ${operator} 1)`,
+        `foo(b c do end.d ${operator} 1, q)`,
+        `foo(b c do end.d ${operator} 1 rescue q)`,
+        `return b c do end.d ${operator} 1`,
+      ]) {
+        const tree = parser.parse(source)!;
+        try {
+          expect(tree.rootNode.hasError, source).toBe(false);
+          const assignment = tree.rootNode.descendantsOfType(
+            operator === '=' ? 'assignment' : 'operator_assignment'
+          )[0];
+          expect(assignment?.childForFieldName('left')?.text, source).toBe(
+            source.includes('.d[0]') ? 'b c do end.d[0]' : 'b c do end.d'
+          );
+          expect(assignment?.parent?.type, source).toBe('argument_list');
+        } finally {
+          tree.delete();
+        }
+      }
+      const source = `foo b c do end.d ${operator} 1`;
+      const tree = parser.parse(source)!;
+      try {
+        expect(tree.rootNode.hasError, source).toBe(false);
+        const assignment = tree.rootNode.namedChildren[0];
+        expect(assignment?.type, source).toBe(operator === '=' ? 'assignment' : 'operator_assignment');
+        const receiver = assignment?.childForFieldName('left')?.childForFieldName('receiver');
+        expect(receiver?.childForFieldName('method')?.text, source).toBe('foo');
+        expect(receiver?.childForFieldName('block')?.text, source).toBe('do end');
+      } finally {
+        tree.delete();
+      }
+    }
+    for (const source of [
+      'foo(b c do end.d = e f)',
+      'return b c do end.d += e f',
+      'foo(q, b c do end.d = 1)',
+      'foo([b c do end.d = 1])',
+    ]) {
+      const tree = parser.parse(source)!;
+      try {
+        expect(tree.rootNode.hasError, source).toBe(true);
+      } finally {
+        tree.delete();
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});
