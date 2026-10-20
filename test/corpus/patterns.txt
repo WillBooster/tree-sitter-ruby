@@ -371,12 +371,4477 @@ return x => 6 | 7
 )
 
 =====================================
-one-line patterns: incorrectly parsed
+bare command cannot consume a pattern test
 =====================================
-foo x in 5 # FIXME: should be parsed as `(foo x) in 5` instead of `foo (x in 5)`
+foo x in 5
 
 -----------------
 
 (program
-  (call (identifier) (argument_list (test_pattern (identifier) (integer)))) (comment)
+  (test_pattern (identifier) (ERROR (identifier)) (integer))
 )
+
+========================================
+command pattern boundaries: assignments
+========================================
+
+x = b c in [1]
+x += b c in [1]
+x = b c do end => value
+
+---
+
+(program
+  (test_pattern
+    (assignment
+      (identifier)
+      (call
+        (identifier)
+        (argument_list
+          (identifier))))
+    (array_pattern
+      (integer)))
+  (test_pattern
+    (operator_assignment
+      (identifier)
+      (call
+        (identifier)
+        (argument_list
+          (identifier))))
+    (array_pattern
+      (integer)))
+  (match_pattern
+    (assignment
+      (identifier)
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block)))
+    (identifier)))
+
+========================================
+command pattern boundaries: endless definitions
+========================================
+
+def a = b c in [1]
+def self.a = b c in [1]
+def a = b c do end => value
+
+---
+
+(program
+  (test_pattern
+    (method
+      (identifier)
+      (call
+        (identifier)
+        (argument_list
+          (identifier))))
+    (array_pattern
+      (integer)))
+  (test_pattern
+    (singleton_method
+      (self)
+      (identifier)
+      (call
+        (identifier)
+        (argument_list
+          (identifier))))
+    (array_pattern
+      (integer)))
+  (match_pattern
+    (method
+      (identifier)
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block)))
+    (identifier)))
+
+========================================
+command pattern boundaries: completed block calls
+========================================
+
+b c do end.d z in Integer
+b c do end in Integer
+b c do end => result
+
+---
+
+(program
+  (test_pattern
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier)
+      (argument_list
+        (identifier)))
+    (constant))
+  (test_pattern
+    (call
+      (identifier)
+      (argument_list
+        (identifier))
+      (do_block))
+    (constant))
+  (match_pattern
+    (call
+      (identifier)
+      (argument_list
+        (identifier))
+      (do_block))
+    (identifier)))
+
+========================================
+command pattern boundaries: pairs and parentheses
+========================================
+
+x = b c => [1]
+def a = b c => [1]
+foo (x in Integer)
+x = b (c in Integer)
+foo bar baz
+foo x, y
+
+---
+
+(program
+  (assignment
+    (identifier)
+    (call
+      (identifier)
+      (argument_list
+        (pair
+          (identifier)
+          (array
+            (integer))))))
+  (method
+    (identifier)
+    (call
+      (identifier)
+      (argument_list
+        (pair
+          (identifier)
+          (array
+            (integer))))))
+  (call
+    (identifier)
+    (argument_list
+      (parenthesized_statements
+        (test_pattern
+          (identifier)
+          (constant)))))
+  (assignment
+    (identifier)
+    (call
+      (identifier)
+      (argument_list
+        (parenthesized_statements
+          (test_pattern
+            (identifier)
+            (constant))))))
+  (call
+    (identifier)
+    (argument_list
+      (call
+        (identifier)
+        (argument_list
+          (identifier)))))
+  (call
+    (identifier)
+    (argument_list
+      (identifier)
+      (identifier))))
+
+========================================
+command pattern boundaries: rescue
+========================================
+
+x = b c rescue y in Integer
+x += b c rescue y in Integer
+x = b c in Integer rescue y
+def a = b c rescue y in Integer
+
+---
+
+(program
+  (test_pattern
+    (assignment
+      (identifier)
+      (rescue_modifier
+        (call
+          (identifier)
+          (argument_list
+            (identifier)))
+        (identifier)))
+    (constant))
+  (test_pattern
+    (operator_assignment
+      (identifier)
+      (rescue_modifier
+        (call
+          (identifier)
+          (argument_list
+            (identifier)))
+        (identifier)))
+    (constant))
+  (rescue_modifier
+    (test_pattern
+      (assignment
+        (identifier)
+        (call
+          (identifier)
+          (argument_list
+            (identifier))))
+      (constant))
+    (identifier))
+  (test_pattern
+    (method
+      (identifier)
+      (rescue_modifier
+        (call
+          (identifier)
+          (argument_list
+            (identifier)))
+        (identifier)))
+    (constant)))
+
+========================================
+command pattern boundaries: logical negation
+========================================
+
+not x in Integer
+not not x in Integer
+not x in Integer and d
+if not x in Integer then 1 end
+unless not x in Integer then 1 end
+x = not b in c
+return not a in b
+foo not x in Integer
+not a.b c in Integer
+!x in Integer
+-x in Integer
+defined? x in Integer
+
+---
+
+(program
+  (unary
+    (test_pattern
+      (identifier)
+      (constant)))
+  (unary
+    (unary
+      (test_pattern
+        (identifier)
+        (constant))))
+  (binary
+    (unary
+      (test_pattern
+        (identifier)
+        (constant)))
+    (identifier))
+  (if
+    (unary
+      (test_pattern
+        (identifier)
+        (constant)))
+    (then
+      (integer)))
+  (unless
+    (unary
+      (test_pattern
+        (identifier)
+        (constant)))
+    (then
+      (integer)))
+  (assignment
+    (identifier)
+    (unary
+      (test_pattern
+        (identifier)
+        (identifier))))
+  (return
+    (argument_list
+      (unary
+        (test_pattern
+          (identifier)
+          (identifier)))))
+  (call
+    (identifier)
+    (argument_list
+      (unary
+        (test_pattern
+          (identifier)
+          (constant)))))
+  (unary
+    (test_pattern
+      (call
+        (identifier)
+        (identifier)
+        (argument_list
+          (identifier)))
+      (constant)))
+  (test_pattern
+    (unary
+      (identifier))
+    (constant))
+  (test_pattern
+    (unary
+      (identifier))
+    (constant))
+  (test_pattern
+    (unary
+      (identifier))
+    (constant)))
+
+========================================
+command pattern boundaries: modifiers
+========================================
+
+z if b c in Integer
+z if c in Integer
+z if b c => result
+z unless b c in Integer
+z unless c in Integer
+z unless b c => result
+z while b c in Integer
+z while c in Integer
+z while b c => result
+z until b c in Integer
+z until c in Integer
+z until b c => result
+z rescue b c in Integer
+z rescue c in Integer
+z rescue b c => result
+
+---
+
+(program
+  (test_pattern
+    (if_modifier
+      (identifier)
+      (call
+        (identifier)
+        (argument_list
+          (identifier))))
+    (constant))
+  (if_modifier
+    (identifier)
+    (test_pattern
+      (identifier)
+      (constant)))
+  (if_modifier
+    (identifier)
+    (call
+      (identifier)
+      (argument_list
+        (pair
+          (identifier)
+          (identifier)))))
+  (test_pattern
+    (unless_modifier
+      (identifier)
+      (call
+        (identifier)
+        (argument_list
+          (identifier))))
+    (constant))
+  (unless_modifier
+    (identifier)
+    (test_pattern
+      (identifier)
+      (constant)))
+  (unless_modifier
+    (identifier)
+    (call
+      (identifier)
+      (argument_list
+        (pair
+          (identifier)
+          (identifier)))))
+  (test_pattern
+    (while_modifier
+      (identifier)
+      (call
+        (identifier)
+        (argument_list
+          (identifier))))
+    (constant))
+  (while_modifier
+    (identifier)
+    (test_pattern
+      (identifier)
+      (constant)))
+  (while_modifier
+    (identifier)
+    (call
+      (identifier)
+      (argument_list
+        (pair
+          (identifier)
+          (identifier)))))
+  (test_pattern
+    (until_modifier
+      (identifier)
+      (call
+        (identifier)
+        (argument_list
+          (identifier))))
+    (constant))
+  (until_modifier
+    (identifier)
+    (test_pattern
+      (identifier)
+      (constant)))
+  (until_modifier
+    (identifier)
+    (call
+      (identifier)
+      (argument_list
+        (pair
+          (identifier)
+          (identifier)))))
+  (test_pattern
+    (rescue_modifier
+      (identifier)
+      (call
+        (identifier)
+        (argument_list
+          (identifier))))
+    (constant))
+  (rescue_modifier
+    (identifier)
+    (test_pattern
+      (identifier)
+      (constant)))
+  (rescue_modifier
+    (identifier)
+    (call
+      (identifier)
+      (argument_list
+        (pair
+          (identifier)
+          (identifier))))))
+
+========================================
+command pattern boundaries: receiver commands
+========================================
+
+a.b c in Integer
+a::b c in Integer
+a.b c, d in Integer
+foo { x }.bar y in Integer
+
+---
+
+(program
+  (test_pattern
+    (call
+      (identifier)
+      (identifier)
+      (argument_list
+        (identifier)))
+    (constant))
+  (test_pattern
+    (call
+      (identifier)
+      (identifier)
+      (argument_list
+        (identifier)))
+    (constant))
+  (test_pattern
+    (call
+      (identifier)
+      (identifier)
+      (argument_list
+        (identifier)
+        (identifier)))
+    (constant))
+  (test_pattern
+    (call
+      (call
+        (identifier)
+        (block
+          (block_body
+            (identifier))))
+      (identifier)
+      (argument_list
+        (identifier)))
+    (constant)))
+
+========================================
+command pattern boundaries: logical command boundaries
+========================================
+
+a and b c in Integer
+a or b c in Integer
+not b c in Integer
+def a = b c in Integer and d
+def a = b c in Integer or d
+x = b c in Integer and d
+
+---
+
+(program
+  (test_pattern
+    (binary
+      (identifier)
+      (call
+        (identifier)
+        (argument_list
+          (identifier))))
+    (constant))
+  (test_pattern
+    (binary
+      (identifier)
+      (call
+        (identifier)
+        (argument_list
+          (identifier))))
+    (constant))
+  (test_pattern
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (identifier))))
+    (constant))
+  (binary
+    (test_pattern
+      (method
+        (identifier)
+        (call
+          (identifier)
+          (argument_list
+            (identifier))))
+      (constant))
+    (identifier))
+  (binary
+    (test_pattern
+      (method
+        (identifier)
+        (call
+          (identifier)
+          (argument_list
+            (identifier))))
+      (constant))
+    (identifier))
+  (binary
+    (test_pattern
+      (assignment
+        (identifier)
+        (call
+          (identifier)
+          (argument_list
+            (identifier))))
+      (constant))
+    (identifier)))
+
+========================================
+command pattern boundaries: nested negation argument
+========================================
+
+return not not a in Integer
+foo not not a in Integer
+
+---
+
+(program
+  (return (argument_list (unary (unary (test_pattern (identifier) (constant))))))
+  (call (identifier) (argument_list (unary (unary (test_pattern (identifier) (constant)))))))
+
+========================================
+command pattern boundaries: definition pair keys
+========================================
+
+foo def a = b c rescue d => 1
+foo def a = b c rescue d => Integer
+foo def self.a = b c rescue d => 1
+foo def a = b c => 1
+foo (def a = b c rescue d) => 1
+def a = b c rescue d => 1
+foo def a = b c rescue d, e => 1
+
+---
+
+(program
+  (call
+    (identifier)
+    (argument_list
+      (pair
+        (method
+          (identifier)
+          (rescue_modifier
+            (call
+              (identifier)
+              (argument_list
+                (identifier)))
+            (identifier)))
+        (integer))))
+  (call
+    (identifier)
+    (argument_list
+      (pair
+        (method
+          (identifier)
+          (rescue_modifier
+            (call
+              (identifier)
+              (argument_list
+                (identifier)))
+            (identifier)))
+        (constant))))
+  (call
+    (identifier)
+    (argument_list
+      (pair
+        (singleton_method
+          (self)
+          (identifier)
+          (rescue_modifier
+            (call
+              (identifier)
+              (argument_list
+                (identifier)))
+            (identifier)))
+        (integer))))
+  (call
+    (identifier)
+    (argument_list
+      (method
+        (identifier)
+        (call
+          (identifier)
+          (argument_list
+            (pair
+              (identifier)
+              (integer)))))))
+  (call
+    (identifier)
+    (argument_list
+      (pair
+        (parenthesized_statements
+          (method
+            (identifier)
+            (rescue_modifier
+              (call
+                (identifier)
+                (argument_list
+                  (identifier)))
+              (identifier))))
+        (integer))))
+  (match_pattern
+    (method
+      (identifier)
+      (rescue_modifier
+        (call
+          (identifier)
+          (argument_list
+            (identifier)))
+        (identifier)))
+    (integer))
+  (call
+    (identifier)
+    (argument_list
+      (method
+        (identifier)
+        (rescue_modifier
+          (call
+            (identifier)
+            (argument_list
+              (identifier)))
+          (identifier)))
+      (pair
+        (identifier)
+        (integer)))))
+
+========================================
+command pattern boundaries: negated keyword pairs
+========================================
+
+not not b c => value
+not not b.c d => value
+not not b c in Integer
+not not not b c in Integer
+not not not not b c in Integer
+not not not b c => value
+not not not not not b c => value
+
+---
+
+(program
+  (unary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (pair
+            (identifier)
+            (identifier))))))
+  (unary
+    (unary
+      (call
+        (identifier)
+        (identifier)
+        (argument_list
+          (pair
+            (identifier)
+            (identifier))))))
+  (unary
+    (test_pattern
+      (unary
+        (call
+          (identifier)
+          (argument_list
+            (identifier))))
+      (constant)))
+  (unary
+    (unary
+      (test_pattern
+        (unary
+          (call
+            (identifier)
+            (argument_list
+              (identifier))))
+        (constant))))
+  (unary
+    (unary
+      (unary
+        (test_pattern
+          (unary
+            (call
+              (identifier)
+              (argument_list
+                (identifier))))
+          (constant)))))
+  (unary
+    (unary
+      (unary
+        (call
+          (identifier)
+          (argument_list
+            (pair
+              (identifier)
+              (identifier)))))))
+  (unary
+    (unary
+      (unary
+        (unary
+          (unary
+            (call
+              (identifier)
+              (argument_list
+                (pair
+                  (identifier)
+                  (identifier))))))))))
+
+========================================
+command pattern boundaries: negated command arguments
+========================================
+
+foo not b c
+foo not b.c d
+foo not not b c
+return not b c
+return not b.c d
+return not not b c
+
+---
+
+(program
+  (call
+    (identifier)
+    (argument_list
+      (unary
+        (call
+          (identifier)
+          (argument_list
+            (identifier))))))
+  (call
+    (identifier)
+    (argument_list
+      (unary
+        (call
+          (identifier)
+          (identifier)
+          (argument_list
+            (identifier))))))
+  (call
+    (identifier)
+    (argument_list
+      (unary
+        (unary
+          (call
+            (identifier)
+            (argument_list
+              (identifier)))))))
+  (return
+    (argument_list
+      (unary
+        (call
+          (identifier)
+          (argument_list
+            (identifier))))))
+  (return
+    (argument_list
+      (unary
+        (call
+          (identifier)
+          (identifier)
+          (argument_list
+            (identifier))))))
+  (return
+    (argument_list
+      (unary
+        (unary
+          (call
+            (identifier)
+            (argument_list
+              (identifier))))))))
+
+========================================
+command pattern boundaries: yield and super
+========================================
+
+def f; yield a in Integer; end
+def f; yield a, b in Integer; end
+def f; yield a => value; end
+def f; yield *a => value; end
+def f; yield a; end
+def f; super a in Integer; end
+def f; super a, b in Integer; end
+def f; super a => value; end
+def f; super *a => value; end
+def f; super &blk => value; end
+def f; super a; end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (test_pattern
+        (yield
+          (argument_list
+            (identifier)))
+        (constant))))
+  (method
+    (identifier)
+    (body_statement
+      (test_pattern
+        (yield
+          (argument_list
+            (identifier)
+            (identifier)))
+        (constant))))
+  (method
+    (identifier)
+    (body_statement
+      (yield
+        (argument_list
+          (pair
+            (identifier)
+            (identifier))))))
+  (method
+    (identifier)
+    (body_statement
+      (match_pattern
+        (yield
+          (argument_list
+            (splat_argument
+              (identifier))))
+        (identifier))))
+  (method
+    (identifier)
+    (body_statement
+      (yield
+        (argument_list
+          (identifier)))))
+  (method
+    (identifier)
+    (body_statement
+      (test_pattern
+        (call
+          (super)
+          (argument_list
+            (identifier)))
+        (constant))))
+  (method
+    (identifier)
+    (body_statement
+      (test_pattern
+        (call
+          (super)
+          (argument_list
+            (identifier)
+            (identifier)))
+        (constant))))
+(method (identifier) (body_statement (call (super) (argument_list (pair (identifier) (identifier))))))
+  (method
+    (identifier)
+    (body_statement
+      (match_pattern
+        (call
+          (super)
+          (argument_list
+            (splat_argument
+              (identifier))))
+        (identifier))))
+  (method
+    (identifier)
+    (body_statement
+      (match_pattern
+        (call
+          (super)
+          (argument_list
+            (block_argument
+              (identifier))))
+        (identifier))))
+(method (identifier) (body_statement (call (super) (argument_list (identifier))))))
+
+========================================
+command pattern boundaries: super continuations
+========================================
+
+def f; super { x }; end
+def f; super do x end; end
+def f; super a { x }; end
+def f; super a do x end; end
+def f; super(); end
+def f; super(a); end
+def f; super(&blk); end
+def f; super a, b; end
+def f; super a + b; end
+def f; super(a) in Integer; end
+def f; super { x } in Integer; end
+def f; super a { x } in Integer; end
+def f; super unless x; end
+def f; super if x; end
+def f; super while x; end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (super)
+        (block
+          (block_body
+            (identifier))))))
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (super)
+        (do_block
+          (body_statement
+            (identifier))))))
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (super)
+        (argument_list
+          (call
+            (identifier)
+            (block
+              (block_body
+                (identifier))))))))
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (super)
+        (argument_list
+          (identifier))
+        (do_block
+          (body_statement
+            (identifier))))))
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (super)
+        (argument_list))))
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (super)
+        (argument_list
+          (identifier)))))
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (super)
+        (argument_list
+          (block_argument
+            (identifier))))))
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (super)
+        (argument_list
+          (identifier)
+          (identifier)))))
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (super)
+        (argument_list
+          (binary
+            (identifier)
+            (identifier))))))
+  (method
+    (identifier)
+    (body_statement
+      (test_pattern
+        (call
+          (super)
+          (argument_list
+            (identifier)))
+        (constant))))
+  (method
+    (identifier)
+    (body_statement
+      (test_pattern
+        (call
+          (super)
+          (block
+            (block_body
+              (identifier))))
+        (constant))))
+  (method
+    (identifier)
+    (body_statement
+      (test_pattern
+        (call
+          (super)
+          (argument_list
+            (call
+              (identifier)
+              (block
+                (block_body
+                  (identifier))))))
+        (constant))))
+  (method
+    (identifier)
+    (body_statement
+      (unless_modifier
+        (super)
+        (identifier))))
+  (method
+    (identifier)
+    (body_statement
+      (if_modifier
+        (super)
+        (identifier))))
+  (method
+    (identifier)
+    (body_statement
+      (while_modifier
+        (super)
+        (identifier)))))
+
+========================================
+command pattern boundaries: block-pass pair keys
+========================================
+
+x = b c &blk => Integer
+foo b c &blk => 1
+x = b c.d &blk => Integer
+x = b c d &blk => Integer
+x = b c *xs, &blk => Integer
+x = b c **h, &blk => Integer
+x = b c d, &blk => Integer
+
+def in; end
+obj.in
+x = b obj.in &blk => Integer
+
+---
+
+(program
+  (assignment
+    (identifier)
+    (call
+      (identifier)
+      (argument_list
+        (pair
+          (call
+            (identifier)
+            (argument_list
+              (block_argument
+                (identifier))))
+          (constant)))))
+  (call
+    (identifier)
+    (argument_list
+      (call
+        (identifier)
+        (argument_list
+          (pair
+            (call
+              (identifier)
+              (argument_list
+                (block_argument
+                  (identifier))))
+            (integer))))))
+  (assignment
+    (identifier)
+    (call
+      (identifier)
+      (argument_list
+        (pair
+          (call
+            (identifier)
+            (identifier)
+            (argument_list
+              (block_argument
+                (identifier))))
+          (constant)))))
+  (assignment
+    (identifier)
+    (call
+      (identifier)
+      (argument_list
+        (call
+          (identifier)
+          (argument_list
+            (pair
+              (call
+                (identifier)
+                (argument_list
+                  (block_argument
+                    (identifier))))
+              (constant)))))))
+  (match_pattern
+    (assignment
+      (identifier)
+      (call
+        (identifier)
+        (argument_list
+          (call
+            (identifier)
+            (argument_list
+              (splat_argument
+                (identifier))
+              (block_argument
+                (identifier)))))))
+    (constant))
+  (match_pattern
+    (assignment
+      (identifier)
+      (call
+        (identifier)
+        (argument_list
+          (call
+            (identifier)
+            (argument_list
+              (hash_splat_argument
+                (identifier))
+              (block_argument
+                (identifier)))))))
+    (constant))
+  (match_pattern
+    (assignment
+      (identifier)
+      (call
+        (identifier)
+        (argument_list
+          (call
+            (identifier)
+            (argument_list
+              (identifier)
+              (block_argument
+                (identifier)))))))
+    (constant))
+  (method
+    (identifier))
+  (call
+    (identifier)
+    (identifier))
+  (assignment
+    (identifier)
+    (call
+      (identifier)
+      (argument_list
+        (pair
+          (call
+            (identifier)
+            (identifier)
+            (argument_list
+              (block_argument
+                (identifier))))
+          (constant))))))
+
+========================================
+command pattern boundaries: negated assignment logic
+========================================
+
+a = not b c in Integer and d
+a = not not b c in Integer and d
+a += not b c in Integer or d
+
+---
+
+(program
+  (binary
+    (test_pattern
+      (assignment
+        (identifier)
+        (unary
+          (call
+            (identifier)
+            (argument_list
+              (identifier)))))
+      (constant))
+    (identifier))
+  (binary
+    (assignment
+      (identifier)
+      (unary
+        (test_pattern
+          (unary
+            (call
+              (identifier)
+              (argument_list
+                (identifier))))
+          (constant))))
+    (identifier))
+  (binary
+    (test_pattern
+      (operator_assignment
+        (identifier)
+        (unary
+          (call
+            (identifier)
+            (argument_list
+              (identifier)))))
+      (constant))
+    (identifier)))
+
+========================================
+command pattern boundaries: super arithmetic spacing
+========================================
+
+def f
+  super + x
+  super +x
+  super + 1
+  super +1
+  super + x in Integer
+  super +x in Integer
+end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (binary
+        (super)
+        (identifier))
+      (call
+        (super)
+        (argument_list
+          (unary
+            (identifier))))
+      (binary
+        (super)
+        (integer))
+      (call
+        (super)
+        (argument_list
+          (unary
+            (integer))))
+      (test_pattern
+        (binary
+          (super)
+          (identifier))
+        (constant))
+      (test_pattern
+        (call
+          (super)
+          (argument_list
+            (unary
+              (identifier))))
+        (constant)))))
+
+========================================
+command pattern boundaries: nested command pair key
+========================================
+
+b c b c => v => w
+
+---
+
+(program
+  (call
+    (identifier)
+    (argument_list
+      (pair
+        (call
+          (identifier)
+          (argument_list
+            (call
+              (identifier)
+              (argument_list
+                (pair
+                  (identifier)
+                  (identifier))))))
+        (identifier)))))
+
+========================================
+command pattern boundaries: receiver command outer match after pair
+========================================
+
+b.c d e => v => w
+
+---
+
+(program
+  (match_pattern
+    (call
+      (identifier)
+      (identifier)
+      (argument_list
+        (call
+          (identifier)
+          (argument_list
+            (pair
+              (identifier)
+              (identifier))))))
+    (identifier)))
+
+========================================
+command pattern boundaries: nested command splat pair key
+========================================
+
+x = foo b c *xs => v
+
+---
+
+(program
+  (assignment
+    (identifier)
+    (call
+      (identifier)
+      (argument_list
+        (pair
+          (call
+            (identifier)
+            (argument_list
+              (call
+                (identifier)
+                (argument_list
+                  (splat_argument
+                    (identifier))))))
+          (identifier))))))
+
+========================================
+command pattern boundaries: nested command hash splat pair key
+========================================
+
+x = foo b c **h => v
+
+---
+
+(program
+  (assignment
+    (identifier)
+    (call
+      (identifier)
+      (argument_list
+        (pair
+          (call
+            (identifier)
+            (argument_list
+              (call
+                (identifier)
+                (argument_list
+                  (hash_splat_argument
+                    (identifier))))))
+          (identifier))))))
+
+========================================
+command pattern boundaries: direct command splat outer match
+========================================
+
+x = b c *xs => Integer
+
+---
+
+(program
+  (match_pattern
+    (assignment
+      (identifier)
+      (call
+        (identifier)
+        (argument_list
+          (call
+            (identifier)
+            (argument_list
+              (splat_argument
+                (identifier)))))))
+    (constant)))
+
+========================================
+command pattern boundaries: direct command hash splat outer match
+========================================
+
+x = b c **h => Integer
+
+---
+
+(program
+  (match_pattern
+    (assignment
+      (identifier)
+      (call
+        (identifier)
+        (argument_list
+          (call
+            (identifier)
+            (argument_list
+              (hash_splat_argument
+                (identifier)))))))
+    (constant)))
+
+========================================
+command pattern boundaries: mixed unary command assignment
+========================================
+
+a = not !b c
+
+---
+
+(program
+  (assignment
+    (identifier)
+    (unary
+      (unary
+        (call
+          (identifier)
+          (argument_list
+            (identifier)))))))
+
+========================================
+command pattern boundaries: mixed unary command assignment rescue
+========================================
+
+a += not !b c rescue d
+
+---
+
+(program
+  (operator_assignment
+    (identifier)
+    (rescue_modifier
+      (unary
+        (unary
+          (call
+            (identifier)
+            (argument_list
+              (identifier)))))
+      (identifier))))
+
+========================================
+command pattern boundaries: mixed unary command assignment pattern
+========================================
+
+a = not !b c in Integer and d
+
+---
+
+(program
+  (binary
+    (assignment
+      (identifier)
+      (unary
+        (test_pattern
+          (unary
+            (call
+              (identifier)
+              (argument_list
+                (identifier))))
+          (constant))))
+    (identifier)))
+
+========================================
+command pattern boundaries: nested super pair key
+========================================
+
+foo bar super a => v => z
+
+---
+
+(program
+  (call
+    (identifier)
+    (argument_list
+      (call
+        (identifier)
+        (argument_list
+          (pair
+            (call
+              (super)
+              (argument_list
+                (pair
+                  (identifier)
+                  (identifier))))
+            (identifier)))))))
+
+========================================
+command pattern boundaries: modifier nested command pair key
+========================================
+
+z if foo b c **h => v
+
+---
+
+(program
+  (if_modifier
+    (identifier)
+    (call
+      (identifier)
+      (argument_list
+        (pair
+          (call
+            (identifier)
+            (argument_list
+              (call
+                (identifier)
+                (argument_list
+                  (hash_splat_argument
+                    (identifier))))))
+          (identifier))))))
+
+========================================
+command pattern boundaries: parenthesized nested command pair key
+========================================
+
+foo(b c b c => v => w)
+
+---
+
+(program
+  (call
+    (identifier)
+    (argument_list
+      (call
+        (identifier)
+        (argument_list
+          (pair
+            (call
+              (identifier)
+              (argument_list
+                (call
+                  (identifier)
+                  (argument_list
+                    (pair
+                      (identifier)
+                      (identifier))))))
+            (identifier)))))))
+
+========================================
+command pattern boundaries: definition body pair before rescue
+========================================
+
+foo def b = c d => [1] rescue q
+
+---
+
+(program
+  (call
+    (identifier)
+    (argument_list
+      (method
+        (identifier)
+        (rescue_modifier
+          (call
+            (identifier)
+            (argument_list
+              (pair
+                (identifier)
+                (array
+                  (integer)))))
+          (identifier))))))
+
+========================================
+command pattern boundaries: definition key after rescued body
+========================================
+
+foo def b = c d rescue q => [1]
+
+---
+
+(program
+  (call
+    (identifier)
+    (argument_list
+      (pair
+        (method
+          (identifier)
+          (rescue_modifier
+            (call
+              (identifier)
+              (argument_list
+                (identifier)))
+            (identifier)))
+        (array
+          (integer))))))
+
+========================================
+command pattern boundaries: newline after logical modifier
+========================================
+
+q and z if w
+w in [1]
+
+---
+
+(program
+  (if_modifier
+    (binary
+      (identifier)
+      (identifier))
+    (identifier))
+  (test_pattern
+    (identifier)
+    (array_pattern
+      (integer))))
+
+========================================
+command pattern boundaries: newline before pattern assignment
+========================================
+
+x in [1] and y unless z
+w = v => 1
+
+---
+
+(program
+  (unless_modifier
+    (binary
+      (test_pattern
+        (identifier)
+        (array_pattern
+          (integer)))
+      (identifier))
+    (identifier))
+  (match_pattern
+    (assignment
+      (identifier)
+      (identifier))
+    (integer)))
+
+========================================
+command pattern boundaries: newline before endless definition pattern
+========================================
+
+q and z while w
+def m = a + b in [1]
+
+---
+
+(program
+  (while_modifier
+    (binary
+      (identifier)
+      (identifier))
+    (identifier))
+  (test_pattern
+    (method
+      (identifier)
+      (binary
+        (identifier)
+        (identifier)))
+    (array_pattern
+      (integer))))
+
+========================================
+command pattern boundaries: escaped newline in modifier command
+========================================
+
+z if b \
+ c in Integer
+
+---
+
+(program
+  (test_pattern
+    (if_modifier
+      (identifier)
+      (call
+        (identifier)
+        (argument_list
+          (identifier))))
+    (constant)))
+
+========================================
+command pattern boundaries: parenthesized command-valued pair key
+========================================
+
+foo(b c d => v => w)
+
+---
+
+(program
+  (call
+    (identifier)
+    (argument_list
+      (pair
+        (call
+          (identifier)
+          (argument_list
+            (call
+              (identifier)
+              (argument_list
+                (pair
+                  (identifier)
+                  (identifier))))))
+        (identifier)))))
+
+========================================
+command pattern boundaries: yield command pair key
+========================================
+
+def f; foo yield a => v => w; end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (identifier)
+        (argument_list
+          (pair
+            (yield
+              (argument_list
+                (pair
+                  (identifier)
+                  (identifier))))
+            (identifier)))))))
+
+========================================
+command pattern boundaries: negated command pair key
+========================================
+
+foo not b c => v => w
+
+---
+
+(program
+  (call
+    (identifier)
+    (argument_list
+      (pair
+        (unary
+          (call
+            (identifier)
+            (argument_list
+              (pair
+                (identifier)
+                (identifier)))))
+        (identifier)))))
+
+========================================
+command pattern boundaries: chained command match after pair
+========================================
+
+b c do end.d z => v => w
+
+---
+
+(program
+  (match_pattern
+    (call
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier)
+      (argument_list
+        (pair
+          (identifier)
+          (identifier))))
+    (identifier)))
+
+========================================
+command pattern boundaries: inner super pair before block
+========================================
+
+z if q super super a => v do end
+
+---
+
+(program
+  (if_modifier
+    (identifier)
+    (call
+      (identifier)
+      (argument_list
+        (call
+          (super)
+          (argument_list
+            (call
+              (super)
+              (argument_list
+                (pair
+                  (identifier)
+                  (identifier)))))))
+      (do_block))))
+
+========================================
+command pattern boundaries: definition pair inside super
+========================================
+
+z if q super def b = c d rescue e => v
+
+---
+
+(program
+  (if_modifier
+    (identifier)
+    (call
+      (identifier)
+      (argument_list
+        (call
+          (super)
+          (argument_list
+            (pair
+              (method
+                (identifier)
+                (rescue_modifier
+                  (call
+                    (identifier)
+                    (argument_list
+                      (identifier)))
+                  (identifier)))
+              (identifier))))))))
+
+========================================
+command pattern boundaries: definition pair inside receiver command
+========================================
+
+y = b c a::b c def a = b c **h, &blk => [1]
+
+---
+
+(program
+  (assignment
+    (identifier)
+    (call
+      (identifier)
+      (argument_list
+        (call
+          (identifier)
+          (argument_list
+            (call
+              (identifier)
+              (identifier)
+              (argument_list
+                (call
+                  (identifier)
+                  (argument_list
+                    (pair
+                      (method
+                        (identifier)
+                        (call
+                          (identifier)
+                          (argument_list
+                            (call
+                              (identifier)
+                              (argument_list
+                                (hash_splat_argument
+                                  (identifier))
+                                (block_argument
+                                  (identifier)))))))
+                      (array
+                        (integer)))))))))))))
+
+========================================
+command pattern boundaries: strong unary before receiver command match
+========================================
+
+! a.b c => d => v
+
+---
+
+(program
+  (match_pattern
+    (unary
+      (call
+        (identifier)
+        (identifier)
+        (argument_list
+          (pair
+            (identifier)
+            (identifier)))))
+    (identifier)))
+
+========================================
+command pattern boundaries: strong unary before negated command test
+========================================
+
+!not b c in Integer
+
+---
+
+(program
+  (test_pattern
+    (unary
+      (unary
+        (call
+          (identifier)
+          (argument_list
+            (identifier)))))
+    (constant)))
+
+========================================
+command pattern boundaries: returned setter assignment pair key
+========================================
+
+return b c do end.d = v => w
+
+---
+
+(program
+  (return
+    (argument_list
+      (pair
+        (assignment
+          (call
+            (call
+              (identifier)
+              (argument_list
+                (identifier))
+              (do_block))
+            (identifier))
+          (identifier))
+        (identifier)))))
+
+========================================
+command pattern boundaries: parenthesized operator assignment pair key
+========================================
+
+foo(b c do end.d += v => w)
+
+---
+
+(program
+  (call
+    (identifier)
+    (argument_list
+      (pair
+        (operator_assignment
+          (call
+            (call
+              (identifier)
+              (argument_list
+                (identifier))
+              (do_block))
+            (identifier))
+          (identifier))
+        (identifier)))))
+
+========================================
+command pattern boundaries: returned conditional assignment pair key
+========================================
+
+return b c do end.d ||= v => w
+
+---
+
+(program
+  (return
+    (argument_list
+      (pair
+        (operator_assignment
+          (call
+            (call
+              (identifier)
+              (argument_list
+                (identifier))
+              (do_block))
+            (identifier))
+          (identifier))
+        (identifier)))))
+
+========================================
+command pattern boundaries: parenthesized conditional assignment pair key
+========================================
+
+foo(b c do end.d &&= v => w)
+
+---
+
+(program
+  (call
+    (identifier)
+    (argument_list
+      (pair
+        (operator_assignment
+          (call
+            (call
+              (identifier)
+              (argument_list
+                (identifier))
+              (do_block))
+            (identifier))
+          (identifier))
+        (identifier)))))
+
+========================================
+command pattern boundaries: negated block call retains inner pair before arithmetic
+========================================
+
+return not b c => v do end +b == d
+
+---
+
+(program
+  (return
+    (argument_list
+      (unary
+        (binary
+          (binary
+            (call
+              (identifier)
+              (argument_list
+                (pair
+                  (identifier)
+                  (identifier)))
+              (do_block))
+            (identifier))
+          (identifier))))))
+
+========================================
+command pattern boundaries: grouped yield block call retains inner pair before arithmetic
+========================================
+
+def f; return yield (a b => v do end) +b == d; end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (return
+        (argument_list
+          (yield
+            (argument_list
+              (binary
+                (binary
+                  (parenthesized_statements
+                    (call
+                      (identifier)
+                      (argument_list
+                        (pair
+                          (identifier)
+                          (identifier)))
+                      (do_block)))
+                  (identifier))
+                (identifier)))))))))
+
+========================================
+command pattern boundaries: negated block call retains inner pair before boolean operator
+========================================
+
+next not b c => v do end && d
+
+---
+
+(program
+  (next
+    (argument_list
+      (unary
+        (binary
+          (call
+            (identifier)
+            (argument_list
+              (pair
+                (identifier)
+                (identifier)))
+            (do_block))
+          (identifier))))))
+
+========================================
+command pattern boundaries: bare block call arithmetic before outer pattern
+========================================
+
+b c do end + x in Integer
+
+---
+
+(program
+  (test_pattern
+    (binary
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block))
+      (identifier))
+    (constant)))
+
+========================================
+command pattern boundaries: strong unary binds before spaced super addition
+========================================
+
+def f; ! super + x; ~ super + x; - super + x; + super + x; end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (binary
+        (unary
+          (super))
+        (identifier))
+      (binary
+        (unary
+          (super))
+        (identifier))
+      (binary
+        (unary
+          (super))
+        (identifier))
+      (binary
+        (unary
+          (super))
+        (identifier)))))
+
+========================================
+command pattern boundaries: super addition retains left associativity
+========================================
+
+def f; foo + super + x; foo - super + x; end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (binary
+        (binary
+          (identifier)
+          (super))
+        (identifier))
+      (binary
+        (binary
+          (identifier)
+          (super))
+        (identifier)))))
+
+========================================
+command pattern boundaries: strong unary retains unspaced super plus argument
+========================================
+
+def f; ! super +x; ~ super(+x); - super(+x); + super(+x); end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (unary
+        (call
+          (super)
+          (argument_list
+            (unary
+              (identifier)))))
+      (unary
+        (call
+          (super)
+          (argument_list
+            (unary
+              (identifier)))))
+      (unary
+        (call
+          (super)
+          (argument_list
+            (unary
+              (identifier)))))
+      (unary
+        (call
+          (super)
+          (argument_list
+            (unary
+              (identifier))))))))
+
+========================================
+command pattern boundaries: completed block binary pair key
+========================================
+
+foo(b c do end && x => v)
+
+---
+
+(program
+  (call
+    (identifier)
+    (argument_list
+      (pair
+        (binary
+          (call
+            (identifier)
+            (argument_list
+              (identifier))
+            (do_block))
+          (identifier))
+        (identifier)))))
+
+========================================
+command pattern boundaries: strong unary before block binary
+========================================
+
+! b c do end && x
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block)))
+    (identifier)))
+
+========================================
+command pattern boundaries: reject signed unary before block binary
+:error
+========================================
+
+- b c do end + x
+
+---
+
+(ERROR)
+
+========================================
+command pattern boundaries: logical negation over block binary pattern
+========================================
+
+not b c do end && x in Integer
+
+---
+
+(program
+  (unary
+    (test_pattern
+      (binary
+        (call
+          (identifier)
+          (argument_list
+            (identifier))
+          (do_block))
+        (identifier))
+      (constant))))
+
+========================================
+command pattern boundaries: logical command inside patterned modifier
+========================================
+
+a and b if c d in Integer
+
+---
+
+(program
+  (test_pattern
+    (if_modifier
+      (binary
+        (identifier)
+        (identifier))
+      (call
+        (identifier)
+        (argument_list
+          (identifier))))
+    (constant)))
+
+========================================
+command pattern boundaries: logical negation inside patterned modifier
+========================================
+
+a or not b unless c d in Integer
+
+---
+
+(program
+  (test_pattern
+    (unless_modifier
+      (binary
+        (identifier)
+        (unary
+          (identifier)))
+      (call
+        (identifier)
+        (argument_list
+          (identifier))))
+    (constant)))
+
+========================================
+command pattern boundaries: outer do block before binary pattern
+========================================
+
+foo super c do end && x => v
+
+---
+
+(program
+  (match_pattern
+    (binary
+      (call
+        (identifier)
+        (argument_list
+          (call
+            (super)
+            (argument_list
+              (identifier))))
+        (do_block))
+      (identifier))
+    (identifier)))
+
+========================================
+command pattern boundaries: parenthesized super block binary pair
+========================================
+
+foo(super c do end && x => v)
+
+---
+
+(program
+  (call
+    (identifier)
+    (argument_list
+      (pair
+        (binary
+          (call
+            (super)
+            (argument_list
+              (identifier))
+            (do_block))
+          (identifier))
+        (identifier)))))
+
+========================================
+command pattern boundaries: negated command match inside logical right operand
+========================================
+
+a and not b c => v => w
+
+---
+
+(program
+  (binary
+    (identifier)
+    (match_pattern
+      (unary
+        (call
+          (identifier)
+          (argument_list
+            (pair
+              (identifier)
+              (identifier)))))
+      (identifier))))
+
+========================================
+command pattern boundaries: endless mixed unary pattern before logical continuation
+========================================
+
+def f = not ! a.b c in Integer and d
+
+---
+
+(program
+  (binary
+    (method
+      (identifier)
+      (unary
+        (test_pattern
+          (unary
+            (call
+              (identifier)
+              (identifier)
+              (argument_list
+                (identifier))))
+          (constant))))
+    (identifier)))
+
+========================================
+command pattern boundaries: outer do block under nested negated super predicate
+========================================
+
+foo not not super c do end && x in Integer
+
+---
+
+(program
+  (test_pattern
+    (binary
+      (call
+        (identifier)
+        (argument_list
+          (unary
+            (unary
+              (call
+                (super)
+                (argument_list
+                  (identifier))))))
+        (do_block))
+      (identifier))
+    (constant)))
+
+===============================
+repeated super statement modifiers
+===============================
+
+def m
+  super unless X
+  super unless X
+  super unless X
+  super unless X
+  super unless X
+  super unless X
+  super unless X
+  super unless X
+  super unless X
+  super unless X
+end
+
+def n
+  return super if X
+  return super if X
+  return super if X
+  return super if X
+  return super if X
+  return super if X
+  return super if X
+  return super if X
+  return super if X
+  return super if X
+end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (unless_modifier
+        (super)
+        (constant))
+      (unless_modifier
+        (super)
+        (constant))
+      (unless_modifier
+        (super)
+        (constant))
+      (unless_modifier
+        (super)
+        (constant))
+      (unless_modifier
+        (super)
+        (constant))
+      (unless_modifier
+        (super)
+        (constant))
+      (unless_modifier
+        (super)
+        (constant))
+      (unless_modifier
+        (super)
+        (constant))
+      (unless_modifier
+        (super)
+        (constant))
+      (unless_modifier
+        (super)
+        (constant))))
+  (method
+    (identifier)
+    (body_statement
+      (if_modifier
+        (return (argument_list (super)))
+        (constant))
+      (if_modifier
+        (return (argument_list (super)))
+        (constant))
+      (if_modifier
+        (return (argument_list (super)))
+        (constant))
+      (if_modifier
+        (return (argument_list (super)))
+        (constant))
+      (if_modifier
+        (return (argument_list (super)))
+        (constant))
+      (if_modifier
+        (return (argument_list (super)))
+        (constant))
+      (if_modifier
+        (return (argument_list (super)))
+        (constant))
+      (if_modifier
+        (return (argument_list (super)))
+        (constant))
+      (if_modifier
+        (return (argument_list (super)))
+        (constant))
+      (if_modifier
+        (return (argument_list (super)))
+        (constant)))))
+
+===============================
+completed super blocks as keyword pair keys
+===============================
+
+foo(super super c do end => v)
+return super c do end => v
+
+---
+
+(program
+  (call
+    (identifier)
+    (argument_list
+      (pair
+        (call
+          (super)
+          (argument_list
+            (call
+              (super)
+              (argument_list
+                (identifier))))
+          (do_block))
+        (identifier))))
+  (return
+    (argument_list
+      (pair
+        (call
+          (super)
+          (argument_list
+            (identifier))
+          (do_block))
+        (identifier)))))
+
+===============================
+reject ordinary block calls as direct return pair keys
+:error
+===============================
+
+return b c do end => v
+
+---
+
+(ERROR)
+
+===============================
+reject ungrouped command patterns in call arguments
+:error
+===============================
+
+foo(b c d do end in Integer)
+
+---
+
+(ERROR)
+
+===============================
+command pattern groups in call and return arguments
+===============================
+
+foo((b c d do end in Integer))
+return(b c d do end in Integer)
+
+---
+
+(program
+  (call
+    (identifier)
+    (argument_list
+      (parenthesized_statements
+        (test_pattern
+          (call
+            (identifier)
+            (argument_list
+              (call
+                (identifier)
+                (argument_list
+                  (identifier))))
+            (do_block))
+          (constant)))))
+  (return
+    (argument_list
+      (parenthesized_statements
+        (test_pattern
+          (call
+            (identifier)
+            (argument_list
+              (call
+                (identifier)
+                (argument_list
+                  (identifier))))
+            (do_block))
+          (constant))))))
+
+===============================
+reject ungrouped command negation in endless bodies
+:error
+===============================
+
+def f = ! b c do end
+
+---
+
+(ERROR)
+
+===============================
+command negation groups and nested pattern precedence
+===============================
+
+def f = (! b c do end)
+not not ! b c do end + x in Integer
+
+---
+
+(program
+  (method
+    (identifier)
+    (parenthesized_statements
+      (unary
+        (call
+          (identifier)
+          (argument_list
+            (identifier))
+          (do_block)))))
+  (unary
+    (unary
+      (test_pattern
+        (binary
+          (unary
+            (call
+              (identifier)
+              (argument_list
+                (identifier))
+              (do_block)))
+          (identifier))
+        (constant)))))
+
+====================
+super pair chains preserve statement and logical boundaries
+====================
+
+def f
+  super super c => v => w
+  super super super c => v => w
+  after
+  super super super c => v => w; after
+  a and super c => v => w
+  a or super c => v => w
+  return super super c => v => w
+  foo(super super c { } => v => w)
+  super super super c => v => w
+end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (super)
+        (argument_list
+          (pair
+            (call
+              (super)
+              (argument_list
+                (pair
+                  (identifier)
+                  (identifier))))
+            (identifier))))
+      (call
+        (super)
+        (argument_list
+          (call
+            (super)
+            (argument_list
+              (pair
+                (call
+                  (super)
+                  (argument_list
+                    (pair
+                      (identifier)
+                      (identifier))))
+                (identifier))))))
+      (identifier)
+      (call
+        (super)
+        (argument_list
+          (call
+            (super)
+            (argument_list
+              (pair
+                (call
+                  (super)
+                  (argument_list
+                    (pair
+                      (identifier)
+                      (identifier))))
+                (identifier))))))
+      (identifier)
+      (binary
+        (identifier)
+        (match_pattern
+          (call
+            (super)
+            (argument_list
+              (pair
+                (identifier)
+                (identifier))))
+          (identifier)))
+      (binary
+        (identifier)
+        (match_pattern
+          (call
+            (super)
+            (argument_list
+              (pair
+                (identifier)
+                (identifier))))
+          (identifier)))
+      (return
+        (argument_list
+          (call
+            (super)
+            (argument_list
+              (pair
+                (call
+                  (super)
+                  (argument_list
+                    (pair
+                      (identifier)
+                      (identifier))))
+                (identifier))))))
+      (call
+        (identifier)
+        (argument_list
+          (call
+            (super)
+            (argument_list
+              (pair
+                (call
+                  (super)
+                  (argument_list
+                    (pair
+                      (call
+                        (identifier)
+                        (block))
+                      (identifier))))
+                (identifier))))))
+      (call
+        (super)
+        (argument_list
+          (call
+            (super)
+            (argument_list
+              (pair
+                (call
+                  (super)
+                  (argument_list
+                    (pair
+                      (identifier)
+                      (identifier))))
+                (identifier)))))))))
+
+===============================
+command negation requires grouping for repeated bang
+===============================
+
+def f
+  ! b c do end + x
+  ! (! b c do end) + x
+  ! not ! b c
+  !!super + x
+end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (binary
+        (unary
+          (call
+            (identifier)
+            (argument_list
+              (identifier))
+            (do_block)))
+        (identifier))
+      (binary
+        (unary
+          (parenthesized_statements
+            (unary
+              (call
+                (identifier)
+                (argument_list
+                  (identifier))
+                (do_block)))))
+        (identifier))
+      (unary
+        (unary
+          (unary
+            (call
+              (identifier)
+              (argument_list
+                (identifier))))))
+      (binary
+        (unary
+          (unary
+            (super)))
+        (identifier)))))
+
+===============================
+reject repeated bang over an ungrouped command
+:error
+===============================
+
+def f; !! b c do end + x; end
+
+---
+
+(ERROR)
+
+===============================
+command patterns in first arguments and grouped later values
+===============================
+
+def f
+  foo(not b c do end in Integer, x)
+  foo(x, (not b c do end in Integer))
+  [(not b c do end in Integer)]
+end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (identifier)
+        (argument_list
+          (unary
+            (test_pattern
+              (call
+                (identifier)
+                (argument_list
+                  (identifier))
+                (do_block))
+              (array_pattern
+                (constant)
+                (identifier))))))
+      (call
+        (identifier)
+        (argument_list
+          (identifier)
+          (parenthesized_statements
+            (unary
+              (test_pattern
+                (call
+                  (identifier)
+                  (argument_list
+                    (identifier))
+                  (do_block))
+                (constant))))))
+      (array
+        (parenthesized_statements
+          (unary
+            (test_pattern
+              (call
+                (identifier)
+                (argument_list
+                  (identifier))
+                (do_block))
+              (constant))))))))
+
+===============================
+reject command patterns after an earlier argument
+:error
+===============================
+
+foo(x, not b c do end in Integer)
+
+---
+
+(ERROR)
+
+===============================
+reject ungrouped command patterns as array elements
+:error
+===============================
+
+[not b c do end in Integer]
+
+---
+
+(ERROR)
+
+===============================
+reject ungrouped yield block arithmetic
+:error
+===============================
+
+def f; return yield a b => v do end +b == d; end
+
+---
+
+(ERROR)
+
+===============================
+yield negation definitions and completed pair keys
+===============================
+
+def f
+  yield not not a b in Integer
+  yield not ! a b
+  yield def self.m = a b rescue c
+  foo yield a b c => v => w
+  super yield a, b => v do end => w
+end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (yield
+        (argument_list
+          (unary
+            (test_pattern
+              (unary
+                (call
+                  (identifier)
+                  (argument_list
+                    (identifier))))
+              (constant)))))
+      (yield
+        (argument_list
+          (unary
+            (unary
+              (call
+                (identifier)
+                (argument_list
+                  (identifier)))))))
+      (yield
+        (argument_list
+          (singleton_method
+            (self)
+            (identifier)
+            (rescue_modifier
+              (call
+                (identifier)
+                (argument_list
+                  (identifier)))
+              (identifier)))))
+      (call
+        (identifier)
+        (argument_list
+          (yield
+            (argument_list
+              (pair
+                (call
+                  (identifier)
+                  (argument_list
+                    (call
+                      (identifier)
+                      (argument_list
+                        (pair
+                          (identifier)
+                          (identifier))))))
+                (identifier))))))
+      (match_pattern
+        (call
+          (super)
+          (argument_list
+            (yield
+              (argument_list
+                (identifier)
+                (pair
+                  (identifier)
+                  (identifier)))))
+          (do_block))
+        (identifier)))))
+
+===============================
+reject multiple assignment as an ungrouped pattern test subject
+:error
+===============================
+
+a, b = c in Integer
+
+---
+
+(ERROR)
+
+===============================
+reject multiple assignment as an ungrouped match subject
+:error
+===============================
+
+a, b = c => v
+
+---
+
+(ERROR)
+
+===============================
+reject splat assignment as an ungrouped pattern subject
+:error
+===============================
+
+a = *b in Integer
+
+---
+
+(ERROR)
+
+===============================
+grouped multiple assignments remain pattern subjects
+===============================
+
+(a, b = c) in Integer
+(a = b, c) => v
+
+---
+
+(program
+  (test_pattern
+    (parenthesized_statements
+      (assignment
+        (left_assignment_list
+          (identifier)
+          (identifier))
+        (identifier)))
+    (constant))
+  (match_pattern
+    (parenthesized_statements
+      (assignment
+        (identifier)
+        (right_assignment_list
+          (identifier)
+          (identifier))))
+    (identifier)))
+
+===============================
+reject nested command-pair block continuations in yield arguments
+:error
+===============================
+
+def f; return yield a b c => v do end + x; end
+
+---
+
+(ERROR)
+
+===============================
+explicit grouping retains nested command-pair block continuations in yield
+===============================
+
+def f; return yield (a b c => v do end) + x; end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (return
+        (argument_list
+          (yield
+            (argument_list
+              (binary
+                (parenthesized_statements
+                  (call
+                    (identifier)
+                    (argument_list
+                      (call
+                        (identifier)
+                        (argument_list
+                          (pair
+                            (identifier)
+                            (identifier)))))
+                    (do_block)))
+                (identifier)))))))))
+
+===============================
+yield command-pair block-pass keys retain outer blocks
+===============================
+
+def f; foo yield a &b => v; end
+def f; foo yield a &b => v do end + x; end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (identifier)
+        (argument_list
+          (yield
+            (argument_list
+              (pair
+                (call
+                  (identifier)
+                  (argument_list
+                    (block_argument
+                      (identifier))))
+                (identifier))))))))
+  (method
+    (identifier)
+    (body_statement
+      (binary
+        (call
+          (identifier)
+          (argument_list
+            (yield
+              (argument_list
+                (pair
+                  (call
+                    (identifier)
+                    (argument_list
+                      (block_argument
+                        (identifier))))
+                  (identifier)))))
+          (do_block))
+        (identifier)))))
+
+===============================
+yield keyword pairs preserve outer blocks across pattern continuations
+===============================
+
+def f; foo yield a b => v do end + x => w; end
+def f; foo yield a b => v do end + x => w => z; end
+def f; foo yield not a b => v do end + x => w => z; end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (match_pattern
+        (binary
+          (call
+            (identifier)
+            (argument_list
+              (yield
+                (argument_list
+                  (call
+                    (identifier)
+                    (argument_list
+                      (pair
+                        (identifier)
+                        (identifier)))))))
+            (do_block))
+          (identifier))
+        (identifier))))
+  (method
+    (identifier)
+    (body_statement
+      (match_pattern
+        (binary
+          (call
+            (identifier)
+            (argument_list
+              (yield
+                (argument_list
+                  (call
+                    (identifier)
+                    (argument_list
+                      (pair
+                        (identifier)
+                        (identifier)))))))
+            (do_block))
+          (identifier))
+        (as_pattern
+          (identifier)
+          (identifier)))))
+  (method
+    (identifier)
+    (body_statement
+      (match_pattern
+        (binary
+          (call
+            (identifier)
+            (argument_list
+              (yield
+                (argument_list
+                  (unary
+                    (call
+                      (identifier)
+                      (argument_list
+                        (pair
+                          (identifier)
+                          (identifier))))))))
+            (do_block))
+          (identifier))
+        (as_pattern
+          (identifier)
+          (identifier))))))
+
+===============================
+yield command-pair values retain explicit block grouping
+===============================
+
+def f; return yield a b c *d => (v do end) + x; end
+def f; yield a b **h => v(x do end); end
+def f; yield a b &blk => def g = (v do end); end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (return
+        (argument_list
+          (yield
+            (argument_list
+              (call
+                (identifier)
+                (argument_list
+                  (pair
+                    (call
+                      (identifier)
+                      (argument_list
+                        (call
+                          (identifier)
+                          (argument_list
+                            (splat_argument
+                              (identifier))))))
+                    (binary
+                      (parenthesized_statements
+                        (call
+                          (identifier)
+                          (do_block)))
+                      (identifier)))))))))))
+  (method
+    (identifier)
+    (body_statement
+      (yield
+        (argument_list
+          (pair
+            (call
+              (identifier)
+              (argument_list
+                (call
+                  (identifier)
+                  (argument_list
+                    (hash_splat_argument
+                      (identifier))))))
+            (call
+              (identifier)
+              (argument_list
+                (call
+                  (identifier)
+                  (do_block)))))))))
+  (method
+    (identifier)
+    (body_statement
+      (yield
+        (argument_list
+          (call
+            (identifier)
+            (argument_list
+              (pair
+                (call
+                  (identifier)
+                  (argument_list
+                    (block_argument
+                      (identifier))))
+                (method
+                  (identifier)
+                  (parenthesized_statements
+                    (call
+                      (identifier)
+                      (do_block))))))))))))
+
+===============================
+yield pair indexed calls retain curly blocks and grouping
+===============================
+
+def f; return yield a b c *d => v[0] { } + x; end
+def f; return yield a b c *d => (v[0] do end) + x; end
+def f; return yield (a b c *d => v[0] do end) + x; end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (return
+        (argument_list
+          (yield
+            (argument_list
+              (call
+                (identifier)
+                (argument_list
+                  (pair
+                    (call
+                      (identifier)
+                      (argument_list
+                        (call
+                          (identifier)
+                          (argument_list
+                            (splat_argument
+                              (identifier))))))
+                    (binary
+                      (element_reference
+                        (identifier)
+                        (integer)
+                        (block))
+                      (identifier)))))))))))
+  (method
+    (identifier)
+    (body_statement
+      (return
+        (argument_list
+          (yield
+            (argument_list
+              (call
+                (identifier)
+                (argument_list
+                  (pair
+                    (call
+                      (identifier)
+                      (argument_list
+                        (call
+                          (identifier)
+                          (argument_list
+                            (splat_argument
+                              (identifier))))))
+                    (binary
+                      (parenthesized_statements
+                        (element_reference
+                          (identifier)
+                          (integer)
+                          (do_block)))
+                      (identifier)))))))))))
+  (method
+    (identifier)
+    (body_statement
+      (return
+        (argument_list
+          (yield
+            (argument_list
+              (binary
+                (parenthesized_statements
+                  (call
+                    (identifier)
+                    (argument_list
+                      (pair
+                        (call
+                          (identifier)
+                          (argument_list
+                            (call
+                              (identifier)
+                              (argument_list
+                                (splat_argument
+                                  (identifier))))))
+                        (element_reference
+                          (identifier)
+                          (integer))))
+                    (do_block)))
+                (identifier)))))))))
+
+===============================
+reject ungrouped command assignments inside call arguments
+:error
+===============================
+
+def f; foo(x = a b do end + c); end
+
+---
+
+(ERROR)
+
+===============================
+reject command assignments as ungrouped receiver-call arguments
+:error
+===============================
+
+a.b c.x = b c **h => v
+
+---
+
+(ERROR)
+
+===============================
+command assignment values retain grouping and statement positions
+===============================
+
+def f; foo(x = (a b do end + c)); end
+def f; x = a b do end + c; end
+def f; not (x = a b do end + c); end
+def f; foo(not x += a b); end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (identifier)
+        (argument_list
+          (assignment
+            (identifier)
+            (parenthesized_statements
+              (binary
+                (call
+                  (identifier)
+                  (argument_list
+                    (identifier))
+                  (do_block))
+                (identifier))))))))
+  (method
+    (identifier)
+    (body_statement
+      (assignment
+        (identifier)
+        (binary
+          (call
+            (identifier)
+            (argument_list
+              (identifier))
+            (do_block))
+          (identifier)))))
+  (method
+    (identifier)
+    (body_statement
+      (unary
+        (parenthesized_statements
+          (assignment
+            (identifier)
+            (binary
+              (call
+                (identifier)
+                (argument_list
+                  (identifier))
+                (do_block))
+              (identifier)))))))
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (identifier)
+        (argument_list
+          (unary
+            (operator_assignment
+              (identifier)
+              (call
+                (identifier)
+                (argument_list
+                  (identifier))))))))))
+
+===============================
+grouped values preserve statement and exception branches
+===============================
+
+def f; (a => v); end
+def f; foo((a => v; b; ;)); end
+def f; defined? begin a => v end; end
+def f; foo(begin a => v; rescue; b end); end
+def f; foo(begin a; rescue; b => v; ensure; c end); end
+def f; foo(begin a => v; rescue A; b => w; rescue B; c end); end
+def f; foo(begin a => v; rescue; b => w; else; c end); end
+def ensure; self.ensure; end
+def rescue; obj.rescue; end
+def else; obj.else; end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (parenthesized_statements
+        (match_pattern
+          (identifier)
+          (identifier)))))
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (identifier)
+        (argument_list
+          (parenthesized_statements
+            (match_pattern
+              (identifier)
+              (identifier))
+            (identifier)
+            (empty_statement))))))
+  (method
+    (identifier)
+    (body_statement
+      (unary
+        (begin
+          (match_pattern
+            (identifier)
+            (identifier))))))
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (identifier)
+        (argument_list
+          (begin
+            (match_pattern
+              (identifier)
+              (identifier))
+            (rescue
+              (then
+                (identifier))))))))
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (identifier)
+        (argument_list
+          (begin
+            (identifier)
+            (rescue
+              (then
+                (match_pattern
+                  (identifier)
+                  (identifier))))
+            (ensure
+              (empty_statement)
+              (identifier)))))))
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (identifier)
+        (argument_list
+          (begin
+            (match_pattern
+              (identifier)
+              (identifier))
+            (rescue
+              (exceptions
+                (constant))
+              (then
+                (match_pattern
+                  (identifier)
+                  (identifier))))
+            (rescue
+              (exceptions
+                (constant))
+              (then
+                (identifier))))))))
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (identifier)
+        (argument_list
+          (begin
+            (match_pattern
+              (identifier)
+              (identifier))
+            (rescue
+              (then
+                (match_pattern
+                  (identifier)
+                  (identifier))))
+            (else
+              (identifier)))))))
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (self)
+        (identifier))))
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (identifier)
+        (identifier))))
+  (method
+    (identifier)
+    (body_statement
+      (call
+        (identifier)
+        (identifier)))))
+
+===============================
+negated-yield values preserve curly blocks and explicit groups
+===============================
+
+def f; yield not a (v do end + x); end
+def f; yield not a v { } + x; end
+def f; yield not a (v[0] do end + x); end
+def f; yield not a (x = v do end + y); end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (yield
+        (argument_list
+          (unary
+            (call
+              (identifier)
+              (argument_list
+                (parenthesized_statements
+                  (binary
+                    (call
+                      (identifier)
+                      (do_block))
+                    (identifier))))))))))
+  (method
+    (identifier)
+    (body_statement
+      (yield
+        (argument_list
+          (unary
+            (call
+              (identifier)
+              (argument_list
+                (binary
+                  (call
+                    (identifier)
+                    (block))
+                  (identifier)))))))))
+  (method
+    (identifier)
+    (body_statement
+      (yield
+        (argument_list
+          (unary
+            (call
+              (identifier)
+              (argument_list
+                (parenthesized_statements
+                  (binary
+                    (element_reference
+                      (identifier)
+                      (integer)
+                      (do_block))
+                    (identifier))))))))))
+  (method
+    (identifier)
+    (body_statement
+      (yield
+        (argument_list
+          (unary
+            (call
+              (identifier)
+              (argument_list
+                (parenthesized_statements
+                  (assignment
+                    (identifier)
+                    (binary
+                      (call
+                        (identifier)
+                        (do_block))
+                      (identifier))))))))))))
+
+===============================
+logical negation before boolean pattern operand 1
+===============================
+
+not b c do end and x in Integer
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block)))
+    (test_pattern
+      (identifier)
+      (constant))))
+
+===============================
+logical negation before boolean pattern operand 2
+===============================
+
+not b c do end and x => z
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block)))
+    (match_pattern
+      (identifier)
+      (identifier))))
+
+===============================
+logical negation before boolean pattern operand 3
+===============================
+
+not b c do end or x in Integer
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block)))
+    (test_pattern
+      (identifier)
+      (constant))))
+
+===============================
+logical negation before boolean pattern operand 4
+===============================
+
+not b c do end or x => z
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block)))
+    (match_pattern
+      (identifier)
+      (identifier))))
+
+===============================
+logical negation before boolean pattern operand 5
+===============================
+
+not b c {} and x in Integer
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (call
+            (identifier)
+            (block)))))
+    (test_pattern
+      (identifier)
+      (constant))))
+
+===============================
+logical negation before boolean pattern operand 6
+===============================
+
+not b c {} and x => z
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (call
+            (identifier)
+            (block)))))
+    (match_pattern
+      (identifier)
+      (identifier))))
+
+===============================
+logical negation before boolean pattern operand 7
+===============================
+
+not b c {} or x in Integer
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (call
+            (identifier)
+            (block)))))
+    (test_pattern
+      (identifier)
+      (constant))))
+
+===============================
+logical negation before boolean pattern operand 8
+===============================
+
+not b c {} or x => z
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (call
+            (identifier)
+            (block)))))
+    (match_pattern
+      (identifier)
+      (identifier))))
+
+===============================
+logical negation before boolean pattern operand 9
+===============================
+
+not b c => v do end and x in Integer
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (pair
+            (identifier)
+            (identifier)))
+        (do_block)))
+    (test_pattern
+      (identifier)
+      (constant))))
+
+===============================
+logical negation before boolean pattern operand 10
+===============================
+
+not b c => v do end and x => z
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (pair
+            (identifier)
+            (identifier)))
+        (do_block)))
+    (match_pattern
+      (identifier)
+      (identifier))))
+
+===============================
+logical negation before boolean pattern operand 11
+===============================
+
+not b c => v do end or x in Integer
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (pair
+            (identifier)
+            (identifier)))
+        (do_block)))
+    (test_pattern
+      (identifier)
+      (constant))))
+
+===============================
+logical negation before boolean pattern operand 12
+===============================
+
+not b c => v do end or x => z
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (pair
+            (identifier)
+            (identifier)))
+        (do_block)))
+    (match_pattern
+      (identifier)
+      (identifier))))
+
+===============================
+logical negation before boolean pattern operand 13
+===============================
+
+not b c => v {} and x in Integer
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (pair
+            (identifier)
+            (call
+              (identifier)
+              (block))))))
+    (test_pattern
+      (identifier)
+      (constant))))
+
+===============================
+logical negation before boolean pattern operand 14
+===============================
+
+not b c => v {} and x => z
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (pair
+            (identifier)
+            (call
+              (identifier)
+              (block))))))
+    (match_pattern
+      (identifier)
+      (identifier))))
+
+===============================
+logical negation before boolean pattern operand 15
+===============================
+
+not b c => v {} or x in Integer
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (pair
+            (identifier)
+            (call
+              (identifier)
+              (block))))))
+    (test_pattern
+      (identifier)
+      (constant))))
+
+===============================
+logical negation before boolean pattern operand 16
+===============================
+
+not b c => v {} or x => z
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (pair
+            (identifier)
+            (call
+              (identifier)
+              (block))))))
+    (match_pattern
+      (identifier)
+      (identifier))))
+
+===============================
+boolean pattern ownership across statement boundaries 1
+===============================
+
+not b c do end and x => z
+1
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block)))
+    (match_pattern
+      (identifier)
+      (identifier)))
+  (integer))
+
+===============================
+boolean pattern ownership across statement boundaries 4
+===============================
+
+def f; not b c do end and x => z; end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (binary
+        (unary
+          (call
+            (identifier)
+            (argument_list
+              (identifier))
+            (do_block)))
+        (match_pattern
+          (identifier)
+          (identifier))))))
+
+===============================
+boolean pattern ownership across statement boundaries 7
+===============================
+
+not b c do end or x => z
+1
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (identifier))
+        (do_block)))
+    (match_pattern
+      (identifier)
+      (identifier)))
+  (integer))
+
+===============================
+boolean pattern ownership across statement boundaries 10
+===============================
+
+def f; not b c do end or x => z; end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (binary
+        (unary
+          (call
+            (identifier)
+            (argument_list
+              (identifier))
+            (do_block)))
+        (match_pattern
+          (identifier)
+          (identifier))))))
+
+===============================
+boolean pattern ownership across statement boundaries 13
+===============================
+
+not b c {} and x => z
+1
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (call
+            (identifier)
+            (block)))))
+    (match_pattern
+      (identifier)
+      (identifier)))
+  (integer))
+
+===============================
+boolean pattern ownership across statement boundaries 19
+===============================
+
+not b c => v do end and x => z
+1
+
+---
+
+(program
+  (binary
+    (unary
+      (call
+        (identifier)
+        (argument_list
+          (pair
+            (identifier)
+            (identifier)))
+        (do_block)))
+    (match_pattern
+      (identifier)
+      (identifier)))
+  (integer))
+
+===============================
+boolean predicate ownership after yield command
+===============================
+
+def f; a and yield b c in Integer; end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (binary
+        (identifier)
+        (test_pattern
+          (yield
+            (argument_list
+              (call
+                (identifier)
+                (argument_list
+                  (identifier)))))
+          (constant))))))
+
+===============================
+boolean predicate ownership after operator assignment
+===============================
+
+def f; a or x += b c in Integer; end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (binary
+        (identifier)
+        (test_pattern
+          (operator_assignment
+            (identifier)
+            (call
+              (identifier)
+              (argument_list
+                (identifier))))
+          (constant))))))
+
+===============================
+boolean predicate ownership after nested negation
+===============================
+
+a and ! not b c in Integer
+
+---
+
+(program
+  (binary
+    (identifier)
+    (test_pattern
+      (unary
+        (unary
+          (call
+            (identifier)
+            (argument_list
+              (identifier)))))
+      (constant))))
+
+===============================
+endless method body permits rightward statement group
+===============================
+
+def f = (a => v)
+
+---
+
+(program
+  (method
+    (identifier)
+    (parenthesized_statements
+      (match_pattern
+        (identifier)
+        (identifier)))))
+
+===============================
+endless singleton body permits rightward begin statement
+===============================
+
+def self.f = begin a => v end
+
+---
+
+(program
+  (singleton_method
+    (self)
+    (identifier)
+    (begin
+      (match_pattern
+        (identifier)
+        (identifier)))))
+
+===============================
+endless method rescues a rightward statement group
+===============================
+
+def f = (a => v) rescue x
+
+---
+
+(program
+  (method
+    (identifier)
+    (rescue_modifier
+      (parenthesized_statements
+        (match_pattern
+          (identifier)
+          (identifier)))
+      (identifier))))
+
+===============================
+nested endless method keeps statement body
+===============================
+
+foo def f = (a => v)
+
+---
+
+(program
+  (call
+    (identifier)
+    (argument_list
+      (method
+        (identifier)
+        (parenthesized_statements
+          (match_pattern
+            (identifier)
+            (identifier)))))))
+
+===============================
+negated block command cannot provide a rightward value
+:error
+===============================
+
+not a b do end => v
+
+---
+
+(ERROR)
+
+===============================
+repeated negation cannot provide a rightward block value
+:error
+===============================
+
+not not a b do end => v
+
+---
+
+(ERROR)
+
+===============================
+endless method rescue handler permits rightward statements
+===============================
+
+def f = a rescue (b => v)
+
+---
+
+(program
+  (method
+    (identifier)
+    (rescue_modifier
+      (identifier)
+      (parenthesized_statements
+        (match_pattern
+          (identifier)
+          (identifier))))))
+
+===============================
+endless command rescue handler permits rightward statements
+===============================
+
+def f = b c rescue begin a => v end
+
+---
+
+(program
+  (method
+    (identifier)
+    (rescue_modifier
+      (call
+        (identifier)
+        (argument_list
+          (identifier)))
+      (begin
+        (match_pattern
+          (identifier)
+          (identifier))))))
+
+===============================
+statement rescue handler permits rightward groups
+===============================
+
+x rescue (a => v)
+
+---
+
+(program
+  (rescue_modifier
+    (identifier)
+    (parenthesized_statements
+      (match_pattern
+        (identifier)
+        (identifier)))))
+
+===============================
+outer endless method rescue permits rightward groups
+===============================
+
+def f = a rescue b rescue (c => v)
+
+---
+
+(program
+  (rescue_modifier
+    (method
+      (identifier)
+      (rescue_modifier
+        (identifier)
+        (identifier)))
+    (parenthesized_statements
+      (match_pattern
+        (identifier)
+        (identifier)))))
+
+===============================
+assignment rescue handler permits rightward statement group
+===============================
+
+x = a rescue (b => v)
+
+---
+
+(program
+  (assignment
+    (identifier)
+    (rescue_modifier
+      (identifier)
+      (parenthesized_statements
+        (match_pattern
+          (identifier)
+          (identifier))))))
+
+===============================
+command assignment rescue handler permits rightward begin statement
+===============================
+
+x = b c rescue begin a => v end
+
+---
+
+(program
+  (assignment
+    (identifier)
+    (rescue_modifier
+      (call
+        (identifier)
+        (argument_list
+          (identifier)))
+      (begin
+        (match_pattern
+          (identifier)
+          (identifier))))))
+
+===============================
+nested negation cannot turn a curly pair tail into a command key
+:error
+===============================
+
+foo not not a b => v {} => w
+
+---
+
+(ERROR)

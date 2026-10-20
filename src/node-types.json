@@ -86,6 +86,10 @@
         "named": true
       },
       {
+        "type": "rescue_modifier",
+        "named": true
+      },
+      {
         "type": "return",
         "named": true
       },
@@ -512,6 +516,10 @@
         "named": true
       },
       {
+        "type": "super",
+        "named": true
+      },
+      {
         "type": "symbol_array",
         "named": true
       },
@@ -815,10 +823,6 @@
         "types": [
           {
             "type": "_expression",
-            "named": true
-          },
-          {
-            "type": "rescue_modifier",
             "named": true
           },
           {
@@ -2440,6 +2444,10 @@
             "named": true
           },
           {
+            "type": "if_modifier",
+            "named": true
+          },
+          {
             "type": "method",
             "named": true
           },
@@ -2449,6 +2457,22 @@
           },
           {
             "type": "singleton_method",
+            "named": true
+          },
+          {
+            "type": "unless_modifier",
+            "named": true
+          },
+          {
+            "type": "until_modifier",
+            "named": true
+          },
+          {
+            "type": "while_modifier",
+            "named": true
+          },
+          {
+            "type": "yield",
             "named": true
           }
         ]
@@ -2708,10 +2732,6 @@
           {
             "type": "_expression",
             "named": true
-          },
-          {
-            "type": "rescue_modifier",
-            "named": true
           }
         ]
       }
@@ -2756,11 +2776,35 @@
             "named": true
           },
           {
+            "type": "call",
+            "named": true
+          },
+          {
+            "type": "element_reference",
+            "named": true
+          },
+          {
             "type": "hash_key_symbol",
             "named": true
           },
           {
+            "type": "method",
+            "named": true
+          },
+          {
+            "type": "scope_resolution",
+            "named": true
+          },
+          {
+            "type": "singleton_method",
+            "named": true
+          },
+          {
             "type": "string",
+            "named": true
+          },
+          {
+            "type": "yield",
             "named": true
           }
         ]
@@ -3420,7 +3464,15 @@
             "named": true
           },
           {
+            "type": "if_modifier",
+            "named": true
+          },
+          {
             "type": "method",
+            "named": true
+          },
+          {
+            "type": "rescue_modifier",
             "named": true
           },
           {
@@ -3429,6 +3481,22 @@
           },
           {
             "type": "singleton_method",
+            "named": true
+          },
+          {
+            "type": "unless_modifier",
+            "named": true
+          },
+          {
+            "type": "until_modifier",
+            "named": true
+          },
+          {
+            "type": "while_modifier",
+            "named": true
+          },
+          {
+            "type": "yield",
             "named": true
           }
         ]
@@ -3468,6 +3536,10 @@
           },
           {
             "type": "_simple_numeric",
+            "named": true
+          },
+          {
+            "type": "begin",
             "named": true
           },
           {
