@@ -135,7 +135,22 @@ test.each(['%W', '%I'])('preserves a queued heredoc after trailing whitespace in
   const language = await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')));
   const parser = new Parser().setLanguage(language);
   try {
-    for (const suffix of [' ', '\t', ' b ', ' b\t']) {
+    for (const suffix of [
+      ' ',
+      '\t',
+      '\f',
+      '\v',
+      ' b ',
+      ' b\t',
+      ' \f',
+      '\v\t',
+      ' b\f',
+      ' b\v',
+      '\r ',
+      ' \r\f',
+      '\r\v',
+      ' b\r \t',
+    ]) {
       for (const newline of ['\n', '\r\n']) {
         const source = `value = ${kind}[a #{<<EOS}${suffix}${newline}body${newline}EOS${newline}c]\nfollowing = 1\n`;
         const tree = parser.parse(source)!;

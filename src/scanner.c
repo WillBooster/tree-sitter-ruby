@@ -176,6 +176,7 @@ static inline void deserialize(Scanner *scanner, const char *buffer, unsigned le
 
 static inline bool has_pending_heredoc_body(Scanner *scanner, const bool *valid_symbols);
 static inline bool scan_heredoc_after_literal_space(Scanner *scanner, TSLexer *lexer);
+static inline bool is_horizontal_whitespace(int32_t codepoint);
 static inline bool start_heredoc_body(Scanner *scanner, TSLexer *lexer);
 static inline bool is_heredoc_word_character(int32_t codepoint);
 static inline uint32_t encode_utf8(int32_t codepoint, char *bytes);
@@ -746,6 +747,10 @@ static inline bool scan_literal_content(Scanner *scanner, TSLexer *lexer, const 
     bool pending_heredoc = has_pending_heredoc_body(scanner, valid_symbols);
 
     for (;;) {
+        if (pending_heredoc && stop_on_space && !has_content && lexer->lookahead != literal->close_delimiter &&
+            is_horizontal_whitespace(lexer->lookahead)) {
+            return scan_heredoc_after_literal_space(scanner, lexer);
+        }
         if (pending_heredoc && lexer->lookahead != literal->close_delimiter &&
             (lexer->lookahead == '\n' || lexer->lookahead == '\r')) {
             lexer->mark_end(lexer);
@@ -764,10 +769,6 @@ static inline bool scan_literal_content(Scanner *scanner, TSLexer *lexer, const 
             }
             lexer->mark_end(lexer);
             return start_heredoc_body(scanner, lexer);
-        }
-        if (pending_heredoc && stop_on_space && !has_content &&
-            (lexer->lookahead == ' ' || lexer->lookahead == '\t')) {
-            return scan_heredoc_after_literal_space(scanner, lexer);
         }
         if (stop_on_space && iswspace(lexer->lookahead)) {
             if (has_content) {
@@ -1196,15 +1197,16 @@ static inline bool has_pending_heredoc_body(Scanner *scanner, const bool *valid_
 static inline bool scan_heredoc_after_literal_space(Scanner *scanner, TSLexer *lexer) {
     do {
         advance(lexer);
-    } while (lexer->lookahead == ' ' || lexer->lookahead == '\t');
-    if (lexer->lookahead == '\r') {
-        advance(lexer);
-    }
+    } while (is_horizontal_whitespace(lexer->lookahead));
     if (lexer->lookahead != '\n') {
         return false;
     }
     lexer->mark_end(lexer);
     return start_heredoc_body(scanner, lexer);
+}
+
+static inline bool is_horizontal_whitespace(int32_t codepoint) {
+    return codepoint == ' ' || codepoint == '\t' || codepoint == '\f' || codepoint == '\v' || codepoint == '\r';
 }
 
 static inline bool start_heredoc_body(Scanner *scanner, TSLexer *lexer) {
