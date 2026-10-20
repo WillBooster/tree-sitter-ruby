@@ -399,15 +399,16 @@ static inline bool scan_symbol_identifier(TSLexer *lexer) {
     return true;
 }
 
-// NO_LINE_BREAK is valid after `..` and `...` (an endless range) and after a hash shorthand (`foo key:`), where Ruby reads
-// an operand on the same or the next line although binary operators are valid because the expression may already be
-// complete. STRING_CONTENT is valid along with STRING_START only in error recovery.
+// NO_LINE_BREAK is valid after `..` and `...` (an endless range) and after a hash shorthand (`foo key:`), where Ruby
+// reads an operand on the same or the next line although binary operators are valid because the expression may
+// already be complete. STRING_CONTENT is valid along with STRING_START only in error recovery.
 static inline bool expects_operand_across_line_break(const bool *valid_symbols) {
     return valid_symbols[NO_LINE_BREAK] && !valid_symbols[STRING_CONTENT];
 }
 
 static inline bool scan_literal_start_or_assignment(Scanner *scanner, TSLexer *lexer, Literal *literal, const bool *valid_symbols) {
-    const bool binary_operator_valid = valid_symbols[FORWARD_SLASH] && !expects_operand_across_line_break(valid_symbols);
+    const bool binary_operator_valid =
+        valid_symbols[FORWARD_SLASH] && !expects_operand_across_line_break(valid_symbols);
 
     switch (lexer->lookahead) {
         case '"':
@@ -1070,8 +1071,8 @@ static bool scan_word_token(TSLexer *lexer, const bool *valid_symbols, bool resc
         advance(lexer);
     }
     if (rescue_may_end_line && length == sizeof(RESCUE) - 1 && ends_keyword(lexer->lookahead)) {
-        // A zero-width line break ends the hash shorthand or range before the `rescue` clause, which may name a top-level
-        // constant (`rescue::Foo`). A `rescue:` hash key cannot follow a hash shorthand without a comma.
+        // A zero-width line break ends the hash shorthand or range before the `rescue` clause, which may name a
+        // top-level constant (`rescue::Foo`). A `rescue:` hash key cannot follow a hash shorthand without a comma.
         if (lexer->lookahead == ':') {
             advance(lexer);
             if (lexer->lookahead != ':') return false;
