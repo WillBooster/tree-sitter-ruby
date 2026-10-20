@@ -86,6 +86,7 @@ module.exports = grammar({
     $._block_comment,
     $._uninterpreted,
     $._not_parenthesized,
+    $._lambda_brace,
   ],
 
   extras: ($) => [$.comment, $.heredoc_body, /\s/, /\\\r?\n/],
@@ -1566,7 +1567,14 @@ module.exports = grammar({
     instance_variable: () => token(seq('@', ALPHA_CHAR, IDENTIFIER_CHARS)),
     class_variable: () => token(seq('@@', ALPHA_CHAR, IDENTIFIER_CHARS)),
 
-    global_variable: () => /\$(-[a-zA-Z0-9_]|[!@&`'+~=/\\,;.<>*$?:"]|[0-9]+|[a-zA-Z_][a-zA-Z0-9_]*)/,
+    global_variable: () =>
+      token(
+        choice(
+          /\$(-[a-zA-Z0-9_]|[!@&`'+~=/\\,;.<>*$?:"]|[0-9]+)/,
+          seq('$-', /[^\u0000-\u007F]/),
+          seq('$', ALPHA_CHAR, IDENTIFIER_CHARS)
+        )
+      ),
 
     chained_string: ($) => seq($.string, repeat1($.string)),
 
@@ -1662,10 +1670,29 @@ module.exports = grammar({
         '->',
         field(
           'parameters',
-          optional(choice(alias($.parameters, $.lambda_parameters), alias($.bare_parameters, $.lambda_parameters)))
+          optional(
+            choice(
+              alias($._parenthesized_lambda_parameters, $.lambda_parameters),
+              alias($.bare_parameters, $.lambda_parameters)
+            )
+          )
         ),
-        field('body', choice($.block, $.do_block))
+        field('body', choice(alias($._lambda_block, $.block), $.do_block))
       ),
+
+    // As with parse.y's tLAMBEG, the scanner emits this `{` where a lambda body can start, so that it opens the body
+    // after bare parameters even where a parameter default could take a block or start a hash (`-> a=b() { }`,
+    // `-> x: { }`).
+    _lambda_block: ($) =>
+      seq(
+        alias($._lambda_brace, '{'),
+        field('parameters', optional($.block_parameters)),
+        optional(field('body', $.block_body)),
+        '}'
+      ),
+
+    _parenthesized_lambda_parameters: ($) =>
+      seq('(', commaSep($._formal_parameter), optional(seq(';', sep1(field('locals', $.identifier), ','))), ')'),
 
     empty_statement: () => prec(-1, ';'),
 

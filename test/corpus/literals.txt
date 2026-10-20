@@ -2580,3 +2580,98 @@ EOS
   (heredoc_body
     (heredoc_content)
     (heredoc_end)))
+
+=================================================
+multi-byte names in global variables and short interpolation
+=================================================
+
+$é = 1
+$-é
+"#$é #@ŀ #ŀa"
+
+---
+
+(program
+  (assignment
+    (global_variable)
+    (integer))
+  (global_variable)
+  (string
+    (interpolation
+      (global_variable))
+    (string_content)
+    (interpolation
+      (instance_variable))
+    (string_content)))
+
+========================================
+Unicode heredoc terminators preserve following code
+========================================
+
+latin = <<~"É"
+  first
+É
+cjk = <<-'日本'
+  second
+  日本
+emoji = <<"🚀"
+third
+🚀
+plain = <<日本
+fourth
+日本
+space = <<A 
+fifth
+A 
+following = 1
+
+---
+
+(program
+  (assignment (identifier) (heredoc_beginning))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (assignment (identifier) (heredoc_beginning))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (assignment (identifier) (heredoc_beginning))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (assignment (identifier) (heredoc_beginning))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (assignment (identifier) (heredoc_beginning))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (assignment (identifier) (integer)))
+
+========================================
+Unicode heredoc terminators do not match low-byte collisions
+========================================
+
+value = <<"Ł"
+A
+Ł
+following = 1
+
+---
+
+(program
+  (assignment (identifier) (heredoc_beginning))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (assignment (identifier) (integer)))
+
+======
+percent literal nested deeper than 255 levels
+======
+
+x = %(((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((#{1})))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
+y = 1
+
+---
+
+(program
+  (assignment
+    (identifier)
+    (string
+      (string_content)
+      (interpolation (integer))
+      (string_content)))
+  (assignment
+    (identifier)
+    (integer)))

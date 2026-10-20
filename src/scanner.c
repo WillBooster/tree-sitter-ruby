@@ -9,7 +9,6 @@ typedef enum {
     LINE_BREAK,
     NO_LINE_BREAK,
 
-    // Delimited literals
     SIMPLE_SYMBOL,
     STRING_START,
     SYMBOL_START,
@@ -24,7 +23,6 @@ typedef enum {
     HEREDOC_BODY_END,
     HEREDOC_START,
 
-    // Whitespace-sensitive tokens
     FORWARD_SLASH,
     BLOCK_AMPERSAND,
     SPLAT_STAR,
@@ -48,6 +46,7 @@ typedef enum {
     BLOCK_COMMENT,
     UNINTERPRETED,
     NOT_PARENTHESIZED,
+    LAMBDA_BRACE,
 
     NONE
 } TokenType;
@@ -98,7 +97,7 @@ static inline void reset(Scanner *scanner) {
 static inline unsigned serialize(Scanner *scanner, char *buffer) {
     unsigned size = 0;
 
-    if (scanner->literal_stack.size * 5 + 2 >= TREE_SITTER_SERIALIZATION_BUFFER_SIZE) {
+    if (scanner->literal_stack.size * 6 + 2 >= TREE_SITTER_SERIALIZATION_BUFFER_SIZE) {
         return 0;
     }
 
@@ -108,7 +107,12 @@ static inline unsigned serialize(Scanner *scanner, char *buffer) {
         buffer[size++] = literal->type;
         buffer[size++] = (char)literal->open_delimiter;
         buffer[size++] = (char)literal->close_delimiter;
-        buffer[size++] = (char)literal->nesting_depth;
+        // Nested delimiters such as `%(((...)))` can exceed one byte of depth.
+        if (literal->nesting_depth > UINT16_MAX) {
+            return 0;
+        }
+        buffer[size++] = (char)(literal->nesting_depth & 0xFF);
+        buffer[size++] = (char)(literal->nesting_depth >> 8);
         buffer[size++] = (char)literal->allows_interpolation;
     }
 
@@ -145,7 +149,8 @@ static inline void deserialize(Scanner *scanner, const char *buffer, unsigned le
         literal.type = (TokenType)(buffer[size++]);
         literal.open_delimiter = (unsigned char)buffer[size++];
         literal.close_delimiter = (unsigned char)buffer[size++];
-        literal.nesting_depth = (unsigned char)buffer[size++];
+        literal.nesting_depth = (unsigned char)buffer[size] | ((unsigned char)buffer[size + 1] << 8);
+        size += 2;
         literal.allows_interpolation = buffer[size++];
         array_push(&scanner->literal_stack, literal);
     }
@@ -170,6 +175,9 @@ static inline void deserialize(Scanner *scanner, const char *buffer, unsigned le
     assert(size == length);
 }
 
+static inline bool is_heredoc_word_character(int32_t codepoint);
+static inline uint32_t encode_utf8(int32_t codepoint, char *bytes);
+static inline void append_heredoc_character(String *word, int32_t codepoint);
 static inline bool scan_line_comment(TSLexer *lexer);
 static bool scan_splat(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols);
 static bool scan_word_token(TSLexer *lexer, const bool *valid_symbols, bool rescue_may_end_line);
@@ -257,7 +265,6 @@ static inline bool scan_whitespace(Scanner *scanner, TSLexer *lexer, const bool 
 
 static inline bool scan_operator(TSLexer *lexer) {
     switch (lexer->lookahead) {
-        // <, <=, <<, <=>
         case '<':
             advance(lexer);
             if (lexer->lookahead == '<') {
@@ -270,7 +277,6 @@ static inline bool scan_operator(TSLexer *lexer) {
             }
             return true;
 
-        // >, >=, >>
         case '>':
             advance(lexer);
             if (lexer->lookahead == '>' || lexer->lookahead == '=') {
@@ -278,7 +284,6 @@ static inline bool scan_operator(TSLexer *lexer) {
             }
             return true;
 
-        // ==, ===, =~
         case '=':
             advance(lexer);
             if (lexer->lookahead == '~') {
@@ -294,7 +299,6 @@ static inline bool scan_operator(TSLexer *lexer) {
             }
             return false;
 
-        // +, -, ~, +@, -@, ~@
         case '+':
         case '-':
         case '~':
@@ -304,7 +308,6 @@ static inline bool scan_operator(TSLexer *lexer) {
             }
             return true;
 
-        // ..
         case '.':
             advance(lexer);
             if (lexer->lookahead == '.') {
@@ -313,7 +316,6 @@ static inline bool scan_operator(TSLexer *lexer) {
             }
             return false;
 
-        // &, ^, |, /, %`
         case '&':
         case '^':
         case '|':
@@ -323,7 +325,6 @@ static inline bool scan_operator(TSLexer *lexer) {
             advance(lexer);
             return true;
 
-        // !, !=, !~
         case '!':
             advance(lexer);
             if (lexer->lookahead == '=' || lexer->lookahead == '~') {
@@ -331,7 +332,6 @@ static inline bool scan_operator(TSLexer *lexer) {
             }
             return true;
 
-        // *, **
         case '*':
             advance(lexer);
             if (lexer->lookahead == '*') {
@@ -339,7 +339,6 @@ static inline bool scan_operator(TSLexer *lexer) {
             }
             return true;
 
-        // [], []=
         case '[':
             advance(lexer);
             if (lexer->lookahead == ']') {
@@ -584,18 +583,18 @@ static inline void scan_heredoc_word(TSLexer *lexer, Heredoc *heredoc) {
             quote = lexer->lookahead;
             advance(lexer);
             while (lexer->lookahead != quote && !lexer->eof(lexer)) {
-                array_push(&word, lexer->lookahead);
+                append_heredoc_character(&word, lexer->lookahead);
                 advance(lexer);
             }
             advance(lexer);
             break;
 
         default:
-            if (iswalnum(lexer->lookahead) || lexer->lookahead == '_') {
-                array_push(&word, lexer->lookahead);
+            if (is_heredoc_word_character(lexer->lookahead)) {
+                append_heredoc_character(&word, lexer->lookahead);
                 advance(lexer);
-                while (iswalnum(lexer->lookahead) || lexer->lookahead == '_') {
-                    array_push(&word, lexer->lookahead);
+                while (is_heredoc_word_character(lexer->lookahead)) {
+                    append_heredoc_character(&word, lexer->lookahead);
                     advance(lexer);
                 }
             }
@@ -617,14 +616,16 @@ static inline bool scan_short_interpolation(TSLexer *lexer, const bool has_conte
         advance(lexer);
         bool is_short_interpolation = false;
         if (start == '$') {
-            if (strchr("!@&`'+~=/\\,;.<>*$?:\"", lexer->lookahead) != NULL) {
+            // `strchr` would match the terminator for a NUL lookahead and truncate non-ASCII ones.
+            if (lexer->lookahead > 0 && lexer->lookahead < 0x80 &&
+                strchr("!@&`'+~=/\\,;.<>*$?:\"", (char)lexer->lookahead) != NULL) {
                 is_short_interpolation = true;
             } else {
                 if (lexer->lookahead == '-') {
                     advance(lexer);
-                    is_short_interpolation = iswalpha(lexer->lookahead) || lexer->lookahead == '_';
+                    is_short_interpolation = lexer->lookahead >= 0x80 || iswalpha(lexer->lookahead) || lexer->lookahead == '_';
                 } else {
-                    is_short_interpolation = iswalnum(lexer->lookahead) || lexer->lookahead == '_';
+                    is_short_interpolation = lexer->lookahead >= 0x80 || iswalnum(lexer->lookahead) || lexer->lookahead == '_';
                 }
             }
         }
@@ -683,9 +684,12 @@ static inline bool scan_heredoc_content(Scanner *scanner, TSLexer *lexer) {
             return true;
         }
 
-        if (lexer->lookahead == *array_get(&heredoc->word, position_in_word) && look_for_heredoc_end) {
+        char utf8[4];
+        uint32_t utf8_length = encode_utf8(lexer->lookahead, utf8);
+        if (look_for_heredoc_end && position_in_word + utf8_length <= heredoc->word.size &&
+            memcmp(&heredoc->word.contents[position_in_word], utf8, utf8_length) == 0) {
             advance(lexer);
-            position_in_word++;
+            position_in_word += utf8_length;
         } else {
             position_in_word = 0;
             look_for_heredoc_end = false;
@@ -820,7 +824,6 @@ static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symb
     }
     scanner->has_leading_whitespace = false;
 
-    // Contents of literals, which match any character except for some close delimiter
     if (!valid_symbols[STRING_START]) {
         if ((valid_symbols[STRING_CONTENT] || valid_symbols[STRING_END]) && scanner->literal_stack.size > 0) {
             return scan_literal_content(scanner, lexer);
@@ -830,7 +833,6 @@ static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symb
         }
     }
 
-    // Whitespace
     lexer->result_symbol = NONE;
     bool rescue_may_end_line = false;
     if (!scan_whitespace(scanner, lexer, valid_symbols, &rescue_may_end_line)) {
@@ -845,6 +847,15 @@ static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symb
             if (!raw_data && valid_symbols[LINE_COMMENT] && scan_line_comment(lexer)) {
                 lexer->mark_end(lexer);
                 lexer->result_symbol = LINE_COMMENT;
+                return true;
+            }
+            return false;
+
+        case '{':
+            // During error recovery every symbol is valid, STRING_CONTENT included.
+            if (valid_symbols[LAMBDA_BRACE] && !valid_symbols[STRING_CONTENT]) {
+                advance(lexer);
+                lexer->result_symbol = LAMBDA_BRACE;
                 return true;
             }
             return false;
@@ -1144,6 +1155,30 @@ static bool scan_embdoc(TSLexer *lexer) {
         if (!lexer->eof(lexer)) advance(lexer);
     }
     return false;
+}
+
+static inline bool is_heredoc_word_character(int32_t codepoint) {
+    return codepoint >= 0x80 || iswalnum(codepoint) || codepoint == '_';
+}
+
+static inline void append_heredoc_character(String *word, int32_t codepoint) {
+    char utf8[4];
+    uint32_t length = encode_utf8(codepoint, utf8);
+    array_extend(word, length, utf8);
+}
+
+static inline uint32_t encode_utf8(int32_t codepoint, char *bytes) {
+    if (codepoint < 0x80) {
+        bytes[0] = (char)codepoint;
+        return 1;
+    }
+    uint32_t length = codepoint < 0x800 ? 2 : codepoint < 0x10000 ? 3 : 4;
+    for (uint32_t index = length - 1; index > 0; index--) {
+        bytes[index] = (char)(0x80 | (codepoint & 0x3F));
+        codepoint >>= 6;
+    }
+    bytes[0] = (char)((0xF00 >> length) | codepoint);
+    return length;
 }
 
 static bool scan_word_text(TSLexer *lexer, const char *word) {
