@@ -769,7 +769,9 @@ static inline bool scan_literal_content(Scanner *scanner, TSLexer *lexer, const 
             is_horizontal_whitespace(lexer->lookahead)) {
             return scan_heredoc_after_literal_space(scanner, lexer);
         }
-        if (pending_heredoc && literal->close_delimiter != '\n' && lexer->lookahead != literal->close_delimiter &&
+        if (pending_heredoc &&
+            (literal->resume_after_heredoc ||
+             (literal->close_delimiter != '\n' && lexer->lookahead != literal->close_delimiter)) &&
             (lexer->lookahead == '\n' || lexer->lookahead == '\r')) {
             lexer->mark_end(lexer);
             if (has_content) {
