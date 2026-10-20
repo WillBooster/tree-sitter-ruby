@@ -1,12 +1,17 @@
 import path from 'node:path';
 import { Edit, Language, type ParseOptions, Parser } from '@willbooster/web-tree-sitter';
-import { expect, test } from 'vitest';
+import { beforeAll, expect, test } from 'vitest';
 
 import { currentWasmPath } from '../helpers/generationInputs.js';
 
-test.each(['\f', '\v'])('preserves statements after a heredoc label followed by %j', async (whitespace) => {
+let language: Language;
+
+beforeAll(async () => {
   await Parser.init();
-  const language = await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')));
+  language = await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')));
+});
+
+test.each(['\f', '\v'])('preserves statements after a heredoc label followed by %j', (whitespace) => {
   const parser = new Parser().setLanguage(language);
   const tree = parser.parse(`value = <<EOS${whitespace}\nhello\nEOS\nfollowing = 1\n`)!;
   try {
@@ -37,9 +42,7 @@ test.each([
   ['nested string', '"a #{"#{<<EOS} b\nbody\nEOS\nc"} d"'],
   ['non-interpolating heredoc', '"a #{<<\'EOS\'} b\n#{body}\nEOS\nc"'],
   ['escaped newline', '"#{<<EOS} b\\\nbody\nEOS\nc"'],
-])('preserves a heredoc and following statements inside a multiline %s', async (_, literal) => {
-  await Parser.init();
-  const language = await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')));
+])('preserves a heredoc and following statements inside a multiline %s', (_, literal) => {
   const parser = new Parser().setLanguage(language);
   const tree = parser.parse(`value = ${literal}\nfollowing = 1\n`)!;
   try {
@@ -66,9 +69,7 @@ test.each([
   ['string', '"', '"'],
   ['word array', '%W[', ']'],
   ['symbol array', '%I[', ']'],
-])('starts a pending heredoc after an included escaped newline across ranges in a %s', async (_, open, close) => {
-  await Parser.init();
-  const language = await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')));
+])('starts a pending heredoc after an included escaped newline across ranges in a %s', (_, open, close) => {
   const parser = new Parser().setLanguage(language);
   try {
     for (const newline of ['\n', '\r\n']) {
@@ -121,9 +122,7 @@ test.each([
   ['percent string', '%q[', ']'],
   ['word array', '%w[', ']'],
   ['symbol array', '%i[', ']'],
-])('starts a pending heredoc after an escaped newline in a %s', async (_, open, close) => {
-  await Parser.init();
-  const language = await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')));
+])('starts a pending heredoc after an escaped newline in a %s', (_, open, close) => {
   const parser = new Parser().setLanguage(language);
   try {
     for (const newline of ['\n', '\r\n']) {
@@ -148,9 +147,7 @@ test.each([
   }
 });
 
-test.each(['%W', '%I'])('preserves a queued heredoc after trailing whitespace in %s', async (kind) => {
-  await Parser.init();
-  const language = await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')));
+test.each(['%W', '%I'])('preserves a queued heredoc after trailing whitespace in %s', (kind) => {
   const parser = new Parser().setLanguage(language);
   try {
     for (const suffix of [
@@ -204,9 +201,7 @@ test.each([
   ['subshell', '`', '`'],
   ['regexp', '/', '/'],
   ['quoted symbol', ':"', '"'],
-])('keeps an escaped physical newline outside the queued heredoc in a %s', async (_, open, close) => {
-  await Parser.init();
-  const language = await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')));
+])('keeps an escaped physical newline outside the queued heredoc in a %s', (_, open, close) => {
   const parser = new Parser().setLanguage(language);
   try {
     for (const newline of ['\n', '\r\n']) {
@@ -232,9 +227,7 @@ test.each([
   }
 });
 
-test.each(['%W', '%I'])('keeps heredoc ranges when editing host whitespace in %s', async (kind) => {
-  await Parser.init();
-  const language = await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')));
+test.each(['%W', '%I'])('keeps heredoc ranges when editing host whitespace in %s', (kind) => {
   const parser = new Parser().setLanguage(language);
   try {
     for (const newline of ['\n', '\r\n']) {
@@ -288,9 +281,7 @@ test.each([
   ['non-interpolating word array', '%w[', ']'],
   ['symbol array', '%I[', ']'],
   ['non-interpolating symbol array', '%i[', ']'],
-])('preserves physical line boundaries across included ranges in a %s', async (_, open, close) => {
-  await Parser.init();
-  const language = await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')));
+])('preserves physical line boundaries across included ranges in a %s', (_, open, close) => {
   const parser = new Parser().setLanguage(language);
   try {
     for (const [left, right] of [
@@ -352,9 +343,7 @@ test.each([
   ['string', '"', '"'],
   ['word array', '%W[', ']'],
   ['symbol array', '%I[', ']'],
-])('preserves indented heredocs after escaped newlines in a %s', async (_, open, close) => {
-  await Parser.init();
-  const language = await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')));
+])('preserves indented heredocs after escaped newlines in a %s', (_, open, close) => {
   const parser = new Parser().setLanguage(language);
   try {
     for (const newline of ['\n', '\r\n']) {
@@ -409,63 +398,58 @@ test.each([
   }
 });
 
-test.each(['%W', '%w', '%I', '%i'])(
-  'preserves heredocs after array separators and escaped newlines in %s',
-  async (kind) => {
-    await Parser.init();
-    const language = await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')));
-    const parser = new Parser().setLanguage(language);
-    const interpolated = kind === '%W' || kind === '%I';
-    try {
-      for (const separator of [' ', '\t', '\f', '\v', '\r', ' \t\f\v\r']) {
-        for (const newline of ['\n', '\r\n']) {
-          for (const gap of ['', 'EXCLUDED']) {
-            const prefix = interpolated
-              ? `value = ${kind}[a #{<<EOS} b${separator}\\${newline}`
-              : `value = [<<EOS, ${kind}[a${separator}\\${newline}`;
-            const source = `${prefix}${gap}\t  body${newline}EOS${newline}c]${interpolated ? '' : ']'}\nfollowing = 1\n`;
-            const position = (index: number): { row: number; column: number } => {
-              const lines = source.slice(0, index).split('\n');
-              return { row: lines.length - 1, column: lines.at(-1)!.length };
-            };
-            const tree = parser.parse(source, undefined, {
-              includedRanges: [
-                {
-                  startIndex: 0,
-                  endIndex: prefix.length,
-                  startPosition: position(0),
-                  endPosition: position(prefix.length),
-                },
-                {
-                  startIndex: prefix.length + gap.length,
-                  endIndex: source.length,
-                  startPosition: position(prefix.length + gap.length),
-                  endPosition: position(source.length),
-                },
-              ],
-            })!;
-            try {
-              expect(tree.rootNode.hasError, source).toBe(false);
-              const outer = tree.rootNode.descendantsOfType('heredoc_body')[0]!;
-              const inner = outer.descendantsOfType('heredoc_content')[0]!;
-              expect(outer.text).toBe(`\t  body${newline}EOS`);
-              expect(inner.text).toBe(`\t  body${newline}`);
-              expect(outer.startIndex).toBe(prefix.length + gap.length);
-              expect(inner.startIndex).toBe(outer.startIndex);
-              expect(outer.endIndex).toBe(source.indexOf(`${newline}EOS`) + newline.length + 3);
-              expect(inner.endIndex).toBe(source.indexOf(`${newline}EOS`) + newline.length);
-              expect(tree.rootNode.lastNamedChild?.text).toBe('following = 1');
-            } finally {
-              tree.delete();
-            }
+test.each(['%W', '%w', '%I', '%i'])('preserves heredocs after array separators and escaped newlines in %s', (kind) => {
+  const parser = new Parser().setLanguage(language);
+  const interpolated = kind === '%W' || kind === '%I';
+  try {
+    for (const separator of [' ', '\t', '\f', '\v', '\r', ' \t\f\v\r']) {
+      for (const newline of ['\n', '\r\n']) {
+        for (const gap of ['', 'EXCLUDED']) {
+          const prefix = interpolated
+            ? `value = ${kind}[a #{<<EOS} b${separator}\\${newline}`
+            : `value = [<<EOS, ${kind}[a${separator}\\${newline}`;
+          const source = `${prefix}${gap}\t  body${newline}EOS${newline}c]${interpolated ? '' : ']'}\nfollowing = 1\n`;
+          const position = (index: number): { row: number; column: number } => {
+            const lines = source.slice(0, index).split('\n');
+            return { row: lines.length - 1, column: lines.at(-1)!.length };
+          };
+          const tree = parser.parse(source, undefined, {
+            includedRanges: [
+              {
+                startIndex: 0,
+                endIndex: prefix.length,
+                startPosition: position(0),
+                endPosition: position(prefix.length),
+              },
+              {
+                startIndex: prefix.length + gap.length,
+                endIndex: source.length,
+                startPosition: position(prefix.length + gap.length),
+                endPosition: position(source.length),
+              },
+            ],
+          })!;
+          try {
+            expect(tree.rootNode.hasError, source).toBe(false);
+            const outer = tree.rootNode.descendantsOfType('heredoc_body')[0]!;
+            const inner = outer.descendantsOfType('heredoc_content')[0]!;
+            expect(outer.text).toBe(`\t  body${newline}EOS`);
+            expect(inner.text).toBe(`\t  body${newline}`);
+            expect(outer.startIndex).toBe(prefix.length + gap.length);
+            expect(inner.startIndex).toBe(outer.startIndex);
+            expect(outer.endIndex).toBe(source.indexOf(`${newline}EOS`) + newline.length + 3);
+            expect(inner.endIndex).toBe(source.indexOf(`${newline}EOS`) + newline.length);
+            expect(tree.rootNode.lastNamedChild?.text).toBe('following = 1');
+          } finally {
+            tree.delete();
           }
         }
       }
-    } finally {
-      parser.delete();
     }
+  } finally {
+    parser.delete();
   }
-);
+});
 
 test.each([
   ['opening', '%'],
@@ -478,9 +462,7 @@ test.each([
   ['closing', '%Q'],
   ['closing', '%x'],
   ['closing', '%r'],
-])('preserves heredocs across an %s newline delimiter in %s', async (mode, kind) => {
-  await Parser.init();
-  const language = await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')));
+])('preserves heredocs across an %s newline delimiter in %s', (mode, kind) => {
   const parser = new Parser().setLanguage(language);
   try {
     for (const openEnding of ['\n', '\r\n']) {
@@ -599,9 +581,7 @@ test.each([
   }
 });
 
-test.each(['%', '%Q', '%q', '%s', '%x', '%r'])('resumes an LF-delimited %s after all queued heredocs', async (kind) => {
-  await Parser.init();
-  const language = await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')));
+test.each(['%', '%Q', '%q', '%s', '%x', '%r'])('resumes an LF-delimited %s after all queued heredocs', (kind) => {
   const parser = new Parser().setLanguage(language);
   try {
     for (const count of [2, 3]) {
@@ -706,9 +686,7 @@ test.each(['%', '%Q', '%q', '%s', '%x', '%r'])('resumes an LF-delimited %s after
 
 test.each(['%', '%Q', '%q', '%s', '%x', '%r'])(
   'preserves an LF-delimited %s when resumed content starts with interpolation or an escape',
-  async (kind) => {
-    await Parser.init();
-    const language = await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')));
+  (kind) => {
     const parser = new Parser().setLanguage(language);
     try {
       for (const count of [1, 2]) {
@@ -802,9 +780,7 @@ test.each(['%', '%Q', '%q', '%s', '%x', '%r'])(
   }
 );
 
-test.each(['opening', 'closing'])('keeps adjacent and disjoint CR/LF %s delimiters distinct', async (mode) => {
-  await Parser.init();
-  const language = await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')));
+test.each(['opening', 'closing'])('keeps adjacent and disjoint CR/LF %s delimiters distinct', (mode) => {
   const parser = new Parser().setLanguage(language);
   try {
     for (const gap of ['', 'EXCLUDED']) {
@@ -849,9 +825,7 @@ test.each(['opening', 'closing'])('keeps adjacent and disjoint CR/LF %s delimite
   }
 });
 
-test.each(['%', '%Q', '%q', '%s', '%x', '%r'])('preserves independent bare CR characters in %s', async (kind) => {
-  await Parser.init();
-  const language = await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')));
+test.each(['%', '%Q', '%q', '%s', '%x', '%r'])('preserves independent bare CR characters in %s', (kind) => {
   const parser = new Parser().setLanguage(language);
   try {
     for (const literal of [`${kind}\rtail\r`, `[<<EOS, ${kind}\r\nbody\nEOS\na\rb\n]`]) {
