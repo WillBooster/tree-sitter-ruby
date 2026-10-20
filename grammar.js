@@ -161,6 +161,11 @@ module.exports = grammar({
 
   supertypes: ($) => [
     $._statement,
+    $._argument_expression,
+    $._command_argument_expression,
+    $._yield_argument_expression,
+    $._value_argument_expression,
+    $._pattern_arg,
     $._arg,
     $._method_name,
     $._expression,
@@ -694,13 +699,19 @@ module.exports = grammar({
     match_pattern: ($) =>
       prec(
         PREC.PATTERN,
-        prec.dynamic(1, seq(field('value', $._pattern_arg), '=>', field('pattern', $._pattern_top_expr_body)))
+        prec.dynamic(
+          1,
+          seq(field('value', alias($._pattern_arg, $._arg)), '=>', field('pattern', $._pattern_top_expr_body))
+        )
       ),
 
     test_pattern: ($) =>
       prec(
         PREC.PATTERN,
-        prec.dynamic(2, seq(field('value', $._pattern_arg), 'in', field('pattern', $._pattern_top_expr_body)))
+        prec.dynamic(
+          2,
+          seq(field('value', alias($._pattern_arg, $._arg)), 'in', field('pattern', $._pattern_top_expr_body))
+        )
       ),
 
     _pattern_arg: ($) =>
@@ -883,7 +894,10 @@ module.exports = grammar({
 
     _yield_argument_list: ($) => prec.right(commaSep1($._yield_argument)),
 
-    _yield_argument: ($) => prec.left(1, argument($, $._yield_value, $._yield_command_pair)),
+    _yield_argument: ($) =>
+      prec.left(1, argument($, alias($._yield_argument_expression, $._expression), $._yield_command_pair)),
+
+    _yield_argument_expression: ($) => $._yield_value,
 
     _yield_value: ($) =>
       choice(
@@ -905,7 +919,41 @@ module.exports = grammar({
     _yield_not: ($) =>
       prec.right(
         PREC.NOT,
-        seq(field('operator', 'not'), field('operand', choice($._yield_value, alias($._yield_unary, $.unary))))
+        seq(
+          field('operator', 'not'),
+          field(
+            'operand',
+            choice(
+              $._yield_value,
+              alias($._yield_unary, $.unary),
+              alias($._yield_not_operator_assignment, $.operator_assignment)
+            )
+          )
+        )
+      ),
+
+    _yield_not_operator_assignment: ($) =>
+      prec.right(
+        PREC.ASSIGN,
+        seq(
+          field('left', choice($._lhs, $._chained_lhs)),
+          field('operator', assignmentOperator($)),
+          field('right', $._yield_assignment_rhs)
+        )
+      ),
+
+    _yield_nested_assignment: ($) =>
+      prec.right(
+        PREC.ASSIGN,
+        seq(field('left', choice($._lhs, $._chained_lhs)), '=', field('right', $._yield_assignment_rhs))
+      ),
+
+    _yield_assignment_rhs: ($) =>
+      choice(
+        $._yield_value,
+        alias($._yield_not_operator_assignment, $.operator_assignment),
+        alias($._yield_nested_assignment, $.assignment),
+        alias($._yield_rescue, $.rescue_modifier)
       ),
 
     _yield_unary: ($) => prec.right(PREC.COMPLEMENT, seq(field('operator', '!'), field('operand', $._yield_value))),
@@ -962,14 +1010,27 @@ module.exports = grammar({
     _argument_list_with_trailing_comma: ($) =>
       prec.right(seq($._argument, repeat(seq(',', $._value_argument)), optional(','))),
 
+    _value_argument_expression: ($) => $._arg,
+
+    _command_argument_expression: ($) => $._argument_command_value,
+
     _value_argument: ($) =>
-      prec.left(choice($._arg, $.splat_argument, $.hash_splat_argument, $.forward_argument, $.block_argument, $.pair)),
+      prec.left(
+        choice(
+          alias($._value_argument_expression, $._expression),
+          $.splat_argument,
+          $.hash_splat_argument,
+          $.forward_argument,
+          $.block_argument,
+          $.pair
+        )
+      ),
 
     _command_argument: ($) =>
       prec.left(
         1,
         choice(
-          $._argument_command_value,
+          alias($._command_argument_expression, $._expression),
           $.splat_argument,
           $.hash_splat_argument,
           $.forward_argument,
@@ -1038,7 +1099,9 @@ module.exports = grammar({
         )
       ),
 
-    _argument: ($) => argument($, choice($._argument_command_value, $.match_pattern, $.test_pattern)),
+    _argument: ($) => argument($, alias($._argument_expression, $._expression)),
+
+    _argument_expression: ($) => choice($._argument_command_value, $.match_pattern, $.test_pattern),
 
     forward_argument: () => '...',
     splat_argument: ($) => prec.right(seq(alias($._splat_star, '*'), optional($._arg))),
@@ -1237,6 +1300,7 @@ module.exports = grammar({
             'operand',
             choice(
               commandValue($, false),
+              alias($._negated_chained_assignment, $.assignment),
               alias($.command_operator_assignment, $.operator_assignment),
               alias($._chained_operator_assignment, $.operator_assignment),
               alias($.command_unary, $.unary),
@@ -1246,6 +1310,9 @@ module.exports = grammar({
           )
         )
       ),
+
+    _negated_chained_assignment: ($) =>
+      prec.right(PREC.ASSIGN, seq(field('left', $._chained_lhs), '=', field('right', $._arg_rhs))),
 
     _test_pattern_not: ($) =>
       prec.dynamic(

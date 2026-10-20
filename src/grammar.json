@@ -4898,8 +4898,13 @@
               "type": "FIELD",
               "name": "value",
               "content": {
-                "type": "SYMBOL",
-                "name": "_pattern_arg"
+                "type": "ALIAS",
+                "content": {
+                  "type": "SYMBOL",
+                  "name": "_pattern_arg"
+                },
+                "named": true,
+                "value": "_arg"
               }
             },
             {
@@ -4931,8 +4936,13 @@
               "type": "FIELD",
               "name": "value",
               "content": {
-                "type": "SYMBOL",
-                "name": "_pattern_arg"
+                "type": "ALIAS",
+                "content": {
+                  "type": "SYMBOL",
+                  "name": "_pattern_arg"
+                },
+                "named": true,
+                "value": "_arg"
               }
             },
             {
@@ -7716,8 +7726,13 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SYMBOL",
-              "name": "_yield_value"
+              "type": "ALIAS",
+              "content": {
+                "type": "SYMBOL",
+                "name": "_yield_argument_expression"
+              },
+              "named": true,
+              "value": "_expression"
             },
             {
               "type": "SYMBOL",
@@ -7760,6 +7775,10 @@
           ]
         }
       }
+    },
+    "_yield_argument_expression": {
+      "type": "SYMBOL",
+      "name": "_yield_value"
     },
     "_yield_value": {
       "type": "CHOICE",
@@ -7904,12 +7923,195 @@
                   },
                   "named": true,
                   "value": "unary"
+                },
+                {
+                  "type": "ALIAS",
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "_yield_not_operator_assignment"
+                  },
+                  "named": true,
+                  "value": "operator_assignment"
                 }
               ]
             }
           }
         ]
       }
+    },
+    "_yield_not_operator_assignment": {
+      "type": "PREC_RIGHT",
+      "value": 15,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "FIELD",
+            "name": "left",
+            "content": {
+              "type": "CHOICE",
+              "members": [
+                {
+                  "type": "SYMBOL",
+                  "name": "_lhs"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_chained_lhs"
+                }
+              ]
+            }
+          },
+          {
+            "type": "FIELD",
+            "name": "operator",
+            "content": {
+              "type": "CHOICE",
+              "members": [
+                {
+                  "type": "STRING",
+                  "value": "+="
+                },
+                {
+                  "type": "STRING",
+                  "value": "-="
+                },
+                {
+                  "type": "STRING",
+                  "value": "*="
+                },
+                {
+                  "type": "STRING",
+                  "value": "**="
+                },
+                {
+                  "type": "STRING",
+                  "value": "/="
+                },
+                {
+                  "type": "STRING",
+                  "value": "||="
+                },
+                {
+                  "type": "STRING",
+                  "value": "|="
+                },
+                {
+                  "type": "STRING",
+                  "value": "&&="
+                },
+                {
+                  "type": "STRING",
+                  "value": "&="
+                },
+                {
+                  "type": "ALIAS",
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "_modulo_assignment"
+                  },
+                  "named": false,
+                  "value": "%="
+                },
+                {
+                  "type": "STRING",
+                  "value": ">>="
+                },
+                {
+                  "type": "STRING",
+                  "value": "<<="
+                },
+                {
+                  "type": "STRING",
+                  "value": "^="
+                }
+              ]
+            }
+          },
+          {
+            "type": "FIELD",
+            "name": "right",
+            "content": {
+              "type": "SYMBOL",
+              "name": "_yield_assignment_rhs"
+            }
+          }
+        ]
+      }
+    },
+    "_yield_nested_assignment": {
+      "type": "PREC_RIGHT",
+      "value": 15,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "FIELD",
+            "name": "left",
+            "content": {
+              "type": "CHOICE",
+              "members": [
+                {
+                  "type": "SYMBOL",
+                  "name": "_lhs"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_chained_lhs"
+                }
+              ]
+            }
+          },
+          {
+            "type": "STRING",
+            "value": "="
+          },
+          {
+            "type": "FIELD",
+            "name": "right",
+            "content": {
+              "type": "SYMBOL",
+              "name": "_yield_assignment_rhs"
+            }
+          }
+        ]
+      }
+    },
+    "_yield_assignment_rhs": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "_yield_value"
+        },
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_yield_not_operator_assignment"
+          },
+          "named": true,
+          "value": "operator_assignment"
+        },
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_yield_nested_assignment"
+          },
+          "named": true,
+          "value": "assignment"
+        },
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_yield_rescue"
+          },
+          "named": true,
+          "value": "rescue_modifier"
+        }
+      ]
     },
     "_yield_unary": {
       "type": "PREC_RIGHT",
@@ -8349,6 +8551,14 @@
         ]
       }
     },
+    "_value_argument_expression": {
+      "type": "SYMBOL",
+      "name": "_arg"
+    },
+    "_command_argument_expression": {
+      "type": "SYMBOL",
+      "name": "_argument_command_value"
+    },
     "_value_argument": {
       "type": "PREC_LEFT",
       "value": 0,
@@ -8356,8 +8566,13 @@
         "type": "CHOICE",
         "members": [
           {
-            "type": "SYMBOL",
-            "name": "_arg"
+            "type": "ALIAS",
+            "content": {
+              "type": "SYMBOL",
+              "name": "_value_argument_expression"
+            },
+            "named": true,
+            "value": "_expression"
           },
           {
             "type": "SYMBOL",
@@ -8389,8 +8604,13 @@
         "type": "CHOICE",
         "members": [
           {
-            "type": "SYMBOL",
-            "name": "_argument_command_value"
+            "type": "ALIAS",
+            "content": {
+              "type": "SYMBOL",
+              "name": "_command_argument_expression"
+            },
+            "named": true,
+            "value": "_expression"
           },
           {
             "type": "SYMBOL",
@@ -9122,21 +9342,13 @@
         "type": "CHOICE",
         "members": [
           {
-            "type": "CHOICE",
-            "members": [
-              {
-                "type": "SYMBOL",
-                "name": "_argument_command_value"
-              },
-              {
-                "type": "SYMBOL",
-                "name": "match_pattern"
-              },
-              {
-                "type": "SYMBOL",
-                "name": "test_pattern"
-              }
-            ]
+            "type": "ALIAS",
+            "content": {
+              "type": "SYMBOL",
+              "name": "_argument_expression"
+            },
+            "named": true,
+            "value": "_expression"
           },
           {
             "type": "SYMBOL",
@@ -9178,6 +9390,23 @@
           }
         ]
       }
+    },
+    "_argument_expression": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "_argument_command_value"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "match_pattern"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "test_pattern"
+        }
+      ]
     },
     "forward_argument": {
       "type": "STRING",
@@ -12723,6 +12952,15 @@
                   "type": "ALIAS",
                   "content": {
                     "type": "SYMBOL",
+                    "name": "_negated_chained_assignment"
+                  },
+                  "named": true,
+                  "value": "assignment"
+                },
+                {
+                  "type": "ALIAS",
+                  "content": {
+                    "type": "SYMBOL",
                     "name": "command_operator_assignment"
                   },
                   "named": true,
@@ -12759,6 +12997,35 @@
                   }
                 }
               ]
+            }
+          }
+        ]
+      }
+    },
+    "_negated_chained_assignment": {
+      "type": "PREC_RIGHT",
+      "value": 15,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "FIELD",
+            "name": "left",
+            "content": {
+              "type": "SYMBOL",
+              "name": "_chained_lhs"
+            }
+          },
+          {
+            "type": "STRING",
+            "value": "="
+          },
+          {
+            "type": "FIELD",
+            "name": "right",
+            "content": {
+              "type": "SYMBOL",
+              "name": "_arg_rhs"
             }
           }
         ]
@@ -15116,6 +15383,11 @@
   ],
   "supertypes": [
     "_statement",
+    "_argument_expression",
+    "_command_argument_expression",
+    "_yield_argument_expression",
+    "_value_argument_expression",
+    "_pattern_arg",
     "_arg",
     "_method_name",
     "_expression",

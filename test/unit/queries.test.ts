@@ -48,3 +48,26 @@ test('queries expression supertypes inside yield and ordinary arguments', async 
     parser.delete();
   }
 });
+
+test('queries expression arguments and ordinary pattern subjects through their public supertypes', async () => {
+  await Parser.init();
+  const language = await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')));
+  const parser = new Parser().setLanguage(language);
+  const query = new Query(
+    language,
+    '(argument_list (_expression) @argument)\n(test_pattern value: (_arg) @subject)\n(match_pattern value: (_arg) @subject)'
+  );
+  const tree = parser.parse('foo(1)\nfoo bar 2\ndef f; yield 3; end\nx in Integer\nvalue => Integer\n')!;
+  try {
+    expect(tree.rootNode.hasError).toBe(false);
+    const captures = query.captures(tree.rootNode);
+    expect(
+      captures.filter(({ name, node }) => name === 'argument' && node.type === 'integer').map(({ node }) => node.text)
+    ).toEqual(['1', '2', '3']);
+    expect(captures.filter(({ name }) => name === 'subject').map(({ node }) => node.text)).toEqual(['x', 'value']);
+  } finally {
+    tree.delete();
+    query.delete();
+    parser.delete();
+  }
+});

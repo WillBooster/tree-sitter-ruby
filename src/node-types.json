@@ -678,23 +678,11 @@
       "required": false,
       "types": [
         {
-          "type": "_arg",
+          "type": "_expression",
           "named": true
         },
         {
           "type": "block_argument",
-          "named": true
-        },
-        {
-          "type": "break",
-          "named": true
-        },
-        {
-          "type": "call",
-          "named": true
-        },
-        {
-          "type": "element_reference",
           "named": true
         },
         {
@@ -706,43 +694,11 @@
           "named": true
         },
         {
-          "type": "match_pattern",
-          "named": true
-        },
-        {
-          "type": "method",
-          "named": true
-        },
-        {
-          "type": "next",
-          "named": true
-        },
-        {
           "type": "pair",
           "named": true
         },
         {
-          "type": "return",
-          "named": true
-        },
-        {
-          "type": "scope_resolution",
-          "named": true
-        },
-        {
-          "type": "singleton_method",
-          "named": true
-        },
-        {
           "type": "splat_argument",
-          "named": true
-        },
-        {
-          "type": "test_pattern",
-          "named": true
-        },
-        {
-          "type": "yield",
           "named": true
         }
       ]
@@ -757,7 +713,7 @@
       "required": false,
       "types": [
         {
-          "type": "_arg",
+          "type": "_expression",
           "named": true
         },
         {
@@ -1792,23 +1748,11 @@
       "required": false,
       "types": [
         {
-          "type": "_arg",
+          "type": "_expression",
           "named": true
         },
         {
           "type": "block_argument",
-          "named": true
-        },
-        {
-          "type": "break",
-          "named": true
-        },
-        {
-          "type": "call",
-          "named": true
-        },
-        {
-          "type": "element_reference",
           "named": true
         },
         {
@@ -1820,43 +1764,11 @@
           "named": true
         },
         {
-          "type": "match_pattern",
-          "named": true
-        },
-        {
-          "type": "method",
-          "named": true
-        },
-        {
-          "type": "next",
-          "named": true
-        },
-        {
           "type": "pair",
           "named": true
         },
         {
-          "type": "return",
-          "named": true
-        },
-        {
-          "type": "scope_resolution",
-          "named": true
-        },
-        {
-          "type": "singleton_method",
-          "named": true
-        },
-        {
           "type": "splat_argument",
-          "named": true
-        },
-        {
-          "type": "test_pattern",
-          "named": true
-        },
-        {
-          "type": "yield",
           "named": true
         }
       ]
@@ -2556,19 +2468,11 @@
         "required": true,
         "types": [
           {
-            "type": "_primary",
+            "type": "_arg",
             "named": true
           },
           {
-            "type": "assignment",
-            "named": true
-          },
-          {
-            "type": "binary",
-            "named": true
-          },
-          {
-            "type": "conditional",
+            "type": "call",
             "named": true
           },
           {
@@ -2580,15 +2484,15 @@
             "named": true
           },
           {
-            "type": "operator_assignment",
-            "named": true
-          },
-          {
-            "type": "range",
+            "type": "method",
             "named": true
           },
           {
             "type": "scope_resolution",
+            "named": true
+          },
+          {
+            "type": "singleton_method",
             "named": true
           },
           {
@@ -2601,6 +2505,10 @@
           },
           {
             "type": "while_modifier",
+            "named": true
+          },
+          {
+            "type": "yield",
             "named": true
           }
         ]
@@ -3660,19 +3568,11 @@
         "required": true,
         "types": [
           {
-            "type": "_primary",
+            "type": "_arg",
             "named": true
           },
           {
-            "type": "assignment",
-            "named": true
-          },
-          {
-            "type": "binary",
-            "named": true
-          },
-          {
-            "type": "conditional",
+            "type": "call",
             "named": true
           },
           {
@@ -3684,11 +3584,7 @@
             "named": true
           },
           {
-            "type": "operator_assignment",
-            "named": true
-          },
-          {
-            "type": "range",
+            "type": "method",
             "named": true
           },
           {
@@ -3697,6 +3593,10 @@
           },
           {
             "type": "scope_resolution",
+            "named": true
+          },
+          {
+            "type": "singleton_method",
             "named": true
           },
           {
@@ -3709,6 +3609,10 @@
           },
           {
             "type": "while_modifier",
+            "named": true
+          },
+          {
+            "type": "yield",
             "named": true
           }
         ]
