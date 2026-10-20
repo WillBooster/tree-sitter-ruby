@@ -14155,62 +14155,24 @@
           "name": "_line_comment"
         },
         {
+          "type": "SYMBOL",
+          "name": "_block_comment"
+        },
+        {
           "type": "TOKEN",
           "content": {
             "type": "PREC",
             "value": -2,
             "content": {
-              "type": "CHOICE",
+              "type": "SEQ",
               "members": [
                 {
-                  "type": "SEQ",
-                  "members": [
-                    {
-                      "type": "STRING",
-                      "value": "#"
-                    },
-                    {
-                      "type": "PATTERN",
-                      "value": ".*"
-                    }
-                  ]
+                  "type": "STRING",
+                  "value": "#"
                 },
                 {
-                  "type": "SEQ",
-                  "members": [
-                    {
-                      "type": "PATTERN",
-                      "value": "=begin.*\\r?\\n"
-                    },
-                    {
-                      "type": "REPEAT",
-                      "content": {
-                        "type": "CHOICE",
-                        "members": [
-                          {
-                            "type": "PATTERN",
-                            "value": "[^=]"
-                          },
-                          {
-                            "type": "PATTERN",
-                            "value": "=[^e]"
-                          },
-                          {
-                            "type": "PATTERN",
-                            "value": "=e[^n]"
-                          },
-                          {
-                            "type": "PATTERN",
-                            "value": "=en[^d]"
-                          }
-                        ]
-                      }
-                    },
-                    {
-                      "type": "PATTERN",
-                      "value": "[\\s*]*=end.*"
-                    }
-                  ]
+                  "type": "PATTERN",
+                  "value": ".*"
                 }
               ]
             }
@@ -15844,6 +15806,10 @@
     {
       "type": "SYMBOL",
       "name": "_line_comment"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_block_comment"
     },
     {
       "type": "SYMBOL",

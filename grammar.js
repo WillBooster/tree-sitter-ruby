@@ -83,6 +83,7 @@ module.exports = grammar({
     $._element_reference_bracket,
     $._short_interpolation,
     $._line_comment,
+    $._block_comment,
     $._uninterpreted,
     $._not_parenthesized,
   ],
@@ -1530,19 +1531,7 @@ module.exports = grammar({
     undef: ($) => seq('undef', commaSep1($._method_name)),
     alias: ($) => seq('alias', field('name', $._method_name), field('alias', $._method_name)),
 
-    comment: ($) =>
-      choice(
-        $._line_comment,
-        token(
-          prec(
-            PREC.COMMENT,
-            choice(
-              seq('#', /.*/),
-              seq(/=begin.*\r?\n/, repeat(choice(/[^=]/, /=[^e]/, /=e[^n]/, /=en[^d]/)), /[\s*]*=end.*/)
-            )
-          )
-        )
-      ),
+    comment: ($) => choice($._line_comment, $._block_comment, token(prec(PREC.COMMENT, seq('#', /.*/)))),
 
     integer: () => /0[bB][01](_?[01])*|0[oO]?[0-7](_?[0-7])*|(0[dD])?\d(_?\d)*|0[xX][0-9a-fA-F](_?[0-9a-fA-F])*/,
     _int_or_float: ($) => choice($.integer, $.float),
