@@ -50,6 +50,7 @@ typedef enum {
     UNINTERPRETED,
     NOT_PARENTHESIZED,
     LAMBDA_BRACE,
+    HEREDOC_LITERAL_RESUME,
 
     NONE
 } TokenType;
@@ -183,6 +184,7 @@ static inline void deserialize(Scanner *scanner, const char *buffer, unsigned le
     assert(size == length);
 }
 
+static inline bool scan_literal_resume(Literal *literal, TSLexer *lexer, const bool *valid_symbols);
 static inline bool has_pending_heredoc_body(Scanner *scanner, const bool *valid_symbols);
 static inline bool scan_heredoc_after_literal_escape(Scanner *scanner, TSLexer *lexer, bool consume_plain_escape);
 static inline bool finish_literal_content(TSLexer *lexer);
@@ -759,9 +761,7 @@ static inline bool scan_literal_content(Scanner *scanner, TSLexer *lexer, const 
     bool pending_heredoc = has_pending_heredoc_body(scanner, valid_symbols);
 
     if (literal->resume_after_heredoc && scanner->open_heredocs.size == 0) {
-        literal->resume_after_heredoc = false;
-        if (lexer->lookahead == '\r') lexer->advance(lexer, true);
-        if (lexer->lookahead == '\n') lexer->advance(lexer, true);
+        return scan_literal_resume(literal, lexer, valid_symbols);
     }
 
     for (;;) {
@@ -1214,6 +1214,17 @@ static bool scan_embdoc(TSLexer *lexer) {
         if (!lexer->eof(lexer)) advance(lexer);
     }
     return false;
+}
+
+static inline bool scan_literal_resume(Literal *literal, TSLexer *lexer, const bool *valid_symbols) {
+    if (!valid_symbols[HEREDOC_LITERAL_RESUME] || (lexer->lookahead != '\r' && lexer->lookahead != '\n')) return false;
+    bool carriage_return = lexer->lookahead == '\r';
+    advance(lexer);
+    if (carriage_return && lexer->lookahead == '\n' && !lexer->is_at_included_range_start(lexer)) advance(lexer);
+    literal->resume_after_heredoc = false;
+    lexer->result_symbol = HEREDOC_LITERAL_RESUME;
+    lexer->mark_end(lexer);
+    return true;
 }
 
 static inline bool has_pending_heredoc_body(Scanner *scanner, const bool *valid_symbols) {
