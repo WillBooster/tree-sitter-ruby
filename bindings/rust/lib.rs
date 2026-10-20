@@ -14,11 +14,10 @@
 //! assert!(!tree.root_node().has_error());
 //! ```
 //!
-//! The parser carries the ABI number of the WillBooster fork of tree-sitter (`0x57420001`), so it loads only with
-//! the `willbooster-tree-sitter` runtime; upstream's `tree-sitter` runtime rejects it. Use version 2.0.18 or later so
-//! contiguous included ranges do not terminate comments.
+//! The parser carries the ABI number of the WillBooster fork of tree-sitter (`0x57420006`), so it loads only with
+//! the `willbooster-tree-sitter` runtime; upstream's `tree-sitter` runtime rejects it. Use version 7.0.5 or later.
 //!
-//! [`Parser`]: https://docs.rs/willbooster-tree-sitter/2/tree_sitter/struct.Parser.html
+//! [`Parser`]: https://docs.rs/willbooster-tree-sitter/7/tree_sitter/struct.Parser.html
 //! [tree-sitter]: https://tree-sitter.github.io/
 
 use tree_sitter_language::LanguageFn;
