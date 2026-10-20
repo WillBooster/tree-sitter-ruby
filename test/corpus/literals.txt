@@ -2553,3 +2553,30 @@ EOS
     (heredoc_content)
     (heredoc_end)))
 
+
+========================================
+heredoc arguments of return, break, and next without spaces
+========================================
+
+return<<EOS
+x
+EOS
+next<<EOS
+y
+EOS
+
+---
+
+(program
+  (return
+    (argument_list
+      (heredoc_beginning)))
+  (heredoc_body
+    (heredoc_content)
+    (heredoc_end))
+  (next
+    (argument_list
+      (heredoc_beginning)))
+  (heredoc_body
+    (heredoc_content)
+    (heredoc_end)))
