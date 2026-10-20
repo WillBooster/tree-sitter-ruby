@@ -9960,8 +9960,8 @@
           "type": "SEQ",
           "members": [
             {
-              "type": "STRING",
-              "value": "{"
+              "type": "SYMBOL",
+              "name": "_block_open"
             },
             {
               "type": "FIELD",
@@ -10001,6 +10001,14 @@
             }
           ]
         }
+      }
+    },
+    "_block_open": {
+      "type": "PREC",
+      "value": 1,
+      "content": {
+        "type": "STRING",
+        "value": "{"
       }
     },
     "_arg_rhs": {
