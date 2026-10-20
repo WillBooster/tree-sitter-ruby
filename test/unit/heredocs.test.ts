@@ -97,3 +97,35 @@ test('starts a pending heredoc across contiguous ranges after an escaped newline
     parser.delete();
   }
 });
+
+test.each([
+  ['single-quoted string', "'", "'"],
+  ['percent string', '%q[', ']'],
+  ['word array', '%w[', ']'],
+  ['symbol array', '%i[', ']'],
+])('starts a pending heredoc after an escaped newline in a %s', async (_, open, close) => {
+  await Parser.init();
+  const language = await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')));
+  const parser = new Parser().setLanguage(language);
+  try {
+    for (const newline of ['\n', '\r\n']) {
+      const source = `value = [<<EOS, ${open}a\\${newline}body${newline}EOS${newline}b${close}]\nfollowing = 1\n`;
+      const tree = parser.parse(source)!;
+      try {
+        expect(tree.rootNode.hasError).toBe(false);
+        expect(
+          tree.rootNode
+            .descendantsOfType('heredoc_content')
+            .map(({ text }) => text)
+            .join('')
+        ).toBe(`body${newline}`);
+        expect(tree.rootNode.descendantsOfType('heredoc_end').map(({ text }) => text)).toEqual(['EOS']);
+        expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('following = 1');
+      } finally {
+        tree.delete();
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});

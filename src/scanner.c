@@ -817,6 +817,19 @@ static inline bool scan_literal_content(Scanner *scanner, TSLexer *lexer, const 
                 return false;
             }
             advance(lexer);
+            if (pending_heredoc && lexer->lookahead == '\r') {
+                advance(lexer);
+                if (lexer->lookahead != '\n') {
+                    has_content = true;
+                    continue;
+                }
+            }
+            if (pending_heredoc && lexer->lookahead == '\n') {
+                advance(lexer);
+                lexer->mark_end(lexer);
+                lexer->result_symbol = STRING_CONTENT;
+                return true;
+            }
             advance(lexer);
 
         } else if (lexer->eof(lexer)) {
