@@ -2783,8 +2783,7 @@ following = 1
         (interpolation
           (heredoc_beginning)))
       (bare_string
-        (string_content)
-        (escape_sequence))
+        (string_content))
       (heredoc_body
         (heredoc_content)
         (heredoc_end))
@@ -2799,8 +2798,7 @@ following = 1
         (interpolation
           (heredoc_beginning)))
       (bare_symbol
-        (string_content)
-        (escape_sequence))
+        (string_content))
       (heredoc_body
         (heredoc_content)
         (heredoc_end))

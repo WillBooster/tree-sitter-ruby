@@ -66,38 +66,52 @@ test.each([
   ['string', '"', '"'],
   ['word array', '%W[', ']'],
   ['symbol array', '%I[', ']'],
-])('starts a pending heredoc across contiguous ranges after an escaped newline in a %s', async (_, open, close) => {
+])('starts a pending heredoc after an included escaped newline across ranges in a %s', async (_, open, close) => {
   await Parser.init();
   const language = await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')));
   const parser = new Parser().setLanguage(language);
-  const source = `value = ${open}#{<<EOS} b\\\n  body\nEOS\nc${close}\nfollowing = 1\n`;
-  const split = source.indexOf('  body');
-  const endLines = source.split('\n');
-  const tree = parser.parse(source, undefined, {
-    includedRanges: [
-      {
-        startIndex: 0,
-        endIndex: split,
-        startPosition: { row: 0, column: 0 },
-        endPosition: { row: 1, column: 0 },
-      },
-      {
-        startIndex: split,
-        endIndex: source.length,
-        startPosition: { row: 1, column: 0 },
-        endPosition: { row: endLines.length - 1, column: endLines.at(-1)!.length },
-      },
-    ],
-  })!;
-  const full = parser.parse(source)!;
   try {
-    expect(tree.rootNode.hasError).toBe(false);
-    expect(tree.rootNode.toString()).toBe(full.rootNode.toString());
-    expect(tree.rootNode.descendantsOfType('heredoc_content').map(({ text }) => text)).toEqual(['  body\n']);
-    expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('following = 1');
+    for (const newline of ['\n', '\r\n']) {
+      for (const gap of ['', 'EXCLUDED']) {
+        const prefix = `value = ${open}#{<<EOS} b\\${newline}`;
+        const source = `${prefix}${gap}  body${newline}EOS${newline}c${close}\nfollowing = 1\n`;
+        const position = (index: number): { row: number; column: number } => {
+          const lines = source.slice(0, index).split('\n');
+          return { row: lines.length - 1, column: lines.at(-1)!.length };
+        };
+        const tree = parser.parse(source, undefined, {
+          includedRanges: [
+            {
+              startIndex: 0,
+              endIndex: prefix.length,
+              startPosition: position(0),
+              endPosition: position(prefix.length),
+            },
+            {
+              startIndex: prefix.length + gap.length,
+              endIndex: source.length,
+              startPosition: position(prefix.length + gap.length),
+              endPosition: position(source.length),
+            },
+          ],
+        })!;
+        try {
+          expect(tree.rootNode.hasError, source).toBe(false);
+          const outer = tree.rootNode.descendantsOfType('heredoc_body')[0]!;
+          const inner = outer.descendantsOfType('heredoc_content')[0]!;
+          expect(outer.text).toBe(`  body${newline}EOS`);
+          expect(inner.text).toBe(`  body${newline}`);
+          expect(outer.startIndex).toBe(prefix.length + gap.length);
+          expect(inner.startIndex).toBe(outer.startIndex);
+          expect(outer.endIndex).toBe(source.indexOf(`${newline}EOS`) + newline.length + 3);
+          expect(inner.endIndex).toBe(source.indexOf(`${newline}EOS`) + newline.length);
+          expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('following = 1');
+        } finally {
+          tree.delete();
+        }
+      }
+    }
   } finally {
-    tree.delete();
-    full.delete();
     parser.delete();
   }
 });
@@ -207,7 +221,6 @@ test.each([
           const content = tree.rootNode.descendantsOfType('heredoc_content');
           expect(content.map(({ text }) => text).join('')).toBe(`body${newline}`);
           expect(content[0]!.startIndex).toBe(source.indexOf('body'));
-          expect(tree.rootNode.descendantsOfType('escape_sequence').map(({ text }) => text)).toContain(`\\${newline}`);
           expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('following = 1');
         } finally {
           tree.delete();
@@ -379,9 +392,6 @@ test.each([
                 expect(inner.startIndex).toBe(prefix.length);
                 expect(outer.endIndex).toBe(prefix.length + replacement.length + `body${newline}EOS`.length);
                 expect(inner.endIndex).toBe(prefix.length + replacement.length + `body${newline}`.length);
-                expect(parsed.rootNode.descendantsOfType('escape_sequence').map(({ text }) => text)).toContain(
-                  `\\${newline}`
-                );
                 expect(parsed.rootNode.namedChildren.at(-1)?.text).toBe('following = 1');
               }
             } finally {

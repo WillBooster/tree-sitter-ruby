@@ -47,7 +47,6 @@ typedef enum {
     UNINTERPRETED,
     NOT_PARENTHESIZED,
     LAMBDA_BRACE,
-    LITERAL_ESCAPE,
 
     NONE
 } TokenType;
@@ -177,7 +176,8 @@ static inline void deserialize(Scanner *scanner, const char *buffer, unsigned le
 }
 
 static inline bool has_pending_heredoc_body(Scanner *scanner, const bool *valid_symbols);
-static inline bool scan_literal_escape(TSLexer *lexer);
+static inline bool scan_heredoc_after_literal_escape(Scanner *scanner, TSLexer *lexer, bool allows_interpolation);
+static inline bool finish_literal_content(TSLexer *lexer);
 static inline bool scan_heredoc_after_literal_space(Scanner *scanner, TSLexer *lexer);
 static inline bool is_horizontal_whitespace(int32_t codepoint);
 static inline bool start_heredoc_body(Scanner *scanner, TSLexer *lexer);
@@ -821,33 +821,14 @@ static inline bool scan_literal_content(Scanner *scanner, TSLexer *lexer, const 
                 return true;
             }
         } else if (lexer->lookahead == '\\') {
-            if (literal->allows_interpolation) {
-                if (has_content) {
-                    lexer->mark_end(lexer);
-                    lexer->result_symbol = STRING_CONTENT;
-                    return true;
-                }
-                return pending_heredoc && valid_symbols[LITERAL_ESCAPE] && scan_literal_escape(lexer);
+            if (has_content && (literal->allows_interpolation || pending_heredoc)) {
+                return finish_literal_content(lexer);
             }
+            if (pending_heredoc) {
+                return scan_heredoc_after_literal_escape(scanner, lexer, literal->allows_interpolation);
+            }
+            if (literal->allows_interpolation) return false;
             advance(lexer);
-            if (pending_heredoc && lexer->is_at_included_range_start(lexer) &&
-                (lexer->lookahead == '\r' || lexer->lookahead == '\n')) {
-                has_content = true;
-                continue;
-            }
-            if (pending_heredoc && lexer->lookahead == '\r') {
-                advance(lexer);
-                if (lexer->lookahead != '\n' || lexer->is_at_included_range_start(lexer)) {
-                    has_content = true;
-                    continue;
-                }
-            }
-            if (pending_heredoc && lexer->lookahead == '\n') {
-                advance(lexer);
-                lexer->mark_end(lexer);
-                lexer->result_symbol = STRING_CONTENT;
-                return true;
-            }
             advance(lexer);
 
         } else if (lexer->eof(lexer)) {
@@ -1213,22 +1194,34 @@ static inline bool has_pending_heredoc_body(Scanner *scanner, const bool *valid_
            !array_get(&scanner->open_heredocs, 0)->started;
 }
 
-static inline bool scan_literal_escape(TSLexer *lexer) {
+static inline bool scan_heredoc_after_literal_escape(Scanner *scanner, TSLexer *lexer, bool allows_interpolation) {
     advance(lexer);
-    if (lexer->is_at_included_range_start(lexer)) {
-        lexer->mark_end(lexer);
-        lexer->result_symbol = STRING_CONTENT;
-        return lexer->lookahead == '\r' || lexer->lookahead == '\n';
+    bool separated = lexer->is_at_included_range_start(lexer);
+    if (separated && (lexer->lookahead == '\r' || lexer->lookahead == '\n')) {
+        return finish_literal_content(lexer);
     }
-    bool carriage_return = lexer->lookahead == '\r';
-    if (carriage_return) advance(lexer);
-    if (lexer->lookahead == '\n' && !lexer->is_at_included_range_start(lexer)) {
+    if (separated && allows_interpolation) return false;
+    bool carriage_return = !separated && lexer->lookahead == '\r';
+    if (carriage_return) {
         advance(lexer);
-    } else if (!carriage_return) {
-        return false;
+        if (lexer->is_at_included_range_start(lexer)) return finish_literal_content(lexer);
     }
+    if (!separated && lexer->lookahead == '\n') {
+        advance(lexer);
+        TSLexerPosition body_start;
+        lexer->get_position(lexer, &body_start);
+        lexer->mark_start(lexer, &body_start);
+        lexer->mark_end_at(lexer, &body_start);
+        return start_heredoc_body(scanner, lexer);
+    }
+    if (allows_interpolation) return false;
+    if (!carriage_return) advance(lexer);
+    return finish_literal_content(lexer);
+}
+
+static inline bool finish_literal_content(TSLexer *lexer) {
     lexer->mark_end(lexer);
-    lexer->result_symbol = LITERAL_ESCAPE;
+    lexer->result_symbol = STRING_CONTENT;
     return true;
 }
 
