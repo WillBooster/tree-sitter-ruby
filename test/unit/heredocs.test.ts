@@ -478,108 +478,118 @@ test.each([
   ['closing', '%Q'],
   ['closing', '%x'],
   ['closing', '%r'],
-])('preserves heredocs across an %s LF delimiter in %s', async (mode, kind) => {
+])('preserves heredocs across an %s newline delimiter in %s', async (mode, kind) => {
   await Parser.init();
   const language = await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')));
   const parser = new Parser().setLanguage(language);
   try {
-    for (const newline of mode === 'closing' && kind === '%r' ? ['\n'] : ['\n', '\r\n']) {
-      for (const gap of ['', 'EXCLUDED']) {
-        for (const label of ['EOS', 'L'.repeat(300), '終'.repeat(100)]) {
-          const content = mode === 'closing' && kind === '%r' ? 'im' : '  body';
-          const raw = kind === '%q' || kind === '%s';
-          const tail = raw ? 'tail#{literal}' : 'tail#{1}';
-          const prefix =
-            mode === 'opening' ? `value = [<<${label}, ${kind}\n` : `value = ${kind}\n#{<<${label}}${newline}`;
-          let source = `${prefix}${gap}${content}${newline}${label}${newline}${mode === 'opening' ? `${tail}\n]\n` : ';\n'}following = 1\n`;
-          const options = (text: string): ParseOptions => ({
-            includedRanges: [
-              {
-                startIndex: 0,
-                endIndex: prefix.length,
-                startPosition: positionInText(text, 0),
-                endPosition: positionInText(text, prefix.length),
-              },
-              {
-                startIndex: prefix.length + gap.length,
-                endIndex: text.length,
-                startPosition: positionInText(text, prefix.length + gap.length),
-                endPosition: positionInText(text, text.length),
-              },
-            ],
-          });
-          let tree = parser.parse(source, undefined, options(source))!;
-          try {
-            const bodyStart = prefix.length + gap.length;
-            const tailStart = source.indexOf(tail, bodyStart);
-            const changes = [
-              { start: bodyStart, old: content, replacement: content },
-              { start: bodyStart, old: content, replacement: `${content}x` },
-              { start: bodyStart, old: `${content}x`, replacement: content },
-              ...(mode === 'opening'
-                ? [
-                    { start: tailStart, old: tail, replacement: `${tail}x` },
-                    { start: tailStart, old: `${tail}x`, replacement: tail },
-                  ]
-                : []),
-            ];
-            for (const { start, old, replacement } of changes) {
-              const oldEnd = start + old.length;
-              const updated = source.slice(0, start) + replacement + source.slice(oldEnd);
-              const expectedContent = start === bodyStart ? replacement : content;
-              const expectedTail = start === tailStart ? replacement : tail;
-              tree.edit(
-                new Edit({
-                  startIndex: start,
-                  oldEndIndex: oldEnd,
-                  newEndIndex: start + replacement.length,
-                  startPosition: positionInText(source, start),
-                  oldEndPosition: positionInText(source, oldEnd),
-                  newEndPosition: positionInText(updated, start + replacement.length),
-                })
-              );
-              const previous = tree;
-              tree = parser.parse(updated, previous, options(updated))!;
-              previous.delete();
-              source = updated;
-              const fresh = parser.parse(source, undefined, options(source))!;
+    for (const openEnding of ['\n', '\r\n']) {
+      for (const closeEnding of ['\n', '\r\n']) {
+        if (kind === '%r' && closeEnding === '\r\n') continue;
+        for (const newline of ['\n', '\r\n']) {
+          for (const gap of ['', 'EXCLUDED']) {
+            for (const label of ['EOS', 'L'.repeat(300), '終'.repeat(100)]) {
+              const content = mode === 'closing' && kind === '%r' ? 'im' : '  body';
+              const raw = kind === '%q' || kind === '%s';
+              const tail = raw ? 'tail#{literal}' : 'tail#{1}';
+              const prefix =
+                mode === 'opening'
+                  ? `value = [<<${label}, ${kind}${openEnding}`
+                  : `value = ${kind}${openEnding}#{<<${label}}${closeEnding}`;
+              let source = `${prefix}${gap}${content}${newline}${label}${newline}${mode === 'opening' ? `${tail}${closeEnding}]\n` : ';\n'}following = 1\n`;
+              const options = (text: string): ParseOptions => ({
+                includedRanges: [
+                  {
+                    startIndex: 0,
+                    endIndex: prefix.length,
+                    startPosition: positionInText(text, 0),
+                    endPosition: positionInText(text, prefix.length),
+                  },
+                  {
+                    startIndex: prefix.length + gap.length,
+                    endIndex: text.length,
+                    startPosition: positionInText(text, prefix.length + gap.length),
+                    endPosition: positionInText(text, text.length),
+                  },
+                ],
+              });
+              let tree = parser.parse(source, undefined, options(source))!;
               try {
-                expect(tree.rootNode.toString()).toBe(fresh.rootNode.toString());
-                for (const parsed of [tree, fresh]) {
-                  expect(parsed.rootNode.hasError, source).toBe(false);
-                  const outer = parsed.rootNode.descendantsOfType('heredoc_body')[0]!;
-                  const inner = outer.descendantsOfType('heredoc_content')[0]!;
-                  const end = source.indexOf(`${newline}${label}`, bodyStart) + newline.length;
-                  expect(outer.text).toBe(`${expectedContent}${newline}${label}`);
-                  expect(inner.text).toBe(`${expectedContent}${newline}`);
-                  for (const node of [outer, inner]) {
-                    expect(node.startIndex).toBe(bodyStart);
-                    expect(node.startPosition).toEqual(positionInText(source, bodyStart));
-                    const expectedEnd = node === outer ? end + label.length : end;
-                    expect(node.endIndex).toBe(expectedEnd);
-                    expect(node.endPosition).toEqual(positionInText(source, expectedEnd));
+                const bodyStart = prefix.length + gap.length;
+                const tailStart = source.indexOf(tail, bodyStart);
+                const changes = [
+                  { start: bodyStart, old: content, replacement: content },
+                  { start: bodyStart, old: content, replacement: `${content}x` },
+                  { start: bodyStart, old: `${content}x`, replacement: content },
+                  ...(mode === 'opening'
+                    ? [
+                        { start: tailStart, old: tail, replacement: `${tail}x` },
+                        { start: tailStart, old: `${tail}x`, replacement: tail },
+                      ]
+                    : []),
+                ];
+                for (const { start, old, replacement } of changes) {
+                  const oldEnd = start + old.length;
+                  const updated = source.slice(0, start) + replacement + source.slice(oldEnd);
+                  const expectedContent = start === bodyStart ? replacement : content;
+                  const expectedTail = start === tailStart ? replacement : tail;
+                  tree.edit(
+                    new Edit({
+                      startIndex: start,
+                      oldEndIndex: oldEnd,
+                      newEndIndex: start + replacement.length,
+                      startPosition: positionInText(source, start),
+                      oldEndPosition: positionInText(source, oldEnd),
+                      newEndPosition: positionInText(updated, start + replacement.length),
+                    })
+                  );
+                  const previous = tree;
+                  tree = parser.parse(updated, previous, options(updated))!;
+                  previous.delete();
+                  source = updated;
+                  const fresh = parser.parse(source, undefined, options(source))!;
+                  try {
+                    expect(tree.rootNode.toString()).toBe(fresh.rootNode.toString());
+                    for (const parsed of [tree, fresh]) {
+                      expect(parsed.rootNode.hasError, source).toBe(false);
+                      const outer = parsed.rootNode.descendantsOfType('heredoc_body')[0]!;
+                      const inner = outer.descendantsOfType('heredoc_content')[0]!;
+                      const end = source.indexOf(`${newline}${label}`, bodyStart) + newline.length;
+                      expect(outer.text).toBe(`${expectedContent}${newline}${label}`);
+                      expect(inner.text).toBe(`${expectedContent}${newline}`);
+                      for (const node of [outer, inner]) {
+                        expect(node.startIndex).toBe(bodyStart);
+                        expect(node.startPosition).toEqual(positionInText(source, bodyStart));
+                        const expectedEnd = node === outer ? end + label.length : end;
+                        expect(node.endIndex).toBe(expectedEnd);
+                        expect(node.endPosition).toEqual(positionInText(source, expectedEnd));
+                      }
+                      const literal = parsed.rootNode.firstNamedChild!.descendantsOfType([
+                        'string',
+                        'delimited_symbol',
+                        'subshell',
+                        'regex',
+                      ])[0]!;
+                      expect(literal.firstChild!.text).toBe(kind + openEnding);
+                      const closing = literal.lastChild!;
+                      expect(closing.text).toBe(closeEnding);
+                      expect(closing.endIndex).toBe(
+                        mode === 'closing' ? prefix.length : source.indexOf('\n]', end) + 1
+                      );
+                      if (mode === 'opening') {
+                        expect(literal.text.endsWith(`${expectedTail}${closeEnding}`)).toBe(true);
+                        expect(literal.descendantsOfType('interpolation')).toHaveLength(raw ? 0 : 1);
+                      }
+                      expect(parsed.rootNode.lastNamedChild?.text).toBe('following = 1');
+                    }
+                  } finally {
+                    fresh.delete();
                   }
-                  const literal = parsed.rootNode.firstNamedChild!.descendantsOfType([
-                    'string',
-                    'delimited_symbol',
-                    'subshell',
-                    'regex',
-                  ])[0]!;
-                  const closing = literal.lastChild!;
-                  expect(closing.text).toBe('\n');
-                  expect(closing.endIndex).toBe(mode === 'closing' ? prefix.length : source.indexOf('\n]', end) + 1);
-                  if (mode === 'opening') {
-                    expect(literal.text.endsWith(`${expectedTail}\n`)).toBe(true);
-                    expect(literal.descendantsOfType('interpolation')).toHaveLength(raw ? 0 : 1);
-                  }
-                  expect(parsed.rootNode.lastNamedChild?.text).toBe('following = 1');
                 }
               } finally {
-                fresh.delete();
+                tree.delete();
               }
             }
-          } finally {
-            tree.delete();
           }
         }
       }
@@ -791,6 +801,85 @@ test.each(['%', '%Q', '%q', '%s', '%x', '%r'])(
     }
   }
 );
+
+test.each(['opening', 'closing'])('keeps adjacent and disjoint CR/LF %s delimiters distinct', async (mode) => {
+  await Parser.init();
+  const language = await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')));
+  const parser = new Parser().setLanguage(language);
+  try {
+    for (const gap of ['', 'EXCLUDED']) {
+      const prefix = mode === 'opening' ? 'value = [<<EOS, %Q\r' : 'value = %Q\n#{<<EOS}\r';
+      const source = `${prefix}${gap}\nbody\nEOS\ntail${mode === 'opening' ? '\r\n]\n' : '\n;\n'}following = 1\n`;
+      const tree = parser.parse(source, undefined, {
+        includedRanges: [
+          {
+            startIndex: 0,
+            endIndex: prefix.length,
+            startPosition: positionInText(source, 0),
+            endPosition: positionInText(source, prefix.length),
+          },
+          {
+            startIndex: prefix.length + gap.length,
+            endIndex: source.length,
+            startPosition: positionInText(source, prefix.length + gap.length),
+            endPosition: positionInText(source, source.length),
+          },
+        ],
+      })!;
+      try {
+        const literal = tree.rootNode.descendantsOfType('string')[0]!;
+        const body = tree.rootNode.descendantsOfType('heredoc_body')[0]!;
+        if (mode === 'opening') {
+          expect(literal.firstChild!.text).toBe(`%Q${gap ? '\r' : '\r\n'}`);
+          expect(literal.firstChild!.endIndex).toBe(prefix.length + (gap ? 0 : 1));
+          expect(body.text).toBe(`${gap ? '\n' : ''}body\nEOS`);
+          expect(body.startIndex).toBe(prefix.length + gap.length + (gap ? 0 : 1));
+        } else {
+          expect(literal.lastChild!.text).toBe(gap ? '\n' : '\r\n');
+          expect(literal.lastChild!.endIndex).toBe(prefix.length + gap.length + 1);
+          expect(body.text).toBe('body\nEOS');
+          expect(body.startIndex).toBe(prefix.length + gap.length + 1);
+        }
+      } finally {
+        tree.delete();
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});
+
+test.each(['%', '%Q', '%q', '%s', '%x', '%r'])('preserves independent bare CR characters in %s', async (kind) => {
+  await Parser.init();
+  const language = await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')));
+  const parser = new Parser().setLanguage(language);
+  try {
+    for (const literal of [`${kind}\rtail\r`, `[<<EOS, ${kind}\r\nbody\nEOS\na\rb\n]`]) {
+      const source = `value = ${literal};\nfollowing = 1\n`;
+      const tree = parser.parse(source)!;
+      try {
+        expect(tree.rootNode.hasError, source).toBe(false);
+        expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('following = 1');
+        const content = tree.rootNode.descendantsOfType('string_content');
+        expect(content.map(({ text }) => text)).toContain(literal.includes('<<EOS') ? 'a\rb' : 'tail');
+        if (!literal.includes('<<EOS')) {
+          const node = tree.rootNode.firstNamedChild!.descendantsOfType([
+            'string',
+            'delimited_symbol',
+            'subshell',
+            'regex',
+          ])[0]!;
+          expect(node.firstChild!.text).toBe(`${kind}\r`);
+          expect(node.lastChild!.text).toBe('\r');
+        }
+      } finally {
+        tree.delete();
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});
 
 function positionInText(text: string, index: number): { row: number; column: number } {
   const lines = text.slice(0, index).split('\n');

@@ -577,6 +577,11 @@ static inline bool scan_literal_start_or_assignment(Scanner *scanner, TSLexer *l
             }
 
             advance(lexer);
+            if (literal->close_delimiter == '\r' && lexer->lookahead == '\n' &&
+                !lexer->is_at_included_range_start(lexer)) {
+                literal->open_delimiter = literal->close_delimiter = '\n';
+                advance(lexer);
+            }
             return true;
         }
         default:
@@ -799,6 +804,20 @@ static inline bool scan_literal_content(Scanner *scanner, TSLexer *lexer, const 
                 return true;
             }
             return false;
+        }
+        if (literal->close_delimiter == '\n' && lexer->lookahead == '\r') {
+            TSLexerPosition closing_start;
+            lexer->get_position(lexer, &closing_start);
+            advance(lexer);
+            if (lexer->lookahead != '\n' || lexer->is_at_included_range_start(lexer)) {
+                has_content = true;
+                continue;
+            }
+            if (has_content) {
+                lexer->mark_end_at(lexer, &closing_start);
+                lexer->result_symbol = STRING_CONTENT;
+                return true;
+            }
         }
         if (lexer->lookahead == literal->close_delimiter) {
             lexer->mark_end(lexer);
