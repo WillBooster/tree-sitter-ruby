@@ -2981,3 +2981,27 @@ E
   (heredoc_body
     (heredoc_content)
     (heredoc_end)))
+
+=========================
+rescue clause after a line ending in a range operator
+=========================
+
+def f
+  x = 1..
+rescue
+  nil
+end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (assignment
+        (identifier)
+        (range
+          (integer)))
+      (rescue
+        (then
+          (nil))))))
