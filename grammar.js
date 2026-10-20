@@ -87,7 +87,7 @@ module.exports = grammar({
     $._uninterpreted,
     $._not_parenthesized,
     $._lambda_brace,
-    $._literal_line_continuation,
+    $._literal_escape,
   ],
 
   extras: ($) => [$.comment, $.heredoc_body, /\s/, /\\\r?\n/],
@@ -1616,12 +1616,7 @@ module.exports = grammar({
 
     _literal_contents: ($) =>
       repeat1(
-        choice(
-          $.string_content,
-          $.interpolation,
-          $.escape_sequence,
-          alias($._literal_line_continuation, $.escape_sequence)
-        )
+        choice($.string_content, $.interpolation, $.escape_sequence, alias($._literal_escape, $.escape_sequence))
       ),
 
     // https://ruby-doc.org/core-2.5.0/doc/syntax/literals_rdoc.html#label-Strings

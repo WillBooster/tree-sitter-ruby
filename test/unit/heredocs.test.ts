@@ -270,45 +270,64 @@ test.each(['%W', '%I'])('keeps heredoc ranges when editing host whitespace in %s
 
 test.each([
   ['string', '"', '"'],
+  ['single-quoted string', "'", "'"],
   ['word array', '%W[', ']'],
-])('preserves physical CRLF boundaries across included ranges in a %s', async (_, open, close) => {
+  ['non-interpolating word array', '%w[', ']'],
+  ['symbol array', '%I[', ']'],
+  ['non-interpolating symbol array', '%i[', ']'],
+])('preserves physical line boundaries across included ranges in a %s', async (_, open, close) => {
   await Parser.init();
   const language = await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')));
   const parser = new Parser().setLanguage(language);
   try {
-    for (const gap of ['', 'EXCLUDED']) {
-      const source = `value = ${open}a #{<<EOS} b\r${gap}\nbody\nEOS\nc${close}\nfollowing = 1\n`;
-      const split = source.indexOf('\r') + 1;
-      const position = (index: number): { row: number; column: number } => {
-        const lines = source.slice(0, index).split('\n');
-        return { row: lines.length - 1, column: lines.at(-1)!.length };
-      };
-      const tree = parser.parse(source, undefined, {
-        includedRanges: [
-          { startIndex: 0, endIndex: split, startPosition: position(0), endPosition: position(split) },
-          {
-            startIndex: split + gap.length,
-            endIndex: source.length,
-            startPosition: position(split + gap.length),
-            endPosition: position(source.length),
-          },
-        ],
-      })!;
-      try {
-        expect(tree.rootNode.hasError).toBe(false);
-        const ending = gap ? '\n' : '\r\n';
-        const body = tree.rootNode.descendantsOfType('heredoc_body')[0]!;
-        expect(body.text).toBe(`${ending}body\nEOS`);
-        expect(body.startIndex).toBe(source.indexOf('body') - ending.length);
-        expect(
-          body
-            .descendantsOfType('heredoc_content')
-            .map(({ text }) => text)
-            .join('')
-        ).toBe(`${ending}body\n`);
-        expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('following = 1');
-      } finally {
-        tree.delete();
+    for (const [left, right] of [
+      ['\r', '\n'],
+      ['\\\r', '\n'],
+      ['\\', '\r\n'],
+      ['\\', '\n'],
+    ] as const) {
+      for (const gap of ['', 'EXCLUDED']) {
+        const sibling = ["'", '%w[', '%i['].includes(open!);
+        const prefix = sibling ? `value = [<<EOS, ${open}a${left}` : `value = ${open}a #{<<EOS} b${left}`;
+        const source = `${prefix}${gap}${right}body\nEOS\nc${close}${sibling ? ']' : ''}\nfollowing = 1\n`;
+        const position = (index: number): { row: number; column: number } => {
+          const lines = source.slice(0, index).split('\n');
+          return { row: lines.length - 1, column: lines.at(-1)!.length };
+        };
+        const tree = parser.parse(source, undefined, {
+          includedRanges: [
+            {
+              startIndex: 0,
+              endIndex: prefix.length,
+              startPosition: position(0),
+              endPosition: position(prefix.length),
+            },
+            {
+              startIndex: prefix.length + gap.length,
+              endIndex: source.length,
+              startPosition: position(prefix.length + gap.length),
+              endPosition: position(source.length),
+            },
+          ],
+        })!;
+        try {
+          expect(tree.rootNode.hasError, source).toBe(false);
+          const ending = gap ? right : left.startsWith('\\') ? '' : '\r\n';
+          const outer = tree.rootNode.descendantsOfType('heredoc_body')[0]!;
+          const inner = outer.descendantsOfType('heredoc_content')[0]!;
+          expect(outer.text).toBe(`${ending}body\nEOS`);
+          expect(inner.text).toBe(`${ending}body\n`);
+          expect(outer.startIndex).toBe(source.indexOf('body') - ending.length);
+          expect(inner.startIndex).toBe(outer.startIndex);
+          expect(outer.endIndex).toBe(source.indexOf('\nEOS') + 4);
+          expect(inner.endIndex).toBe(source.indexOf('\nEOS') + 1);
+          for (const escape of tree.rootNode.descendantsOfType('escape_sequence')) {
+            expect(escape.text).not.toContain('EXCLUDED');
+          }
+          expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('following = 1');
+        } finally {
+          tree.delete();
+        }
       }
     }
   } finally {

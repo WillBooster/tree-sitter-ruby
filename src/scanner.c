@@ -47,7 +47,7 @@ typedef enum {
     UNINTERPRETED,
     NOT_PARENTHESIZED,
     LAMBDA_BRACE,
-    LITERAL_LINE_CONTINUATION,
+    LITERAL_ESCAPE,
 
     NONE
 } TokenType;
@@ -177,7 +177,7 @@ static inline void deserialize(Scanner *scanner, const char *buffer, unsigned le
 }
 
 static inline bool has_pending_heredoc_body(Scanner *scanner, const bool *valid_symbols);
-static inline bool scan_literal_line_continuation(TSLexer *lexer);
+static inline bool scan_literal_escape(TSLexer *lexer);
 static inline bool scan_heredoc_after_literal_space(Scanner *scanner, TSLexer *lexer);
 static inline bool is_horizontal_whitespace(int32_t codepoint);
 static inline bool start_heredoc_body(Scanner *scanner, TSLexer *lexer);
@@ -827,13 +827,17 @@ static inline bool scan_literal_content(Scanner *scanner, TSLexer *lexer, const 
                     lexer->result_symbol = STRING_CONTENT;
                     return true;
                 }
-                return pending_heredoc && valid_symbols[LITERAL_LINE_CONTINUATION] &&
-                       scan_literal_line_continuation(lexer);
+                return pending_heredoc && valid_symbols[LITERAL_ESCAPE] && scan_literal_escape(lexer);
             }
             advance(lexer);
+            if (pending_heredoc && lexer->is_at_included_range_start(lexer) &&
+                (lexer->lookahead == '\r' || lexer->lookahead == '\n')) {
+                has_content = true;
+                continue;
+            }
             if (pending_heredoc && lexer->lookahead == '\r') {
                 advance(lexer);
-                if (lexer->lookahead != '\n') {
+                if (lexer->lookahead != '\n' || lexer->is_at_included_range_start(lexer)) {
                     has_content = true;
                     continue;
                 }
@@ -1209,17 +1213,22 @@ static inline bool has_pending_heredoc_body(Scanner *scanner, const bool *valid_
            !array_get(&scanner->open_heredocs, 0)->started;
 }
 
-static inline bool scan_literal_line_continuation(TSLexer *lexer) {
+static inline bool scan_literal_escape(TSLexer *lexer) {
     advance(lexer);
-    if (lexer->is_at_included_range_start(lexer)) return false;
-    if (lexer->lookahead == '\r') {
-        advance(lexer);
-        if (lexer->is_at_included_range_start(lexer)) return false;
+    if (lexer->is_at_included_range_start(lexer)) {
+        lexer->mark_end(lexer);
+        lexer->result_symbol = STRING_CONTENT;
+        return lexer->lookahead == '\r' || lexer->lookahead == '\n';
     }
-    if (lexer->lookahead != '\n') return false;
-    advance(lexer);
+    bool carriage_return = lexer->lookahead == '\r';
+    if (carriage_return) advance(lexer);
+    if (lexer->lookahead == '\n' && !lexer->is_at_included_range_start(lexer)) {
+        advance(lexer);
+    } else if (!carriage_return) {
+        return false;
+    }
     lexer->mark_end(lexer);
-    lexer->result_symbol = LITERAL_LINE_CONTINUATION;
+    lexer->result_symbol = LITERAL_ESCAPE;
     return true;
 }
 
