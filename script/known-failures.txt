@@ -1,5 +1,4 @@
 examples/ruby_spec/command_line/fixtures/bad_syntax.rb
-examples/ruby_spec/core/enumerable/inject_spec.rb
 examples/ruby_spec/core/exception/fixtures/syntax_error.rb
 examples/ruby_spec/core/proc/parameters_spec.rb
 examples/ruby_spec/core/proc/ruby2_keywords_spec.rb
