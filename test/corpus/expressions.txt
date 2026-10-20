@@ -2882,6 +2882,130 @@ multiline regex
   (regex
     (string_content)))
 
+=====================================
+begin range continued on the next line
+=====================================
+
+r = 0..
+r = 1..2
+x = (1..
+)
+
+---
+
+(program
+  (assignment
+    (identifier)
+    (range
+      (integer)
+      (assignment
+        (identifier)
+        (range
+          (integer)
+          (integer)))))
+  (assignment
+    (identifier)
+    (parenthesized_statements
+      (range
+        (integer)))))
+
+=========================
+range ending with a regex
+=========================
+
+(//..//)
+a.../ b/
+
+---
+
+(program
+  (parenthesized_statements
+    (range
+      (regex)
+      (regex)))
+  (range
+    (identifier)
+    (regex
+      (string_content))))
+
+=========================
+range ending with a percent string
+=========================
+
+x = 1..% a 
+y = a % b
+
+---
+
+(program
+  (assignment
+    (identifier)
+    (range
+      (integer)
+      (string
+        (string_content))))
+  (assignment
+    (identifier)
+    (binary
+      (identifier)
+      (identifier))))
+
+=========================
+range ending with a heredoc
+=========================
+
+x = a..
+<<~E
+  hi
+E
+y = a.. <<E
+z
+E
+
+---
+
+(program
+  (assignment
+    (identifier)
+    (range
+      (identifier)
+      (heredoc_beginning)))
+  (heredoc_body
+    (heredoc_content)
+    (heredoc_end))
+  (assignment
+    (identifier)
+    (range
+      (identifier)
+      (heredoc_beginning)))
+  (heredoc_body
+    (heredoc_content)
+    (heredoc_end)))
+
+=========================
+rescue clause after a line ending in a range operator
+=========================
+
+def f
+  x = 1..
+rescue
+  nil
+end
+
+---
+
+(program
+  (method
+    (identifier)
+    (body_statement
+      (assignment
+        (identifier)
+        (range
+          (integer)))
+      (rescue
+        (then
+          (nil))))))
+
 ==============================
 lambda with shadow variables
 ==============================
