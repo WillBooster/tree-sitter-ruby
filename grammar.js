@@ -1652,10 +1652,19 @@ module.exports = grammar({
         '->',
         field(
           'parameters',
-          optional(choice(alias($.parameters, $.lambda_parameters), alias($.bare_parameters, $.lambda_parameters)))
+          optional(
+            choice(
+              alias($._parenthesized_lambda_parameters, $.lambda_parameters),
+              alias($.bare_parameters, $.lambda_parameters)
+            )
+          )
         ),
         field('body', choice($.block, $.do_block))
       ),
+
+    // Shadow variables follow the parameters after `;`, as in block parameters: `->(x; a, b) { }`.
+    _parenthesized_lambda_parameters: ($) =>
+      seq('(', commaSep($._formal_parameter), optional(seq(';', sep1(field('locals', $.identifier), ','))), ')'),
 
     empty_statement: () => prec(-1, ';'),
 

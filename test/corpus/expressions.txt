@@ -2881,3 +2881,28 @@ multiline regex
 (program
   (regex
     (string_content)))
+
+==============================
+lambda with shadow variables
+==============================
+
+->(;a) { a }
+->(x; a, b) do x end
+
+---
+
+(program
+  (lambda
+    (lambda_parameters
+      (identifier))
+    (block
+      (block_body
+        (identifier))))
+  (lambda
+    (lambda_parameters
+      (identifier)
+      (identifier)
+      (identifier))
+    (do_block
+      (body_statement
+        (identifier)))))
