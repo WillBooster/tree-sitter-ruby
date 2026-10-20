@@ -6029,7 +6029,7 @@
             "type": "ALIAS",
             "content": {
               "type": "SYMBOL",
-              "name": "command_argument_list"
+              "name": "_chained_command_argument_list"
             },
             "named": true,
             "value": "argument_list"
@@ -6069,34 +6069,25 @@
               "type": "SEQ",
               "members": [
                 {
-                  "type": "CHOICE",
-                  "members": [
-                    {
-                      "type": "SYMBOL",
-                      "name": "_call"
-                    },
-                    {
-                      "type": "FIELD",
-                      "name": "method",
-                      "content": {
-                        "type": "CHOICE",
-                        "members": [
-                          {
-                            "type": "SYMBOL",
-                            "name": "_variable"
-                          },
-                          {
-                            "type": "SYMBOL",
-                            "name": "_function_identifier"
-                          },
-                          {
-                            "type": "SYMBOL",
-                            "name": "super"
-                          }
-                        ]
+                  "type": "FIELD",
+                  "name": "method",
+                  "content": {
+                    "type": "CHOICE",
+                    "members": [
+                      {
+                        "type": "SYMBOL",
+                        "name": "_variable"
+                      },
+                      {
+                        "type": "SYMBOL",
+                        "name": "_function_identifier"
+                      },
+                      {
+                        "type": "SYMBOL",
+                        "name": "super"
                       }
-                    }
-                  ]
+                    ]
+                  }
                 },
                 {
                   "type": "PREC",
@@ -6137,34 +6128,25 @@
                 "type": "SEQ",
                 "members": [
                   {
-                    "type": "CHOICE",
-                    "members": [
-                      {
-                        "type": "SYMBOL",
-                        "name": "_call"
-                      },
-                      {
-                        "type": "FIELD",
-                        "name": "method",
-                        "content": {
-                          "type": "CHOICE",
-                          "members": [
-                            {
-                              "type": "SYMBOL",
-                              "name": "_variable"
-                            },
-                            {
-                              "type": "SYMBOL",
-                              "name": "_function_identifier"
-                            },
-                            {
-                              "type": "SYMBOL",
-                              "name": "super"
-                            }
-                          ]
+                    "type": "FIELD",
+                    "name": "method",
+                    "content": {
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "SYMBOL",
+                          "name": "_variable"
+                        },
+                        {
+                          "type": "SYMBOL",
+                          "name": "_function_identifier"
+                        },
+                        {
+                          "type": "SYMBOL",
+                          "name": "super"
                         }
-                      }
-                    ]
+                      ]
+                    }
                   },
                   {
                     "type": "PREC",
@@ -6180,6 +6162,93 @@
                             "content": {
                               "type": "SYMBOL",
                               "name": "command_argument_list"
+                            },
+                            "named": true,
+                            "value": "argument_list"
+                          }
+                        },
+                        {
+                          "type": "FIELD",
+                          "name": "block",
+                          "content": {
+                            "type": "SYMBOL",
+                            "name": "do_block"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "SYMBOL",
+                  "name": "_call"
+                },
+                {
+                  "type": "PREC",
+                  "value": 1,
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "FIELD",
+                        "name": "arguments",
+                        "content": {
+                          "type": "ALIAS",
+                          "content": {
+                            "type": "SYMBOL",
+                            "name": "_chained_command_argument_list"
+                          },
+                          "named": true,
+                          "value": "argument_list"
+                        }
+                      },
+                      {
+                        "type": "FIELD",
+                        "name": "block",
+                        "content": {
+                          "type": "SYMBOL",
+                          "name": "block"
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "type": "PREC_DYNAMIC",
+              "value": 1,
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SYMBOL",
+                    "name": "_call"
+                  },
+                  {
+                    "type": "PREC",
+                    "value": -1,
+                    "content": {
+                      "type": "SEQ",
+                      "members": [
+                        {
+                          "type": "FIELD",
+                          "name": "arguments",
+                          "content": {
+                            "type": "ALIAS",
+                            "content": {
+                              "type": "SYMBOL",
+                              "name": "_chained_command_argument_list"
                             },
                             "named": true,
                             "value": "argument_list"
