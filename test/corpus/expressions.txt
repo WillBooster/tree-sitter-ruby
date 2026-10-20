@@ -2927,3 +2927,25 @@ a.../ b/
     (identifier)
     (regex
       (string_content))))
+
+=========================
+range ending with a percent string
+=========================
+
+x = 1..% a 
+y = a % b
+
+---
+
+(program
+  (assignment
+    (identifier)
+    (range
+      (integer)
+      (string
+        (string_content))))
+  (assignment
+    (identifier)
+    (binary
+      (identifier)
+      (identifier))))

@@ -393,9 +393,9 @@ static inline bool scan_symbol_identifier(TSLexer *lexer) {
 }
 
 static inline bool scan_literal_start_or_assignment(Scanner *scanner, TSLexer *lexer, Literal *literal, const bool *valid_symbols) {
-    // After `..` and `...`, where `range` makes NO_LINE_BREAK valid, binary operators are valid only because the range
-    // may be endless, and Ruby reads an operand there. STRING_CONTENT is valid along with STRING_START only in error
-    // recovery.
+    // After `..` and `...`, where `range` makes NO_LINE_BREAK valid, binary operators such as `/` and `%` are valid only
+    // because the range may be endless, and Ruby reads an operand there. STRING_CONTENT is valid along with STRING_START
+    // only in error recovery.
     const bool binary_operator_valid =
         valid_symbols[FORWARD_SLASH] && (!valid_symbols[NO_LINE_BREAK] || valid_symbols[STRING_CONTENT]);
 
@@ -512,9 +512,11 @@ static inline bool scan_literal_start_or_assignment(Scanner *scanner, TSLexer *l
                     // If the `/` operator is valid, then so is the `%` operator, which means
                     // that a `%` followed by whitespace should be considered an operator,
                     // not a percent string.
-                    if (valid_symbols[FORWARD_SLASH]) {
+                    if (binary_operator_valid) {
                         return false;
                     }
+                    literal->open_delimiter = lexer->lookahead;
+                    literal->close_delimiter = lexer->lookahead;
                     break;
 
                 case '|':
@@ -984,6 +986,13 @@ static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symb
         literal.nesting_depth = 1;
 
         if (lexer->lookahead == '<') {
+            // After an operand, `<<` is a shift unless it starts a command argument (`foo <<EOS`). Without whitespace,
+            // it still starts the argument of `return`, `break`, or `next`, whose states, unlike those after a name or a
+            // call, admit no operator assignment.
+            if (valid_symbols[BINARY_STAR] &&
+                (!valid_symbols[SPLAT_STAR] || (!scanner->has_leading_whitespace && valid_symbols[MODULO_ASSIGNMENT]))) {
+                return false;
+            }
             advance(lexer);
             if (lexer->lookahead != '<') {
                 return false;
