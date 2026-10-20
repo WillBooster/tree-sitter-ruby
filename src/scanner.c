@@ -45,6 +45,7 @@ typedef enum {
     ELEMENT_REFERENCE_BRACKET,
     SHORT_INTERPOLATION,
     LINE_COMMENT,
+    BLOCK_COMMENT,
     UNINTERPRETED,
     NOT_PARENTHESIZED,
 
@@ -173,7 +174,7 @@ static inline bool scan_line_comment(TSLexer *lexer);
 static bool scan_splat(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols);
 static bool scan_word_token(TSLexer *lexer, const bool *valid_symbols);
 static bool scan_not_parentheses_gap(TSLexer *lexer);
-static bool scan_not_embdoc(TSLexer *lexer);
+static bool scan_embdoc(TSLexer *lexer);
 static bool scan_word_text(TSLexer *lexer, const char *word);
 
 static inline bool scan_whitespace(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols) {
@@ -828,6 +829,16 @@ static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symb
             }
             return false;
 
+        case '=':
+            // A regex token cannot require whitespace or EOF after `=end`, so it would end an unterminated comment at
+            // the `=end` prefix of a line such as `=endx`.
+            if (!raw_data && valid_symbols[BLOCK_COMMENT] && lexer->get_column(lexer) == 0 && scan_embdoc(lexer)) {
+                lexer->mark_end(lexer);
+                lexer->result_symbol = BLOCK_COMMENT;
+                return true;
+            }
+            return false;
+
         case '&':
             if (valid_symbols[BLOCK_AMPERSAND] || valid_symbols[BITWISE_AND]) {
                 advance(lexer);
@@ -1073,7 +1084,7 @@ static bool scan_not_parentheses_gap(TSLexer *lexer) {
                 scan_line_comment(lexer);
                 break;
             case '=':
-                if (!line_break || lexer->get_column(lexer) != 0 || !scan_not_embdoc(lexer)) return false;
+                if (!line_break || lexer->get_column(lexer) != 0 || !scan_embdoc(lexer)) return false;
                 separated = true;
                 break;
             default:
@@ -1082,7 +1093,7 @@ static bool scan_not_parentheses_gap(TSLexer *lexer) {
     }
 }
 
-static bool scan_not_embdoc(TSLexer *lexer) {
+static bool scan_embdoc(TSLexer *lexer) {
     if (!scan_word_text(lexer, "=begin") || !iswspace(lexer->lookahead)) return false;
     while (!lexer->eof(lexer)) {
         bool closed = lexer->get_column(lexer) == 0 && lexer->lookahead == '=' &&
