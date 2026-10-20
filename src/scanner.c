@@ -762,7 +762,6 @@ static inline bool scan_literal_content(Scanner *scanner, TSLexer *lexer, const 
             if (lexer->lookahead == '\r') {
                 advance(lexer);
                 if (lexer->lookahead != '\n') {
-                    if (stop_on_space) return false;
                     lexer->mark_end(lexer);
                     lexer->result_symbol = STRING_CONTENT;
                     return true;
