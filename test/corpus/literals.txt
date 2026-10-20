@@ -2620,11 +2620,16 @@ third
 plain = <<日本
 fourth
 日本
+space = <<A 
+fifth
+A 
 following = 1
 
 ---
 
 (program
+  (assignment (identifier) (heredoc_beginning))
+  (heredoc_body (heredoc_content) (heredoc_end))
   (assignment (identifier) (heredoc_beginning))
   (heredoc_body (heredoc_content) (heredoc_end))
   (assignment (identifier) (heredoc_beginning))

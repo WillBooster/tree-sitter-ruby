@@ -168,6 +168,7 @@ static inline void deserialize(Scanner *scanner, const char *buffer, unsigned le
     assert(size == length);
 }
 
+static inline bool is_heredoc_word_character(int32_t codepoint);
 static inline uint32_t encode_utf8(int32_t codepoint, char *bytes);
 static inline void append_heredoc_character(String *word, int32_t codepoint);
 static inline bool scan_line_comment(TSLexer *lexer);
@@ -582,10 +583,10 @@ static inline void scan_heredoc_word(TSLexer *lexer, Heredoc *heredoc) {
             break;
 
         default:
-            if (is_iden_char(lexer->lookahead)) {
+            if (is_heredoc_word_character(lexer->lookahead)) {
                 append_heredoc_character(&word, lexer->lookahead);
                 advance(lexer);
-                while (is_iden_char(lexer->lookahead)) {
+                while (is_heredoc_word_character(lexer->lookahead)) {
                     append_heredoc_character(&word, lexer->lookahead);
                     advance(lexer);
                 }
@@ -1138,6 +1139,10 @@ static bool scan_embdoc(TSLexer *lexer) {
         if (!lexer->eof(lexer)) advance(lexer);
     }
     return false;
+}
+
+static inline bool is_heredoc_word_character(int32_t codepoint) {
+    return codepoint >= 0x80 || iswalnum(codepoint) || codepoint == '_';
 }
 
 static inline void append_heredoc_character(String *word, int32_t codepoint) {
