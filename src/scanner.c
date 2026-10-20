@@ -168,6 +168,8 @@ static inline void deserialize(Scanner *scanner, const char *buffer, unsigned le
     assert(size == length);
 }
 
+static inline bool has_pending_heredoc_body(Scanner *scanner, const bool *valid_symbols);
+static inline bool scan_heredoc_after_literal_space(Scanner *scanner, TSLexer *lexer);
 static inline bool start_heredoc_body(Scanner *scanner, TSLexer *lexer);
 static inline bool is_heredoc_word_character(int32_t codepoint);
 static inline uint32_t encode_utf8(int32_t codepoint, char *bytes);
@@ -181,8 +183,7 @@ static bool scan_word_text(TSLexer *lexer, const char *word);
 
 static inline bool scan_whitespace(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols,
                                    bool *rescue_may_end_line) {
-    bool heredoc_body_start_is_valid = scanner->open_heredocs.size > 0 && !scanner->open_heredocs.contents[0].started &&
-                                       valid_symbols[HEREDOC_BODY_START];
+    bool heredoc_body_start_is_valid = has_pending_heredoc_body(scanner, valid_symbols);
     bool crossed_newline = false;
 
     for (;;) {
@@ -201,18 +202,14 @@ static inline bool scan_whitespace(Scanner *scanner, TSLexer *lexer, const bool 
                 break;
             case '\r':
                 if (heredoc_body_start_is_valid) {
-                    lexer->result_symbol = HEREDOC_BODY_START;
-                    scanner->open_heredocs.contents[0].started = true;
-                    return true;
+                    return start_heredoc_body(scanner, lexer);
                 } else {
                     skip(scanner, lexer);
                     break;
                 }
             case '\n':
                 if (heredoc_body_start_is_valid) {
-                    lexer->result_symbol = HEREDOC_BODY_START;
-                    scanner->open_heredocs.contents[0].started = true;
-                    return true;
+                    return start_heredoc_body(scanner, lexer);
                 } else if (!valid_symbols[NO_LINE_BREAK] && valid_symbols[LINE_BREAK] && !crossed_newline) {
                     lexer->mark_end(lexer);
                     // Keep the saved LINE_BREAK endpoint, but exclude this newline from a following external token.
@@ -740,8 +737,7 @@ static inline bool scan_literal_content(Scanner *scanner, TSLexer *lexer, const 
     Literal *literal = array_back(&scanner->literal_stack);
     bool has_content = false;
     bool stop_on_space = literal->type == SYMBOL_ARRAY_START || literal->type == STRING_ARRAY_START;
-    bool pending_heredoc = valid_symbols[HEREDOC_BODY_START] && scanner->open_heredocs.size > 0 &&
-                           !array_get(&scanner->open_heredocs, 0)->started;
+    bool pending_heredoc = has_pending_heredoc_body(scanner, valid_symbols);
 
     for (;;) {
         if (pending_heredoc && lexer->lookahead != literal->close_delimiter &&
@@ -760,7 +756,12 @@ static inline bool scan_literal_content(Scanner *scanner, TSLexer *lexer, const 
                     return true;
                 }
             }
+            lexer->mark_end(lexer);
             return start_heredoc_body(scanner, lexer);
+        }
+        if (pending_heredoc && stop_on_space && !has_content &&
+            (lexer->lookahead == ' ' || lexer->lookahead == '\t')) {
+            return scan_heredoc_after_literal_space(scanner, lexer);
         }
         if (stop_on_space && iswspace(lexer->lookahead)) {
             if (has_content) {
@@ -851,9 +852,9 @@ static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symb
     }
     scanner->has_leading_whitespace = false;
 
-    if (valid_symbols[HEREDOC_BODY_START] && scanner->open_heredocs.size > 0 &&
-        !array_get(&scanner->open_heredocs, 0)->started && !lexer->is_at_included_range_start(lexer) &&
+    if (has_pending_heredoc_body(scanner, valid_symbols) && !lexer->is_at_included_range_start(lexer) &&
         lexer->get_column(lexer) == 0) {
+        lexer->mark_end(lexer);
         return start_heredoc_body(scanner, lexer);
     }
 
@@ -1181,8 +1182,26 @@ static bool scan_embdoc(TSLexer *lexer) {
     return false;
 }
 
-static inline bool start_heredoc_body(Scanner *scanner, TSLexer *lexer) {
+static inline bool has_pending_heredoc_body(Scanner *scanner, const bool *valid_symbols) {
+    return valid_symbols[HEREDOC_BODY_START] && scanner->open_heredocs.size > 0 &&
+           !array_get(&scanner->open_heredocs, 0)->started;
+}
+
+static inline bool scan_heredoc_after_literal_space(Scanner *scanner, TSLexer *lexer) {
+    do {
+        advance(lexer);
+    } while (lexer->lookahead == ' ' || lexer->lookahead == '\t');
+    if (lexer->lookahead == '\r') {
+        advance(lexer);
+    }
+    if (lexer->lookahead != '\n') {
+        return false;
+    }
     lexer->mark_end(lexer);
+    return start_heredoc_body(scanner, lexer);
+}
+
+static inline bool start_heredoc_body(Scanner *scanner, TSLexer *lexer) {
     array_get(&scanner->open_heredocs, 0)->started = true;
     lexer->result_symbol = HEREDOC_BODY_START;
     return true;

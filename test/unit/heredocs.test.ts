@@ -129,3 +129,32 @@ test.each([
     parser.delete();
   }
 });
+
+test.each(['%W', '%I'])('preserves a queued heredoc after trailing whitespace in %s', async (kind) => {
+  await Parser.init();
+  const language = await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')));
+  const parser = new Parser().setLanguage(language);
+  try {
+    for (const suffix of [' ', '\t', ' b ', ' b\t']) {
+      for (const newline of ['\n', '\r\n']) {
+        const source = `value = ${kind}[a #{<<EOS}${suffix}${newline}body${newline}EOS${newline}c]\nfollowing = 1\n`;
+        const tree = parser.parse(source)!;
+        try {
+          expect(tree.rootNode.hasError, source).toBe(false);
+          expect(
+            tree.rootNode
+              .descendantsOfType('heredoc_content')
+              .map(({ text }) => text)
+              .join('')
+          ).toContain(`body${newline}`);
+          expect(tree.rootNode.descendantsOfType('heredoc_end').map(({ text }) => text)).toEqual(['EOS']);
+          expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('following = 1');
+        } finally {
+          tree.delete();
+        }
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});
