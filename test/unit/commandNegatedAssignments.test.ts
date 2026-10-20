@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { Language, Parser } from '@willbooster/web-tree-sitter';
+import { Edit, Language, Parser } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
 import { currentWasmPath } from '../helpers/generationInputs.js';
@@ -222,6 +222,108 @@ test('accepts ordinary completed-command assignments as first arguments and retu
       } finally {
         tree.delete();
       }
+    }
+  } finally {
+    parser.delete();
+  }
+});
+
+test('distinguishes adjacent and line-broken not parentheses from horizontal separation', async () => {
+  await Parser.init();
+  const parser = new Parser().setLanguage(
+    await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')))
+  );
+  try {
+    for (const [gaps, operandType] of [
+      [['', '\n', '\n ', ' \n', '\r\n', ' # note\n ', '\n=begin\ntext\n=end\n', '\\\n\n'], 'parenthesized_statements'],
+      [[' ', '\t', '\f', '\v', '\r', '\\\n', '\\\r\n'], 'test_pattern'],
+    ] as const) {
+      for (const gap of gaps) {
+        for (const [prefix, suffix] of [
+          ['', ''],
+          ['x = ', ''],
+          ['x ||= ', ''],
+          ['def f; yield ', '; end'],
+          ['def f = ', ''],
+        ]) {
+          const source = `${prefix}not${gap}(a) in P${suffix}`;
+          const tree = parser.parse(source)!;
+          try {
+            expect(tree.rootNode.hasError, source).toBe(false);
+            const negation = tree.rootNode
+              .descendantsOfType('unary')
+              .find((node) => node.childForFieldName('operator')?.text === 'not');
+            expect(negation?.childForFieldName('operand')?.type, source).toBe(operandType);
+            expect(tree.rootNode.descendantsOfType('test_pattern'), source).toHaveLength(1);
+            if (gap.includes('#')) {
+              expect(
+                tree.rootNode.descendantsOfType('comment').map((node) => node.text),
+                source
+              ).toContain('# note');
+            }
+            if (gap.includes('=begin')) {
+              expect(
+                tree.rootNode.descendantsOfType('comment').map((node) => node.text),
+                source
+              ).toContain('=begin\ntext\n=end');
+            }
+          } finally {
+            tree.delete();
+          }
+        }
+      }
+    }
+    for (const source of ['not(a).foo', 'not (a).foo', 'not\n(a).foo']) {
+      const tree = parser.parse(source)!;
+      try {
+        expect(tree.rootNode.hasError, source).toBe(false);
+        const negation = tree.rootNode.descendantsOfType('unary')[0];
+        expect(negation?.childForFieldName('operand')?.type, source).toBe(
+          source === 'not (a).foo' ? 'call' : 'parenthesized_statements'
+        );
+      } finally {
+        tree.delete();
+      }
+    }
+    let previousGap = '';
+    let tree = parser.parse('not(a) in P')!;
+    try {
+      for (const gap of [' ', '\n', '\\\n', '\n=begin\ntext\n=end\n', ' # note\n ', '', '\t']) {
+        const source = `not${gap}(a) in P`;
+        const oldLines = previousGap.split('\n');
+        const newLines = gap.split('\n');
+        tree.edit(
+          new Edit({
+            startIndex: 3,
+            oldEndIndex: 3 + previousGap.length,
+            newEndIndex: 3 + gap.length,
+            startPosition: { row: 0, column: 3 },
+            oldEndPosition: {
+              row: oldLines.length - 1,
+              column: oldLines.length === 1 ? 3 + previousGap.length : oldLines.at(-1)!.length,
+            },
+            newEndPosition: {
+              row: newLines.length - 1,
+              column: newLines.length === 1 ? 3 + gap.length : newLines.at(-1)!.length,
+            },
+          })
+        );
+        const incremental = parser.parse(source, tree)!;
+        const fresh = parser.parse(source)!;
+        try {
+          expect(incremental.rootNode.toString(), source).toBe(fresh.rootNode.toString());
+          expect(incremental.rootNode.hasError, source).toBe(false);
+          const operator = incremental.rootNode.descendantsOfType('unary')[0]?.childForFieldName('operator');
+          expect([operator?.startIndex, operator?.endIndex], source).toEqual([0, 3]);
+        } finally {
+          tree.delete();
+          tree = incremental;
+          fresh.delete();
+          previousGap = gap;
+        }
+      }
+    } finally {
+      tree.delete();
     }
   } finally {
     parser.delete();

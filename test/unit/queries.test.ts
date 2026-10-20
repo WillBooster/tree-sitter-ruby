@@ -71,3 +71,44 @@ test('queries expression arguments and ordinary pattern subjects through their p
     parser.delete();
   }
 });
+
+test('queries restricted assignment, negation and rescue values as public expressions', async () => {
+  await Parser.init();
+  const language = await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')));
+  const parser = new Parser().setLanguage(language);
+  const query = new Query(
+    language,
+    '(assignment right: (_expression) @value)\n(operator_assignment right: (_expression) @value)\n(unary operand: (_expression) @value)\n(rescue_modifier body: (_expression) @value)'
+  );
+  const cases: Array<[string, string[]]> = [
+    ['x = foo bar', ['foo bar']],
+    ['x += foo bar', ['foo bar']],
+    ['a b do end.c = foo bar', ['foo bar']],
+    ['a b do end.c += foo bar', ['foo bar']],
+    ['x = foo bar rescue q', ['foo bar']],
+    ['not foo bar', ['foo bar']],
+    ['!foo bar', ['foo bar']],
+    ['not foo bar in Integer', ['foo bar']],
+    ['def f; yield not foo bar; end', ['foo bar']],
+    ['def f; yield not foo bar in Integer; end', ['foo bar']],
+    ['not a b do end.c = 1', ['a b do end.c = 1', '1']],
+    ['def f; yield not x += foo y; end', ['x += foo y', 'foo y']],
+  ];
+  try {
+    for (const [source, expected] of cases) {
+      const tree = parser.parse(source)!;
+      try {
+        expect(tree.rootNode.hasError, source).toBe(false);
+        expect(
+          query.captures(tree.rootNode).map(({ node }) => node.text),
+          source
+        ).toEqual(expected);
+      } finally {
+        tree.delete();
+      }
+    }
+  } finally {
+    query.delete();
+    parser.delete();
+  }
+});

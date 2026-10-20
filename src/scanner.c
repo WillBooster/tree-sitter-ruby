@@ -46,6 +46,7 @@ typedef enum {
     SHORT_INTERPOLATION,
     LINE_COMMENT,
     UNINTERPRETED,
+    NOT_PARENTHESIZED,
 
     NONE
 } TokenType;
@@ -169,6 +170,11 @@ static inline void deserialize(Scanner *scanner, const char *buffer, unsigned le
 }
 
 static inline bool scan_line_comment(TSLexer *lexer);
+static bool scan_splat(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols);
+static bool scan_word_token(TSLexer *lexer, const bool *valid_symbols);
+static bool scan_not_parentheses_gap(TSLexer *lexer);
+static bool scan_not_embdoc(TSLexer *lexer);
+static bool scan_word_text(TSLexer *lexer, const char *word);
 
 static inline bool scan_whitespace(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols) {
     bool heredoc_body_start_is_valid = scanner->open_heredocs.size > 0 && !scanner->open_heredocs.contents[0].started &&
@@ -856,53 +862,7 @@ static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symb
         case '*':
             if (valid_symbols[SPLAT_STAR] || valid_symbols[BINARY_STAR] || valid_symbols[HASH_SPLAT_STAR_STAR] ||
                 valid_symbols[BINARY_STAR_STAR]) {
-                advance(lexer);
-                if (lexer->lookahead == '=') {
-                    return false;
-                }
-                if (lexer->lookahead == '*') {
-                    if (valid_symbols[HASH_SPLAT_STAR_STAR] || valid_symbols[BINARY_STAR_STAR]) {
-                        advance(lexer);
-                        if (lexer->lookahead == '=') {
-                            return false;
-                        }
-                        if (valid_symbols[BINARY_STAR_STAR] && !scanner->has_leading_whitespace) {
-                            lexer->result_symbol = BINARY_STAR_STAR;
-                            return true;
-                        }
-                        if (valid_symbols[HASH_SPLAT_STAR_STAR] && !iswspace(lexer->lookahead)) {
-                            lexer->result_symbol = HASH_SPLAT_STAR_STAR;
-                            return true;
-                        }
-                        if (valid_symbols[BINARY_STAR_STAR]) {
-                            lexer->result_symbol = BINARY_STAR_STAR;
-                            return true;
-                        }
-                        if (valid_symbols[HASH_SPLAT_STAR_STAR]) {
-                            lexer->result_symbol = HASH_SPLAT_STAR_STAR;
-                            return true;
-                        }
-                        return false;
-                    }
-                    return false;
-                }
-                if (valid_symbols[BINARY_STAR] && !scanner->has_leading_whitespace) {
-                    lexer->result_symbol = BINARY_STAR;
-                    return true;
-                }
-                if (valid_symbols[SPLAT_STAR] && !iswspace(lexer->lookahead)) {
-                    lexer->result_symbol = SPLAT_STAR;
-                    return true;
-                }
-                if (valid_symbols[BINARY_STAR]) {
-                    lexer->result_symbol = BINARY_STAR;
-                    return true;
-                }
-                if (valid_symbols[SPLAT_STAR]) {
-                    lexer->result_symbol = SPLAT_STAR;
-                    return true;
-                }
-                return false;
+                return scan_splat(scanner, lexer, valid_symbols);
             }
             break;
 
@@ -995,31 +955,11 @@ static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symb
             break;
     }
 
-    // Open delimiters for literals
     if (((valid_symbols[HASH_KEY_SYMBOL] || valid_symbols[IDENTIFIER_SUFFIX]) &&
          (iswalpha(lexer->lookahead) || lexer->lookahead == '_')) ||
-        (valid_symbols[CONSTANT_SUFFIX] && iswupper(lexer->lookahead))) {
-        TokenType validIdentifierSymbol = iswupper(lexer->lookahead) ? CONSTANT_SUFFIX : IDENTIFIER_SUFFIX;
-        while (iswalnum(lexer->lookahead) || lexer->lookahead == '_') {
-            advance(lexer);
-        }
-
-        if (valid_symbols[HASH_KEY_SYMBOL] && lexer->lookahead == ':') {
-            lexer->mark_end(lexer);
-            advance(lexer);
-            if (lexer->lookahead != ':') {
-                lexer->result_symbol = HASH_KEY_SYMBOL;
-                return true;
-            }
-        } else if (valid_symbols[validIdentifierSymbol] && lexer->lookahead == '!') {
-            advance(lexer);
-            if (lexer->lookahead != '=') {
-                lexer->result_symbol = validIdentifierSymbol;
-                return true;
-            }
-        }
-
-        return false;
+        (valid_symbols[CONSTANT_SUFFIX] && iswupper(lexer->lookahead)) ||
+        (valid_symbols[NOT_PARENTHESIZED] && lexer->lookahead == 'n')) {
+        return scan_word_token(lexer, valid_symbols);
     }
 
     if (valid_symbols[STRING_START] || (lexer->lookahead == '%' && valid_symbols[MODULO_ASSIGNMENT])) {
@@ -1060,6 +1000,106 @@ static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symb
     }
 
     return false;
+}
+
+static bool scan_splat(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols) {
+    TokenType binary = BINARY_STAR;
+    TokenType splat = SPLAT_STAR;
+    advance(lexer);
+    if (lexer->lookahead == '*') {
+        binary = BINARY_STAR_STAR;
+        splat = HASH_SPLAT_STAR_STAR;
+        if (!valid_symbols[binary] && !valid_symbols[splat]) return false;
+        advance(lexer);
+    }
+    if (lexer->lookahead == '=') return false;
+    bool prefer_binary = !scanner->has_leading_whitespace || iswspace(lexer->lookahead) || !valid_symbols[splat];
+    TokenType result = valid_symbols[binary] && prefer_binary ? binary : splat;
+    if (!valid_symbols[result]) return false;
+    lexer->result_symbol = result;
+    return true;
+}
+
+static bool scan_word_token(TSLexer *lexer, const bool *valid_symbols) {
+    TokenType suffix = iswupper(lexer->lookahead) ? CONSTANT_SUFFIX : IDENTIFIER_SUFFIX;
+    bool not_word = valid_symbols[NOT_PARENTHESIZED];
+    unsigned length = 0;
+    while (iswalnum(lexer->lookahead) || lexer->lookahead == '_') {
+        not_word &= length < 3 && lexer->lookahead == "not"[length];
+        length++;
+        advance(lexer);
+    }
+    if (valid_symbols[HASH_KEY_SYMBOL] && lexer->lookahead == ':') {
+        lexer->mark_end(lexer);
+        advance(lexer);
+        if (lexer->lookahead != ':') {
+            lexer->result_symbol = HASH_KEY_SYMBOL;
+            return true;
+        }
+    } else if (valid_symbols[suffix] && lexer->lookahead == '!') {
+        advance(lexer);
+        if (lexer->lookahead != '=') {
+            lexer->result_symbol = suffix;
+            return true;
+        }
+    }
+    if (!not_word || length != 3) return false;
+    lexer->mark_end(lexer);
+    if (!scan_not_parentheses_gap(lexer)) return false;
+    lexer->result_symbol = NOT_PARENTHESIZED;
+    return true;
+}
+
+static bool scan_not_parentheses_gap(TSLexer *lexer) {
+    bool separated = false;
+    bool line_break = false;
+    for (;;) {
+        if (iswspace(lexer->lookahead)) {
+            separated = true;
+            line_break |= lexer->lookahead == '\n';
+            advance(lexer);
+            continue;
+        }
+        switch (lexer->lookahead) {
+            case '\\':
+                separated = true;
+                advance(lexer);
+                if (lexer->lookahead == '\r') advance(lexer);
+                if (lexer->lookahead != '\n') return false;
+                advance(lexer);
+                break;
+            case '#':
+                separated = true;
+                scan_line_comment(lexer);
+                break;
+            case '=':
+                if (!line_break || lexer->get_column(lexer) != 0 || !scan_not_embdoc(lexer)) return false;
+                separated = true;
+                break;
+            default:
+                return lexer->lookahead == '(' && (!separated || line_break);
+        }
+    }
+}
+
+static bool scan_not_embdoc(TSLexer *lexer) {
+    if (!scan_word_text(lexer, "=begin") || !iswspace(lexer->lookahead)) return false;
+    while (!lexer->eof(lexer)) {
+        bool closed = lexer->get_column(lexer) == 0 && lexer->lookahead == '=' &&
+                      scan_word_text(lexer, "=end") && (iswspace(lexer->lookahead) || lexer->eof(lexer));
+        while (!lexer->eof(lexer) && lexer->lookahead != '\n') advance(lexer);
+        if (closed) return true;
+        if (!lexer->eof(lexer)) advance(lexer);
+    }
+    return false;
+}
+
+static bool scan_word_text(TSLexer *lexer, const char *word) {
+    for (; *word; word++) {
+        if (lexer->lookahead != *word) return false;
+        advance(lexer);
+    }
+    return true;
 }
 
 static inline bool scan_line_comment(TSLexer *lexer) {
