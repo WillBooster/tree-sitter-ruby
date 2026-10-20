@@ -5168,26 +5168,6 @@
                     },
                     "named": true,
                     "value": "call"
-                  },
-                  {
-                    "type": "SYMBOL",
-                    "name": "if_modifier"
-                  },
-                  {
-                    "type": "SYMBOL",
-                    "name": "unless_modifier"
-                  },
-                  {
-                    "type": "SYMBOL",
-                    "name": "while_modifier"
-                  },
-                  {
-                    "type": "SYMBOL",
-                    "name": "until_modifier"
-                  },
-                  {
-                    "type": "SYMBOL",
-                    "name": "rescue_modifier"
                   }
                 ]
               }

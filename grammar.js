@@ -773,7 +773,7 @@ module.exports = grammar({
 
     _chained_test_pattern: ($) => chainedTestPattern($),
 
-    _negated_chained_test_pattern: ($) => prec(PREC.PATTERN, chainedTestPattern($)),
+    _negated_chained_test_pattern: ($) => prec(PREC.PATTERN, chainedTestPattern($, false)),
 
     match_pattern: ($) =>
       prec(
@@ -2114,7 +2114,7 @@ function commandValue($, allowAssignment) {
 }
 
 /** @param {GrammarSymbols<string>} $ */
-function chainedTestPattern($) {
+function chainedTestPattern($, allowModifiers = true) {
   return prec.dynamic(
     1,
     seq(
@@ -2137,11 +2137,9 @@ function chainedTestPattern($) {
           alias($._command_not, $.unary),
           alias($.yield_command, $.yield),
           alias($._super_command, $.call),
-          $.if_modifier,
-          $.unless_modifier,
-          $.while_modifier,
-          $.until_modifier,
-          $.rescue_modifier
+          ...(allowModifiers
+            ? [$.if_modifier, $.unless_modifier, $.while_modifier, $.until_modifier, $.rescue_modifier]
+            : [])
         )
       ),
       'in',
