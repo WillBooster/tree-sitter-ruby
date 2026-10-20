@@ -1557,7 +1557,14 @@ module.exports = grammar({
     instance_variable: () => token(seq('@', ALPHA_CHAR, IDENTIFIER_CHARS)),
     class_variable: () => token(seq('@@', ALPHA_CHAR, IDENTIFIER_CHARS)),
 
-    global_variable: () => /\$(-[a-zA-Z0-9_]|[!@&`'+~=/\\,;.<>*$?:"]|[0-9]+|[a-zA-Z_][a-zA-Z0-9_]*)/,
+    global_variable: () =>
+      token(
+        choice(
+          /\$(-[a-zA-Z0-9_]|[!@&`'+~=/\\,;.<>*$?:"]|[0-9]+)/,
+          seq('$-', /[^\u0000-\u007F]/),
+          seq('$', ALPHA_CHAR, IDENTIFIER_CHARS)
+        )
+      ),
 
     chained_string: ($) => seq($.string, repeat1($.string)),
 
@@ -1653,7 +1660,12 @@ module.exports = grammar({
         '->',
         field(
           'parameters',
-          optional(choice(alias($.parameters, $.lambda_parameters), alias($.bare_parameters, $.lambda_parameters)))
+          optional(
+            choice(
+              alias($._parenthesized_lambda_parameters, $.lambda_parameters),
+              alias($.bare_parameters, $.lambda_parameters)
+            )
+          )
         ),
         field('body', choice(alias($._lambda_block, $.block), $.do_block))
       ),
@@ -1668,6 +1680,9 @@ module.exports = grammar({
         optional(field('body', $.block_body)),
         '}'
       ),
+
+    _parenthesized_lambda_parameters: ($) =>
+      seq('(', commaSep($._formal_parameter), optional(seq(';', sep1(field('locals', $.identifier), ','))), ')'),
 
     empty_statement: () => prec(-1, ';'),
 
@@ -1838,7 +1853,8 @@ function conditionalExpression($, condition, branch = $._arg) {
 function rangeExpression($, begin, allowBeginless, endValue = $._arg) {
   const end = field('end', choice(endValue, alias($._range_sign, $.unary)));
   const operator = field('operator', choice('..', '...'));
-  const bounded = seq(field('begin', begin), operator, optional(end));
+  // `_no_line_break` never matches; it tells the scanner that the end may follow on the next line.
+  const bounded = seq(field('begin', begin), operator, optional(choice(end, $._no_line_break)));
   return prec.right(PREC.RANGE, allowBeginless ? choice(bounded, seq(operator, end)) : bounded);
 }
 

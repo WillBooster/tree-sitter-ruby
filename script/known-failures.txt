@@ -1,5 +1,4 @@
 examples/ruby_spec/command_line/fixtures/bad_syntax.rb
 examples/ruby_spec/core/exception/fixtures/syntax_error.rb
-examples/ruby_spec/core/range/reverse_each_spec.rb
 examples/ruby_spec/language/fixtures/utf16-be-nobom.rb
 examples/ruby_spec/language/fixtures/utf16-le-nobom.rb

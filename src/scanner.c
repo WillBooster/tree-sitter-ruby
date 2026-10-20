@@ -9,7 +9,6 @@ typedef enum {
     LINE_BREAK,
     NO_LINE_BREAK,
 
-    // Delimited literals
     SIMPLE_SYMBOL,
     STRING_START,
     SYMBOL_START,
@@ -24,7 +23,6 @@ typedef enum {
     HEREDOC_BODY_END,
     HEREDOC_START,
 
-    // Whitespace-sensitive tokens
     FORWARD_SLASH,
     BLOCK_AMPERSAND,
     SPLAT_STAR,
@@ -99,7 +97,7 @@ static inline void reset(Scanner *scanner) {
 static inline unsigned serialize(Scanner *scanner, char *buffer) {
     unsigned size = 0;
 
-    if (scanner->literal_stack.size * 5 + 2 >= TREE_SITTER_SERIALIZATION_BUFFER_SIZE) {
+    if (scanner->literal_stack.size * 6 + 2 >= TREE_SITTER_SERIALIZATION_BUFFER_SIZE) {
         return 0;
     }
 
@@ -109,7 +107,12 @@ static inline unsigned serialize(Scanner *scanner, char *buffer) {
         buffer[size++] = literal->type;
         buffer[size++] = (char)literal->open_delimiter;
         buffer[size++] = (char)literal->close_delimiter;
-        buffer[size++] = (char)literal->nesting_depth;
+        // Nested delimiters such as `%(((...)))` can exceed one byte of depth.
+        if (literal->nesting_depth > UINT16_MAX) {
+            return 0;
+        }
+        buffer[size++] = (char)(literal->nesting_depth & 0xFF);
+        buffer[size++] = (char)(literal->nesting_depth >> 8);
         buffer[size++] = (char)literal->allows_interpolation;
     }
 
@@ -146,7 +149,8 @@ static inline void deserialize(Scanner *scanner, const char *buffer, unsigned le
         literal.type = (TokenType)(buffer[size++]);
         literal.open_delimiter = (unsigned char)buffer[size++];
         literal.close_delimiter = (unsigned char)buffer[size++];
-        literal.nesting_depth = (unsigned char)buffer[size++];
+        literal.nesting_depth = (unsigned char)buffer[size] | ((unsigned char)buffer[size + 1] << 8);
+        size += 2;
         literal.allows_interpolation = buffer[size++];
         array_push(&scanner->literal_stack, literal);
     }
@@ -171,6 +175,9 @@ static inline void deserialize(Scanner *scanner, const char *buffer, unsigned le
     assert(size == length);
 }
 
+static inline bool is_heredoc_word_character(int32_t codepoint);
+static inline uint32_t encode_utf8(int32_t codepoint, char *bytes);
+static inline void append_heredoc_character(String *word, int32_t codepoint);
 static inline bool scan_line_comment(TSLexer *lexer);
 static bool scan_splat(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols);
 static bool scan_word_token(TSLexer *lexer, const bool *valid_symbols, bool rescue_may_end_line);
@@ -218,8 +225,8 @@ static inline bool scan_whitespace(Scanner *scanner, TSLexer *lexer, const bool 
                     lexer->advance(lexer, true);
                     crossed_newline = true;
                 } else {
-                    // After a hash shorthand (`foo key:`), the value may follow on the next line unless that line
-                    // starts a `rescue` clause.
+                    // After a hash shorthand (`foo key:`) or `..`, the operand may follow on the next line unless that
+                    // line starts a `rescue` clause.
                     *rescue_may_end_line = valid_symbols[NO_LINE_BREAK] && valid_symbols[LINE_BREAK];
                     skip(scanner, lexer);
                 }
@@ -258,7 +265,6 @@ static inline bool scan_whitespace(Scanner *scanner, TSLexer *lexer, const bool 
 
 static inline bool scan_operator(TSLexer *lexer) {
     switch (lexer->lookahead) {
-        // <, <=, <<, <=>
         case '<':
             advance(lexer);
             if (lexer->lookahead == '<') {
@@ -271,7 +277,6 @@ static inline bool scan_operator(TSLexer *lexer) {
             }
             return true;
 
-        // >, >=, >>
         case '>':
             advance(lexer);
             if (lexer->lookahead == '>' || lexer->lookahead == '=') {
@@ -279,7 +284,6 @@ static inline bool scan_operator(TSLexer *lexer) {
             }
             return true;
 
-        // ==, ===, =~
         case '=':
             advance(lexer);
             if (lexer->lookahead == '~') {
@@ -295,7 +299,6 @@ static inline bool scan_operator(TSLexer *lexer) {
             }
             return false;
 
-        // +, -, ~, +@, -@, ~@
         case '+':
         case '-':
         case '~':
@@ -305,7 +308,6 @@ static inline bool scan_operator(TSLexer *lexer) {
             }
             return true;
 
-        // ..
         case '.':
             advance(lexer);
             if (lexer->lookahead == '.') {
@@ -314,7 +316,6 @@ static inline bool scan_operator(TSLexer *lexer) {
             }
             return false;
 
-        // &, ^, |, /, %`
         case '&':
         case '^':
         case '|':
@@ -324,7 +325,6 @@ static inline bool scan_operator(TSLexer *lexer) {
             advance(lexer);
             return true;
 
-        // !, !=, !~
         case '!':
             advance(lexer);
             if (lexer->lookahead == '=' || lexer->lookahead == '~') {
@@ -332,7 +332,6 @@ static inline bool scan_operator(TSLexer *lexer) {
             }
             return true;
 
-        // *, **
         case '*':
             advance(lexer);
             if (lexer->lookahead == '*') {
@@ -340,7 +339,6 @@ static inline bool scan_operator(TSLexer *lexer) {
             }
             return true;
 
-        // [], []=
         case '[':
             advance(lexer);
             if (lexer->lookahead == ']') {
@@ -400,7 +398,17 @@ static inline bool scan_symbol_identifier(TSLexer *lexer) {
     return true;
 }
 
+// NO_LINE_BREAK is valid after `..` and `...` (an endless range) and after a hash shorthand (`foo key:`), where Ruby
+// reads an operand on the same or the next line although binary operators are valid because the expression may
+// already be complete. STRING_CONTENT is valid along with STRING_START only in error recovery.
+static inline bool expects_operand_across_line_break(const bool *valid_symbols) {
+    return valid_symbols[NO_LINE_BREAK] && !valid_symbols[STRING_CONTENT];
+}
+
 static inline bool scan_literal_start_or_assignment(Scanner *scanner, TSLexer *lexer, Literal *literal, const bool *valid_symbols) {
+    const bool binary_operator_valid =
+        valid_symbols[FORWARD_SLASH] && !expects_operand_across_line_break(valid_symbols);
+
     switch (lexer->lookahead) {
         case '"':
             literal->type = STRING_START;
@@ -434,7 +442,7 @@ static inline bool scan_literal_start_or_assignment(Scanner *scanner, TSLexer *l
             literal->open_delimiter = literal->close_delimiter = lexer->lookahead;
             literal->allows_interpolation = true;
             advance(lexer);
-            if (valid_symbols[FORWARD_SLASH]) {
+            if (binary_operator_valid) {
                 if (!scanner->has_leading_whitespace) {
                     return false;
                 }
@@ -514,9 +522,11 @@ static inline bool scan_literal_start_or_assignment(Scanner *scanner, TSLexer *l
                     // If the `/` operator is valid, then so is the `%` operator, which means
                     // that a `%` followed by whitespace should be considered an operator,
                     // not a percent string.
-                    if (valid_symbols[FORWARD_SLASH]) {
+                    if (binary_operator_valid) {
                         return false;
                     }
+                    literal->open_delimiter = lexer->lookahead;
+                    literal->close_delimiter = lexer->lookahead;
                     break;
 
                 case '|':
@@ -573,18 +583,18 @@ static inline void scan_heredoc_word(TSLexer *lexer, Heredoc *heredoc) {
             quote = lexer->lookahead;
             advance(lexer);
             while (lexer->lookahead != quote && !lexer->eof(lexer)) {
-                array_push(&word, lexer->lookahead);
+                append_heredoc_character(&word, lexer->lookahead);
                 advance(lexer);
             }
             advance(lexer);
             break;
 
         default:
-            if (iswalnum(lexer->lookahead) || lexer->lookahead == '_') {
-                array_push(&word, lexer->lookahead);
+            if (is_heredoc_word_character(lexer->lookahead)) {
+                append_heredoc_character(&word, lexer->lookahead);
                 advance(lexer);
-                while (iswalnum(lexer->lookahead) || lexer->lookahead == '_') {
-                    array_push(&word, lexer->lookahead);
+                while (is_heredoc_word_character(lexer->lookahead)) {
+                    append_heredoc_character(&word, lexer->lookahead);
                     advance(lexer);
                 }
             }
@@ -606,14 +616,16 @@ static inline bool scan_short_interpolation(TSLexer *lexer, const bool has_conte
         advance(lexer);
         bool is_short_interpolation = false;
         if (start == '$') {
-            if (strchr("!@&`'+~=/\\,;.<>*$?:\"", lexer->lookahead) != NULL) {
+            // `strchr` would match the terminator for a NUL lookahead and truncate non-ASCII ones.
+            if (lexer->lookahead > 0 && lexer->lookahead < 0x80 &&
+                strchr("!@&`'+~=/\\,;.<>*$?:\"", (char)lexer->lookahead) != NULL) {
                 is_short_interpolation = true;
             } else {
                 if (lexer->lookahead == '-') {
                     advance(lexer);
-                    is_short_interpolation = iswalpha(lexer->lookahead) || lexer->lookahead == '_';
+                    is_short_interpolation = lexer->lookahead >= 0x80 || iswalpha(lexer->lookahead) || lexer->lookahead == '_';
                 } else {
-                    is_short_interpolation = iswalnum(lexer->lookahead) || lexer->lookahead == '_';
+                    is_short_interpolation = lexer->lookahead >= 0x80 || iswalnum(lexer->lookahead) || lexer->lookahead == '_';
                 }
             }
         }
@@ -672,9 +684,12 @@ static inline bool scan_heredoc_content(Scanner *scanner, TSLexer *lexer) {
             return true;
         }
 
-        if (lexer->lookahead == *array_get(&heredoc->word, position_in_word) && look_for_heredoc_end) {
+        char utf8[4];
+        uint32_t utf8_length = encode_utf8(lexer->lookahead, utf8);
+        if (look_for_heredoc_end && position_in_word + utf8_length <= heredoc->word.size &&
+            memcmp(&heredoc->word.contents[position_in_word], utf8, utf8_length) == 0) {
             advance(lexer);
-            position_in_word++;
+            position_in_word += utf8_length;
         } else {
             position_in_word = 0;
             look_for_heredoc_end = false;
@@ -809,7 +824,6 @@ static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symb
     }
     scanner->has_leading_whitespace = false;
 
-    // Contents of literals, which match any character except for some close delimiter
     if (!valid_symbols[STRING_START]) {
         if ((valid_symbols[STRING_CONTENT] || valid_symbols[STRING_END]) && scanner->literal_stack.size > 0) {
             return scan_literal_content(scanner, lexer);
@@ -819,7 +833,6 @@ static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symb
         }
     }
 
-    // Whitespace
     lexer->result_symbol = NONE;
     bool rescue_may_end_line = false;
     if (!scan_whitespace(scanner, lexer, valid_symbols, &rescue_may_end_line)) {
@@ -999,7 +1012,7 @@ static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symb
             // After an operand, `<<` is a shift unless it starts a command argument (`foo <<EOS`). Without whitespace,
             // it still starts the argument of `return`, `break`, or `next`, whose states, unlike those after a name or a
             // call, admit no operator assignment.
-            if (valid_symbols[BINARY_STAR] &&
+            if (valid_symbols[BINARY_STAR] && !expects_operand_across_line_break(valid_symbols) &&
                 (!valid_symbols[SPLAT_STAR] || (!scanner->has_leading_whitespace && valid_symbols[MODULO_ASSIGNMENT]))) {
                 return false;
             }
@@ -1069,8 +1082,8 @@ static bool scan_word_token(TSLexer *lexer, const bool *valid_symbols, bool resc
         advance(lexer);
     }
     if (rescue_may_end_line && length == sizeof(RESCUE) - 1 && ends_keyword(lexer->lookahead)) {
-        // A zero-width line break ends the hash shorthand before the `rescue` clause, which may name a top-level
-        // constant (`rescue::Foo`). A `rescue:` hash key cannot follow a hash shorthand without a comma.
+        // A zero-width line break ends the hash shorthand or range before the `rescue` clause, which may name a
+        // top-level constant (`rescue::Foo`). A `rescue:` hash key cannot follow a hash shorthand without a comma.
         if (lexer->lookahead == ':') {
             advance(lexer);
             if (lexer->lookahead != ':') return false;
@@ -1142,6 +1155,30 @@ static bool scan_embdoc(TSLexer *lexer) {
         if (!lexer->eof(lexer)) advance(lexer);
     }
     return false;
+}
+
+static inline bool is_heredoc_word_character(int32_t codepoint) {
+    return codepoint >= 0x80 || iswalnum(codepoint) || codepoint == '_';
+}
+
+static inline void append_heredoc_character(String *word, int32_t codepoint) {
+    char utf8[4];
+    uint32_t length = encode_utf8(codepoint, utf8);
+    array_extend(word, length, utf8);
+}
+
+static inline uint32_t encode_utf8(int32_t codepoint, char *bytes) {
+    if (codepoint < 0x80) {
+        bytes[0] = (char)codepoint;
+        return 1;
+    }
+    uint32_t length = codepoint < 0x800 ? 2 : codepoint < 0x10000 ? 3 : 4;
+    for (uint32_t index = length - 1; index > 0; index--) {
+        bytes[index] = (char)(0x80 | (codepoint & 0x3F));
+        codepoint >>= 6;
+    }
+    bytes[0] = (char)((0xF00 >> length) | codepoint);
+    return length;
 }
 
 static bool scan_word_text(TSLexer *lexer, const char *word) {
