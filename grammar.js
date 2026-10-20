@@ -94,6 +94,13 @@ module.exports = grammar({
   reserved: { global: () => [], variables: () => ['in', 'ensure', 'rescue', 'else'], methodNames: () => [] },
 
   conflicts: ($) => [
+    [$._command_not_operand_expression, $._chained_test_pattern, $._negated_chained_test_pattern],
+    [
+      $._command_not_operand_expression,
+      $._chained_test_pattern,
+      $._negated_chained_test_pattern,
+      $._yield_test_pattern,
+    ],
     [$._command_value, $._ordinary_rhs_expression],
     [$._command_value, $._yield_value, $._ordinary_rhs_expression],
     [$._expression, $._test_pattern_not_operand_expression, $._yield_pattern_not_operand_expression],
@@ -683,14 +690,17 @@ module.exports = grammar({
     _command_value_expression: ($) => $._command_value,
 
     _command_not_operand_expression: ($) =>
-      choice(
-        commandValue($, false),
-        alias($._ordinary_chained_assignment, $.assignment),
-        alias($.command_operator_assignment, $.operator_assignment),
-        alias($._chained_operator_assignment, $.operator_assignment),
-        alias($.command_unary, $.unary),
-        $._command_unary_arg,
-        prec.dynamic(3, $.match_pattern)
+      prec.right(
+        PREC.NOT - 1,
+        choice(
+          commandValue($, false),
+          alias($._ordinary_chained_assignment, $.assignment),
+          alias($.command_operator_assignment, $.operator_assignment),
+          alias($._chained_operator_assignment, $.operator_assignment),
+          alias($.command_unary, $.unary),
+          $._command_unary_arg,
+          prec.dynamic(3, $.match_pattern)
+        )
       ),
 
     _yield_not_operand_expression: ($) =>
@@ -966,7 +976,7 @@ module.exports = grammar({
     _yield_argument: ($) =>
       prec.left(1, argument($, alias($._yield_argument_expression, $._expression), $._yield_command_pair)),
 
-    _yield_argument_expression: ($) => $._yield_value,
+    _yield_argument_expression: ($) => prec(PREC.RESCUE, $._yield_value),
 
     _yield_value: ($) =>
       choice(
@@ -1201,7 +1211,7 @@ module.exports = grammar({
 
     _arg_rhs: ($) => choice($._arg, alias($.rescue_modifier_arg, $.rescue_modifier)),
 
-    _ordinary_rhs_expression: ($) => $._arg_rhs,
+    _ordinary_rhs_expression: ($) => prec(PREC.ASSIGN, $._arg_rhs),
     _chained_lhs: ($) =>
       choice(
         alias($._chained_command_call, $.call),
@@ -2082,8 +2092,8 @@ function methodRest($, bodyExpression) {
  */
 function commandValue($, allowAssignment) {
   return choice(
-    alias($._command_not, $.unary),
-    alias($._test_pattern_not, $.unary),
+    prec(0, alias($._command_not, $.unary)),
+    prec(0, alias($._test_pattern_not, $.unary)),
     alias($._command_method, $.method),
     alias($._command_singleton_method, $.singleton_method),
     ...(allowAssignment

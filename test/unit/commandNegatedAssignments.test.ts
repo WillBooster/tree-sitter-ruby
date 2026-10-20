@@ -30,6 +30,11 @@ test('parses command operator assignments under yield negation and retains outer
           .descendantsOfType('unary')
           .find((node) => node.childForFieldName('operator')?.text === 'not');
         expect(negation?.childForFieldName('operand')?.type, source).toBe('operator_assignment');
+        if (expression === 'yield not x += foo y rescue z') {
+          const right = negation?.childForFieldName('operand')?.childForFieldName('right');
+          expect(right?.type, source).toBe('rescue_modifier');
+          expect(right?.childForFieldName('body')?.text, source).toBe('foo y');
+        }
         if (expression.startsWith('foo ')) {
           const calls = tree.rootNode.descendantsOfType('call');
           expect(
@@ -322,6 +327,66 @@ test('distinguishes adjacent and line-broken not parentheses from horizontal sep
           previousGap = gap;
         }
       }
+    } finally {
+      tree.delete();
+    }
+  } finally {
+    parser.delete();
+  }
+});
+
+test('keeps command negation inside modifiers and their patterns in the condition or handler', async () => {
+  await Parser.init();
+  const parser = new Parser().setLanguage(
+    await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')))
+  );
+  try {
+    for (const modifier of ['rescue', 'if', 'unless', 'while', 'until']) {
+      for (const prefix of ['', 'foo ']) {
+        const source = `def m; ${prefix}not b c ${modifier} d in Integer; y; end`;
+        const tree = parser.parse(source)!;
+        try {
+          expect(tree.rootNode.hasError, source).toBe(false);
+          const statement = tree.rootNode.descendantsOfType('body_statement')[0]?.namedChildren[0];
+          expect(statement?.type, source).toBe(`${modifier}_modifier`);
+          const clause = statement?.childForFieldName(modifier === 'rescue' ? 'handler' : 'condition');
+          expect(clause?.type, source).toBe('test_pattern');
+          expect(clause?.childForFieldName('value')?.text, source).toBe('d');
+          const body = statement?.childForFieldName('body');
+          expect(body?.type, source).toBe(prefix ? 'call' : 'unary');
+          const negation = prefix ? body?.descendantsOfType('unary')[0] : body;
+          expect(negation?.childForFieldName('operand')?.text, source).toBe('b c');
+          expect(tree.rootNode.descendantsOfType('body_statement')[0]?.namedChildren.at(-1)?.text, source).toBe('y');
+        } finally {
+          tree.delete();
+        }
+      }
+    }
+    for (const modifier of ['if', 'unless', 'while', 'until']) {
+      const source = `def m; not b c do end.d = 1 ${modifier} d in Integer; y; end`;
+      const tree = parser.parse(source)!;
+      try {
+        expect(tree.rootNode.hasError, source).toBe(false);
+        const statement = tree.rootNode.descendantsOfType('body_statement')[0]?.namedChildren[0];
+        expect(statement?.type, source).toBe(`${modifier}_modifier`);
+        expect(statement?.childForFieldName('body')?.childForFieldName('operand')?.type, source).toBe('assignment');
+        expect(statement?.childForFieldName('condition')?.childForFieldName('value')?.text, source).toBe('d');
+      } finally {
+        tree.delete();
+      }
+    }
+    const source = 'def m; x = not b c rescue d in Integer; end';
+    const tree = parser.parse(source)!;
+    try {
+      expect(tree.rootNode.hasError, source).toBe(false);
+      const pattern = tree.rootNode.descendantsOfType('body_statement')[0]?.namedChildren[0];
+      expect(pattern?.type, source).toBe('test_pattern');
+      const assignment = pattern?.childForFieldName('value');
+      expect(assignment?.type, source).toBe('assignment');
+      const rescue = assignment?.childForFieldName('right');
+      expect(rescue?.type, source).toBe('rescue_modifier');
+      expect(rescue?.childForFieldName('body')?.childForFieldName('operand')?.text, source).toBe('b c');
+      expect(rescue?.childForFieldName('handler')?.text, source).toBe('d');
     } finally {
       tree.delete();
     }
