@@ -2603,3 +2603,50 @@ $-é
     (interpolation
       (instance_variable))
     (string_content)))
+
+========================================
+Unicode heredoc terminators preserve following code
+========================================
+
+latin = <<~"É"
+  first
+É
+cjk = <<-'日本'
+  second
+  日本
+emoji = <<"🚀"
+third
+🚀
+plain = <<日本
+fourth
+日本
+following = 1
+
+---
+
+(program
+  (assignment (identifier) (heredoc_beginning))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (assignment (identifier) (heredoc_beginning))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (assignment (identifier) (heredoc_beginning))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (assignment (identifier) (heredoc_beginning))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (assignment (identifier) (integer)))
+
+========================================
+Unicode heredoc terminators do not match low-byte collisions
+========================================
+
+value = <<"Ł"
+A
+Ł
+following = 1
+
+---
+
+(program
+  (assignment (identifier) (heredoc_beginning))
+  (heredoc_body (heredoc_content) (heredoc_end))
+  (assignment (identifier) (integer)))
