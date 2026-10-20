@@ -2881,3 +2881,49 @@ multiline regex
 (program
   (regex
     (string_content)))
+
+=====================================
+begin range continued on the next line
+=====================================
+
+r = 0..
+r = 1..2
+x = (1..
+)
+
+---
+
+(program
+  (assignment
+    (identifier)
+    (range
+      (integer)
+      (assignment
+        (identifier)
+        (range
+          (integer)
+          (integer)))))
+  (assignment
+    (identifier)
+    (parenthesized_statements
+      (range
+        (integer)))))
+
+=========================
+range ending with a regex
+=========================
+
+(//..//)
+a.../ b/
+
+---
+
+(program
+  (parenthesized_statements
+    (range
+      (regex)
+      (regex)))
+  (range
+    (identifier)
+    (regex
+      (string_content))))

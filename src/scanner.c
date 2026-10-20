@@ -393,6 +393,12 @@ static inline bool scan_symbol_identifier(TSLexer *lexer) {
 }
 
 static inline bool scan_literal_start_or_assignment(Scanner *scanner, TSLexer *lexer, Literal *literal, const bool *valid_symbols) {
+    // After `..` and `...`, where `range` makes NO_LINE_BREAK valid, binary operators are valid only because the range
+    // may be endless, and Ruby reads an operand there. STRING_CONTENT is valid along with STRING_START only in error
+    // recovery.
+    const bool binary_operator_valid =
+        valid_symbols[FORWARD_SLASH] && (!valid_symbols[NO_LINE_BREAK] || valid_symbols[STRING_CONTENT]);
+
     switch (lexer->lookahead) {
         case '"':
             literal->type = STRING_START;
@@ -426,7 +432,7 @@ static inline bool scan_literal_start_or_assignment(Scanner *scanner, TSLexer *l
             literal->open_delimiter = literal->close_delimiter = lexer->lookahead;
             literal->allows_interpolation = true;
             advance(lexer);
-            if (valid_symbols[FORWARD_SLASH]) {
+            if (binary_operator_valid) {
                 if (!scanner->has_leading_whitespace) {
                     return false;
                 }
