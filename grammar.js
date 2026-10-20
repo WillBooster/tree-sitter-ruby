@@ -93,6 +93,7 @@ module.exports = grammar({
   reserved: { global: () => [], variables: () => ['in', 'ensure', 'rescue', 'else'], methodNames: () => [] },
 
   conflicts: ($) => [
+    [$._signed_command_argument_list, $._yield_signed_argument_list],
     [$._chained_match_pattern, $._yield_value],
     [$._endless_body_rescue, $._yield_method_body_rescue],
     [$._body_expr, $._yield_method_rest],
@@ -670,16 +671,17 @@ module.exports = grammar({
                 alias($._pattern_command_binary, $.binary),
                 alias($.command_unary, $.unary),
                 $._command_unary_arg,
-                alias($.yield_command, $.yield),
-                $.if_modifier,
-                $.unless_modifier,
-                $.while_modifier,
-                $.until_modifier
+                alias($.yield_command, $.yield)
               )
             ),
             '=>',
             field('pattern', $._pattern_top_expr_body)
           )
+        ),
+        seq(
+          field('value', choice($.if_modifier, $.unless_modifier, $.while_modifier, $.until_modifier)),
+          '=>',
+          field('pattern', $._pattern_top_expr_body)
         ),
         prec(
           PREC.PATTERN,
@@ -911,9 +913,17 @@ module.exports = grammar({
       ),
 
     _yield_call: ($) =>
-      seq(
-        choice(field('method', choice($._variable, $._function_identifier, $.super)), $._call),
-        field('arguments', alias($._yield_argument_list, $.argument_list))
+      choice(
+        seq(
+          choice(field('method', choice($._variable, $._function_identifier, $.super)), $._call),
+          field('arguments', alias($._yield_argument_list, $.argument_list))
+        ),
+        seq(field('method', $.super), field('arguments', alias($._yield_signed_argument_list, $.argument_list)))
+      ),
+
+    _yield_signed_argument_list: ($) =>
+      prec.right(
+        seq(choice($._chained_plus_arg, alias($._chained_plus_pair, $.pair)), repeat(seq(',', $._yield_argument)))
       ),
 
     _yield_not: ($) =>
@@ -1286,7 +1296,20 @@ module.exports = grammar({
     unary: ($) => unaryExpression($._arg, choice(alias($._unary_minus, '-'), '+'), choice($._arg, $.begin)),
 
     command_unary: ($) =>
-      prec.right(PREC.COMPLEMENT, seq(field('operator', '!'), field('operand', $._argument_command_value))),
+      prec.right(
+        PREC.COMPLEMENT,
+        seq(
+          field('operator', '!'),
+          field(
+            'operand',
+            choice(
+              $._argument_command_value,
+              alias($._negated_chained_assignment, $.assignment),
+              alias($._negated_chained_operator_assignment, $.operator_assignment)
+            )
+          )
+        )
+      ),
 
     _pattern_command_not: ($) =>
       prec.right(PREC.NOT, seq(field('operator', 'not'), field('operand', alias($.command_call, $.call)))),
@@ -1313,6 +1336,12 @@ module.exports = grammar({
 
     _negated_chained_assignment: ($) =>
       prec.right(PREC.ASSIGN, seq(field('left', $._chained_lhs), '=', field('right', $._arg_rhs))),
+
+    _negated_chained_operator_assignment: ($) =>
+      prec.right(
+        PREC.ASSIGN,
+        seq(field('left', $._chained_lhs), field('operator', assignmentOperator($)), field('right', $._arg_rhs))
+      ),
 
     _test_pattern_not: ($) =>
       prec.dynamic(

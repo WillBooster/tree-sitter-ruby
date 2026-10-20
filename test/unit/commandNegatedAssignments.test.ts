@@ -85,3 +85,86 @@ test('negates chained setter assignments with ordinary values without accepting 
     parser.delete();
   }
 });
+
+test('bang negation owns completed-command assignments with ordinary right sides', async () => {
+  await Parser.init();
+  const parser = new Parser().setLanguage(
+    await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')))
+  );
+  try {
+    for (const operator of ['=', '+=', '||=']) {
+      for (const prefix of ['!', 'not !']) {
+        for (const suffix of prefix === '!'
+          ? ['', ' rescue d', ' in Integer', ' => v']
+          : ['', ' rescue d', ' in Integer']) {
+          const source = `${prefix} a b do end.c ${operator} 1${suffix}`;
+          const tree = parser.parse(source)!;
+          try {
+            expect(tree.rootNode.hasError, source).toBe(false);
+            const bang = tree.rootNode
+              .descendantsOfType('unary')
+              .find((node) => node.childForFieldName('operator')?.text === '!');
+            expect(bang?.childForFieldName('operand')?.type, source).toBe(
+              operator === '=' ? 'assignment' : 'operator_assignment'
+            );
+            expect(bang?.childForFieldName('operand')?.childForFieldName('right')?.text, source).toBe(
+              suffix === ' rescue d' ? '1 rescue d' : '1'
+            );
+          } finally {
+            tree.delete();
+          }
+        }
+      }
+    }
+    for (const source of [
+      '! a b do end.c = d e',
+      '! a b do end.c += d e',
+      '! a b do end.c, x = 1',
+      '!! a b do end.c = 1',
+      '! x = d e',
+    ]) {
+      const tree = parser.parse(source)!;
+      try {
+        expect(tree.rootNode.hasError, source).toBe(true);
+      } finally {
+        tree.delete();
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});
+
+test('yield retains signed super arguments and the enclosing call block', async () => {
+  await Parser.init();
+  const parser = new Parser().setLanguage(
+    await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')))
+  );
+  try {
+    for (const expression of ['yield super +x', 'yield super +x, y', 'yield super -x', 'foo yield super +x do end']) {
+      const source = `def f; ${expression}; end`;
+      const tree = parser.parse(source)!;
+      try {
+        expect(tree.rootNode.hasError, source).toBe(false);
+        const superCall = tree.rootNode
+          .descendantsOfType('call')
+          .find((node) => node.childForFieldName('method')?.type === 'super');
+        expect(superCall?.childForFieldName('arguments')?.namedChildren[0]?.type, source).toBe('unary');
+        if (expression.startsWith('foo ')) {
+          expect(
+            tree.rootNode
+              .descendantsOfType('call')
+              .find((node) => node.childForFieldName('method')?.text === 'foo')
+              ?.childForFieldName('block')?.text,
+            source
+          ).toBe('do end');
+          expect(superCall?.childForFieldName('block'), source).toBeNull();
+        }
+      } finally {
+        tree.delete();
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});
