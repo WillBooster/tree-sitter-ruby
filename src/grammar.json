@@ -14937,6 +14937,10 @@
             "members": [
               {
                 "type": "PATTERN",
+                "value": "\\r\\n"
+              },
+              {
+                "type": "PATTERN",
                 "value": "[^ux0-7]"
               },
               {

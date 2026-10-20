@@ -158,3 +158,40 @@ test.each(['%W', '%I'])('preserves a queued heredoc after trailing whitespace in
     parser.delete();
   }
 });
+
+test.each([
+  ['string', '"', '"'],
+  ['percent string', '%Q[', ']'],
+  ['word array', '%W[', ']'],
+  ['symbol array', '%I[', ']'],
+  ['subshell', '`', '`'],
+  ['regexp', '/', '/'],
+  ['quoted symbol', ':"', '"'],
+])('keeps an escaped physical newline outside the queued heredoc in a %s', async (_, open, close) => {
+  await Parser.init();
+  const language = await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')));
+  const parser = new Parser().setLanguage(language);
+  try {
+    for (const newline of ['\n', '\r\n']) {
+      for (const literal of [
+        `${open}a #{<<EOS} b\\${newline}body${newline}EOS${newline}c${close}`,
+        `[<<EOS, ${open}a\\${newline}body${newline}EOS${newline}c${close}]`,
+      ]) {
+        const source = `value = ${literal}\nfollowing = 1\n`;
+        const tree = parser.parse(source)!;
+        try {
+          expect(tree.rootNode.hasError, source).toBe(false);
+          const content = tree.rootNode.descendantsOfType('heredoc_content');
+          expect(content.map(({ text }) => text).join('')).toBe(`body${newline}`);
+          expect(content[0]!.startIndex).toBe(source.indexOf('body'));
+          expect(tree.rootNode.descendantsOfType('escape_sequence').map(({ text }) => text)).toContain(`\\${newline}`);
+          expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('following = 1');
+        } finally {
+          tree.delete();
+        }
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});
