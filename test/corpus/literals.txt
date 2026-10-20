@@ -2581,6 +2581,29 @@ EOS
     (heredoc_content)
     (heredoc_end)))
 
+=================================================
+multi-byte names in global variables and short interpolation
+=================================================
+
+$é = 1
+$-é
+"#$é #@ŀ #ŀa"
+
+---
+
+(program
+  (assignment
+    (global_variable)
+    (integer))
+  (global_variable)
+  (string
+    (interpolation
+      (global_variable))
+    (string_content)
+    (interpolation
+      (instance_variable))
+    (string_content)))
+
 ======
 percent literal nested deeper than 255 levels
 ======
@@ -2600,4 +2623,3 @@ y = 1
   (assignment
     (identifier)
     (integer)))
-

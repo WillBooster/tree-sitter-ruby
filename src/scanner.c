@@ -223,8 +223,8 @@ static inline bool scan_whitespace(Scanner *scanner, TSLexer *lexer, const bool 
                     lexer->advance(lexer, true);
                     crossed_newline = true;
                 } else {
-                    // After a hash shorthand (`foo key:`), the value may follow on the next line unless that line
-                    // starts a `rescue` clause.
+                    // After a hash shorthand (`foo key:`) or `..`, the operand may follow on the next line unless that
+                    // line starts a `rescue` clause.
                     *rescue_may_end_line = valid_symbols[NO_LINE_BREAK] && valid_symbols[LINE_BREAK];
                     skip(scanner, lexer);
                 }
@@ -405,7 +405,17 @@ static inline bool scan_symbol_identifier(TSLexer *lexer) {
     return true;
 }
 
+// NO_LINE_BREAK is valid after `..` and `...` (an endless range) and after a hash shorthand (`foo key:`), where Ruby
+// reads an operand on the same or the next line although binary operators are valid because the expression may
+// already be complete. STRING_CONTENT is valid along with STRING_START only in error recovery.
+static inline bool expects_operand_across_line_break(const bool *valid_symbols) {
+    return valid_symbols[NO_LINE_BREAK] && !valid_symbols[STRING_CONTENT];
+}
+
 static inline bool scan_literal_start_or_assignment(Scanner *scanner, TSLexer *lexer, Literal *literal, const bool *valid_symbols) {
+    const bool binary_operator_valid =
+        valid_symbols[FORWARD_SLASH] && !expects_operand_across_line_break(valid_symbols);
+
     switch (lexer->lookahead) {
         case '"':
             literal->type = STRING_START;
@@ -439,7 +449,7 @@ static inline bool scan_literal_start_or_assignment(Scanner *scanner, TSLexer *l
             literal->open_delimiter = literal->close_delimiter = lexer->lookahead;
             literal->allows_interpolation = true;
             advance(lexer);
-            if (valid_symbols[FORWARD_SLASH]) {
+            if (binary_operator_valid) {
                 if (!scanner->has_leading_whitespace) {
                     return false;
                 }
@@ -519,9 +529,11 @@ static inline bool scan_literal_start_or_assignment(Scanner *scanner, TSLexer *l
                     // If the `/` operator is valid, then so is the `%` operator, which means
                     // that a `%` followed by whitespace should be considered an operator,
                     // not a percent string.
-                    if (valid_symbols[FORWARD_SLASH]) {
+                    if (binary_operator_valid) {
                         return false;
                     }
+                    literal->open_delimiter = lexer->lookahead;
+                    literal->close_delimiter = lexer->lookahead;
                     break;
 
                 case '|':
@@ -611,14 +623,16 @@ static inline bool scan_short_interpolation(TSLexer *lexer, const bool has_conte
         advance(lexer);
         bool is_short_interpolation = false;
         if (start == '$') {
-            if (strchr("!@&`'+~=/\\,;.<>*$?:\"", lexer->lookahead) != NULL) {
+            // `strchr` would match the terminator for a NUL lookahead and truncate non-ASCII ones.
+            if (lexer->lookahead > 0 && lexer->lookahead < 0x80 &&
+                strchr("!@&`'+~=/\\,;.<>*$?:\"", (char)lexer->lookahead) != NULL) {
                 is_short_interpolation = true;
             } else {
                 if (lexer->lookahead == '-') {
                     advance(lexer);
-                    is_short_interpolation = iswalpha(lexer->lookahead) || lexer->lookahead == '_';
+                    is_short_interpolation = lexer->lookahead >= 0x80 || iswalpha(lexer->lookahead) || lexer->lookahead == '_';
                 } else {
-                    is_short_interpolation = iswalnum(lexer->lookahead) || lexer->lookahead == '_';
+                    is_short_interpolation = lexer->lookahead >= 0x80 || iswalnum(lexer->lookahead) || lexer->lookahead == '_';
                 }
             }
         }
@@ -995,7 +1009,7 @@ static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symb
             // After an operand, `<<` is a shift unless it starts a command argument (`foo <<EOS`). Without whitespace,
             // it still starts the argument of `return`, `break`, or `next`, whose states, unlike those after a name or a
             // call, admit no operator assignment.
-            if (valid_symbols[BINARY_STAR] &&
+            if (valid_symbols[BINARY_STAR] && !expects_operand_across_line_break(valid_symbols) &&
                 (!valid_symbols[SPLAT_STAR] || (!scanner->has_leading_whitespace && valid_symbols[MODULO_ASSIGNMENT]))) {
                 return false;
             }
@@ -1065,8 +1079,8 @@ static bool scan_word_token(TSLexer *lexer, const bool *valid_symbols, bool resc
         advance(lexer);
     }
     if (rescue_may_end_line && length == sizeof(RESCUE) - 1 && ends_keyword(lexer->lookahead)) {
-        // A zero-width line break ends the hash shorthand before the `rescue` clause, which may name a top-level
-        // constant (`rescue::Foo`). A `rescue:` hash key cannot follow a hash shorthand without a comma.
+        // A zero-width line break ends the hash shorthand or range before the `rescue` clause, which may name a
+        // top-level constant (`rescue::Foo`). A `rescue:` hash key cannot follow a hash shorthand without a comma.
         if (lexer->lookahead == ':') {
             advance(lexer);
             if (lexer->lookahead != ':') return false;
