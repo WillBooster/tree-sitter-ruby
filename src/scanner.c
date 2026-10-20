@@ -392,12 +392,14 @@ static inline bool scan_symbol_identifier(TSLexer *lexer) {
     return true;
 }
 
+// After `..` and `...`, where `range` makes NO_LINE_BREAK valid, binary operators are valid only because the range may
+// be endless, and Ruby reads an operand there. STRING_CONTENT is valid along with STRING_START only in error recovery.
+static inline bool follows_range_operator(const bool *valid_symbols) {
+    return valid_symbols[NO_LINE_BREAK] && !valid_symbols[STRING_CONTENT];
+}
+
 static inline bool scan_literal_start_or_assignment(Scanner *scanner, TSLexer *lexer, Literal *literal, const bool *valid_symbols) {
-    // After `..` and `...`, where `range` makes NO_LINE_BREAK valid, binary operators such as `/` and `%` are valid only
-    // because the range may be endless, and Ruby reads an operand there. STRING_CONTENT is valid along with STRING_START
-    // only in error recovery.
-    const bool binary_operator_valid =
-        valid_symbols[FORWARD_SLASH] && (!valid_symbols[NO_LINE_BREAK] || valid_symbols[STRING_CONTENT]);
+    const bool binary_operator_valid = valid_symbols[FORWARD_SLASH] && !follows_range_operator(valid_symbols);
 
     switch (lexer->lookahead) {
         case '"':
@@ -989,7 +991,7 @@ static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symb
             // After an operand, `<<` is a shift unless it starts a command argument (`foo <<EOS`). Without whitespace,
             // it still starts the argument of `return`, `break`, or `next`, whose states, unlike those after a name or a
             // call, admit no operator assignment.
-            if (valid_symbols[BINARY_STAR] &&
+            if (valid_symbols[BINARY_STAR] && !follows_range_operator(valid_symbols) &&
                 (!valid_symbols[SPLAT_STAR] || (!scanner->has_leading_whitespace && valid_symbols[MODULO_ASSIGNMENT]))) {
                 return false;
             }

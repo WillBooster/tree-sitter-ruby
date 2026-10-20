@@ -2949,3 +2949,35 @@ y = a % b
     (binary
       (identifier)
       (identifier))))
+
+=========================
+range ending with a heredoc
+=========================
+
+x = a..
+<<~E
+  hi
+E
+y = a.. <<E
+z
+E
+
+---
+
+(program
+  (assignment
+    (identifier)
+    (range
+      (identifier)
+      (heredoc_beginning)))
+  (heredoc_body
+    (heredoc_content)
+    (heredoc_end))
+  (assignment
+    (identifier)
+    (range
+      (identifier)
+      (heredoc_beginning)))
+  (heredoc_body
+    (heredoc_content)
+    (heredoc_end)))
