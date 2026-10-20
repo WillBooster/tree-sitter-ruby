@@ -1538,7 +1538,14 @@ module.exports = grammar({
             PREC.COMMENT,
             choice(
               seq('#', /.*/),
-              seq(/=begin.*\r?\n/, repeat(choice(/[^=]/, /=[^e]/, /=e[^n]/, /=en[^d]/)), /[\s*]*=end.*/)
+              seq(
+                /=begin.*\r?\n/,
+                // Ruby ends the comment only at a line that starts with `=end` followed by whitespace or the end of input.
+                repeat(
+                  choice(/[^=\n].*\n/, /\n/, /=([^e\n].*)?\n/, /=e([^n\n].*)?\n/, /=en([^d\n].*)?\n/, /=end[^\s].*\n/)
+                ),
+                /=end([ \t\r\f\v].*)?/
+              )
             )
           )
         )
