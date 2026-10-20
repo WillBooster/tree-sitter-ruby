@@ -46,6 +46,7 @@ typedef enum {
     BLOCK_COMMENT,
     UNINTERPRETED,
     NOT_PARENTHESIZED,
+    LAMBDA_BRACE,
 
     NONE
 } TokenType;
@@ -888,6 +889,15 @@ static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symb
             if (!raw_data && valid_symbols[LINE_COMMENT] && scan_line_comment(lexer)) {
                 lexer->mark_end(lexer);
                 lexer->result_symbol = LINE_COMMENT;
+                return true;
+            }
+            return false;
+
+        case '{':
+            // During error recovery every symbol is valid, STRING_CONTENT included.
+            if (valid_symbols[LAMBDA_BRACE] && !valid_symbols[STRING_CONTENT]) {
+                advance(lexer);
+                lexer->result_symbol = LAMBDA_BRACE;
                 return true;
             }
             return false;
