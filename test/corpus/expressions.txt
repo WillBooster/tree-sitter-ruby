@@ -2894,15 +2894,15 @@ lambda with shadow variables
 (program
   (lambda
     (lambda_parameters
-      (identifier))
+      locals: (identifier))
     (block
       (block_body
         (identifier))))
   (lambda
     (lambda_parameters
       (identifier)
-      (identifier)
-      (identifier))
+      locals: (identifier)
+      locals: (identifier))
     (do_block
       (body_statement
         (identifier)))))
