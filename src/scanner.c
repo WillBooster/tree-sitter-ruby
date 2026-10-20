@@ -47,6 +47,7 @@ typedef enum {
     UNINTERPRETED,
     NOT_PARENTHESIZED,
     LAMBDA_BRACE,
+    LITERAL_LINE_CONTINUATION,
 
     NONE
 } TokenType;
@@ -176,6 +177,7 @@ static inline void deserialize(Scanner *scanner, const char *buffer, unsigned le
 }
 
 static inline bool has_pending_heredoc_body(Scanner *scanner, const bool *valid_symbols);
+static inline bool scan_literal_line_continuation(TSLexer *lexer);
 static inline bool scan_heredoc_after_literal_space(Scanner *scanner, TSLexer *lexer);
 static inline bool is_horizontal_whitespace(int32_t codepoint);
 static inline bool start_heredoc_body(Scanner *scanner, TSLexer *lexer);
@@ -825,7 +827,8 @@ static inline bool scan_literal_content(Scanner *scanner, TSLexer *lexer, const 
                     lexer->result_symbol = STRING_CONTENT;
                     return true;
                 }
-                return false;
+                return pending_heredoc && valid_symbols[LITERAL_LINE_CONTINUATION] &&
+                       scan_literal_line_continuation(lexer);
             }
             advance(lexer);
             if (pending_heredoc && lexer->lookahead == '\r') {
@@ -1204,6 +1207,20 @@ static bool scan_embdoc(TSLexer *lexer) {
 static inline bool has_pending_heredoc_body(Scanner *scanner, const bool *valid_symbols) {
     return valid_symbols[HEREDOC_BODY_START] && scanner->open_heredocs.size > 0 &&
            !array_get(&scanner->open_heredocs, 0)->started;
+}
+
+static inline bool scan_literal_line_continuation(TSLexer *lexer) {
+    advance(lexer);
+    if (lexer->is_at_included_range_start(lexer)) return false;
+    if (lexer->lookahead == '\r') {
+        advance(lexer);
+        if (lexer->is_at_included_range_start(lexer)) return false;
+    }
+    if (lexer->lookahead != '\n') return false;
+    advance(lexer);
+    lexer->mark_end(lexer);
+    lexer->result_symbol = LITERAL_LINE_CONTINUATION;
+    return true;
 }
 
 static inline bool scan_heredoc_after_literal_space(Scanner *scanner, TSLexer *lexer) {

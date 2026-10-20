@@ -14927,6 +14927,15 @@
           {
             "type": "SYMBOL",
             "name": "escape_sequence"
+          },
+          {
+            "type": "ALIAS",
+            "content": {
+              "type": "SYMBOL",
+              "name": "_literal_line_continuation"
+            },
+            "named": true,
+            "value": "escape_sequence"
           }
         ]
       }
@@ -16059,6 +16068,10 @@
     {
       "type": "SYMBOL",
       "name": "_lambda_brace"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_literal_line_continuation"
     }
   ],
   "inline": [

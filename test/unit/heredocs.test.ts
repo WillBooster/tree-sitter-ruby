@@ -62,12 +62,16 @@ test.each([
   }
 });
 
-test('starts a pending heredoc across contiguous ranges after an escaped newline', async () => {
+test.each([
+  ['string', '"', '"'],
+  ['word array', '%W[', ']'],
+  ['symbol array', '%I[', ']'],
+])('starts a pending heredoc across contiguous ranges after an escaped newline in a %s', async (_, open, close) => {
   await Parser.init();
   const language = await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')));
   const parser = new Parser().setLanguage(language);
-  const source = 'value = "#{<<EOS} b\\\nbody\nEOS\nc"\nfollowing = 1\n';
-  const split = source.indexOf('body');
+  const source = `value = ${open}#{<<EOS} b\\\n  body\nEOS\nc${close}\nfollowing = 1\n`;
+  const split = source.indexOf('  body');
   const endLines = source.split('\n');
   const tree = parser.parse(source, undefined, {
     includedRanges: [
@@ -89,7 +93,7 @@ test('starts a pending heredoc across contiguous ranges after an escaped newline
   try {
     expect(tree.rootNode.hasError).toBe(false);
     expect(tree.rootNode.toString()).toBe(full.rootNode.toString());
-    expect(tree.rootNode.descendantsOfType('heredoc_content').map(({ text }) => text)).toEqual(['body\n']);
+    expect(tree.rootNode.descendantsOfType('heredoc_content').map(({ text }) => text)).toEqual(['  body\n']);
     expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('following = 1');
   } finally {
     tree.delete();
@@ -305,6 +309,70 @@ test.each([
         expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('following = 1');
       } finally {
         tree.delete();
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});
+
+test.each([
+  ['string', '"', '"'],
+  ['word array', '%W[', ']'],
+  ['symbol array', '%I[', ']'],
+])('preserves indented heredocs after escaped newlines in a %s', async (_, open, close) => {
+  await Parser.init();
+  const language = await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')));
+  const parser = new Parser().setLanguage(language);
+  try {
+    for (const newline of ['\n', '\r\n']) {
+      for (const indentation of ['  ', '\t', '\f', '\v']) {
+        const prefix = `value = ${open}a #{<<EOS} b\\${newline}`;
+        const suffix = `body${newline}EOS${newline}c${close}\nfollowing = 1\n`;
+        let currentIndentation = indentation;
+        let tree = parser.parse(prefix + currentIndentation + suffix)!;
+        try {
+          for (const replacement of [indentation, `${indentation} `, indentation]) {
+            tree.edit(
+              new Edit({
+                startIndex: prefix.length,
+                oldEndIndex: prefix.length + currentIndentation.length,
+                newEndIndex: prefix.length + replacement.length,
+                startPosition: { row: 1, column: 0 },
+                oldEndPosition: { row: 1, column: currentIndentation.length },
+                newEndPosition: { row: 1, column: replacement.length },
+              })
+            );
+            const source = prefix + replacement + suffix;
+            const previous = tree;
+            tree = parser.parse(source, previous)!;
+            previous.delete();
+            const fresh = parser.parse(source)!;
+            try {
+              expect(tree.rootNode.hasError, source).toBe(false);
+              expect(tree.rootNode.toString()).toBe(fresh.rootNode.toString());
+              for (const parsed of [tree, fresh]) {
+                const outer = parsed.rootNode.descendantsOfType('heredoc_body')[0]!;
+                const inner = outer.descendantsOfType('heredoc_content')[0]!;
+                expect(outer.text).toBe(`${replacement}body${newline}EOS`);
+                expect(inner.text).toBe(`${replacement}body${newline}`);
+                expect(outer.startIndex).toBe(prefix.length);
+                expect(inner.startIndex).toBe(prefix.length);
+                expect(outer.endIndex).toBe(prefix.length + replacement.length + `body${newline}EOS`.length);
+                expect(inner.endIndex).toBe(prefix.length + replacement.length + `body${newline}`.length);
+                expect(parsed.rootNode.descendantsOfType('escape_sequence').map(({ text }) => text)).toContain(
+                  `\\${newline}`
+                );
+                expect(parsed.rootNode.namedChildren.at(-1)?.text).toBe('following = 1');
+              }
+            } finally {
+              fresh.delete();
+            }
+            currentIndentation = replacement;
+          }
+        } finally {
+          tree.delete();
+        }
       }
     }
   } finally {

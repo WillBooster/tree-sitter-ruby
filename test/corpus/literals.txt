@@ -2755,3 +2755,57 @@ y = 1
   (assignment
     (identifier)
     (integer)))
+
+
+======
+indented heredoc bodies after escaped array newlines
+======
+
+value = %W[a #{<<EOS} b\
+  first
+EOS
+c]
+symbols = %I[a #{<<EOS} b\
+	second
+EOS
+c]
+following = 1
+
+---
+
+(program
+  (assignment
+    (identifier)
+    (string_array
+      (bare_string
+        (string_content))
+      (bare_string
+        (interpolation
+          (heredoc_beginning)))
+      (bare_string
+        (string_content)
+        (escape_sequence))
+      (heredoc_body
+        (heredoc_content)
+        (heredoc_end))
+      (bare_string
+        (string_content))))
+  (assignment
+    (identifier)
+    (symbol_array
+      (bare_symbol
+        (string_content))
+      (bare_symbol
+        (interpolation
+          (heredoc_beginning)))
+      (bare_symbol
+        (string_content)
+        (escape_sequence))
+      (heredoc_body
+        (heredoc_content)
+        (heredoc_end))
+      (bare_symbol
+        (string_content))))
+  (assignment
+    (identifier)
+    (integer)))
