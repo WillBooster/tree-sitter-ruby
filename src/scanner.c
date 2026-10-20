@@ -96,7 +96,7 @@ static inline void reset(Scanner *scanner) {
 static inline unsigned serialize(Scanner *scanner, char *buffer) {
     unsigned size = 0;
 
-    if (scanner->literal_stack.size * 5 + 2 >= TREE_SITTER_SERIALIZATION_BUFFER_SIZE) {
+    if (scanner->literal_stack.size * 6 + 2 >= TREE_SITTER_SERIALIZATION_BUFFER_SIZE) {
         return 0;
     }
 
@@ -106,7 +106,12 @@ static inline unsigned serialize(Scanner *scanner, char *buffer) {
         buffer[size++] = literal->type;
         buffer[size++] = (char)literal->open_delimiter;
         buffer[size++] = (char)literal->close_delimiter;
-        buffer[size++] = (char)literal->nesting_depth;
+        // Nested delimiters such as `%(((...)))` can exceed one byte of depth.
+        if (literal->nesting_depth > UINT16_MAX) {
+            return 0;
+        }
+        buffer[size++] = (char)(literal->nesting_depth & 0xFF);
+        buffer[size++] = (char)(literal->nesting_depth >> 8);
         buffer[size++] = (char)literal->allows_interpolation;
     }
 
@@ -143,7 +148,8 @@ static inline void deserialize(Scanner *scanner, const char *buffer, unsigned le
         literal.type = (TokenType)(buffer[size++]);
         literal.open_delimiter = (unsigned char)buffer[size++];
         literal.close_delimiter = (unsigned char)buffer[size++];
-        literal.nesting_depth = (unsigned char)buffer[size++];
+        literal.nesting_depth = (unsigned char)buffer[size] | ((unsigned char)buffer[size + 1] << 8);
+        size += 2;
         literal.allows_interpolation = buffer[size++];
         array_push(&scanner->literal_stack, literal);
     }
