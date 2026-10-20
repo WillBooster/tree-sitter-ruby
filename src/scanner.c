@@ -176,7 +176,7 @@ static inline void deserialize(Scanner *scanner, const char *buffer, unsigned le
 }
 
 static inline bool has_pending_heredoc_body(Scanner *scanner, const bool *valid_symbols);
-static inline bool scan_heredoc_after_literal_escape(Scanner *scanner, TSLexer *lexer, bool allows_interpolation);
+static inline bool scan_heredoc_after_literal_escape(Scanner *scanner, TSLexer *lexer, bool consume_plain_escape);
 static inline bool finish_literal_content(TSLexer *lexer);
 static inline bool scan_heredoc_after_literal_space(Scanner *scanner, TSLexer *lexer);
 static inline bool is_horizontal_whitespace(int32_t codepoint);
@@ -825,7 +825,7 @@ static inline bool scan_literal_content(Scanner *scanner, TSLexer *lexer, const 
                 return finish_literal_content(lexer);
             }
             if (pending_heredoc) {
-                return scan_heredoc_after_literal_escape(scanner, lexer, literal->allows_interpolation);
+                return scan_heredoc_after_literal_escape(scanner, lexer, !literal->allows_interpolation);
             }
             if (literal->allows_interpolation) return false;
             advance(lexer);
@@ -1194,13 +1194,13 @@ static inline bool has_pending_heredoc_body(Scanner *scanner, const bool *valid_
            !array_get(&scanner->open_heredocs, 0)->started;
 }
 
-static inline bool scan_heredoc_after_literal_escape(Scanner *scanner, TSLexer *lexer, bool allows_interpolation) {
+static inline bool scan_heredoc_after_literal_escape(Scanner *scanner, TSLexer *lexer, bool consume_plain_escape) {
     advance(lexer);
     bool separated = lexer->is_at_included_range_start(lexer);
     if (separated && (lexer->lookahead == '\r' || lexer->lookahead == '\n')) {
         return finish_literal_content(lexer);
     }
-    if (separated && allows_interpolation) return false;
+    if (separated && !consume_plain_escape) return false;
     bool carriage_return = !separated && lexer->lookahead == '\r';
     if (carriage_return) {
         advance(lexer);
@@ -1214,7 +1214,7 @@ static inline bool scan_heredoc_after_literal_escape(Scanner *scanner, TSLexer *
         lexer->mark_end_at(lexer, &body_start);
         return start_heredoc_body(scanner, lexer);
     }
-    if (allows_interpolation) return false;
+    if (!consume_plain_escape) return false;
     if (!carriage_return) advance(lexer);
     return finish_literal_content(lexer);
 }
@@ -1234,6 +1234,9 @@ static inline bool scan_heredoc_after_literal_space(Scanner *scanner, TSLexer *l
         lexer->advance(lexer, true);
         if (lexer->is_at_included_range_start(lexer)) after_carriage_return = false;
     } while (is_horizontal_whitespace(lexer->lookahead));
+    if (lexer->lookahead == '\\') {
+        return scan_heredoc_after_literal_escape(scanner, lexer, false);
+    }
     if (lexer->lookahead != '\n') {
         return false;
     }
