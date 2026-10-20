@@ -86,6 +86,7 @@ module.exports = grammar({
     $._block_comment,
     $._uninterpreted,
     $._not_parenthesized,
+    $._lambda_brace,
   ],
 
   extras: ($) => [$.comment, $.heredoc_body, /\s/, /\\\r?\n/],
@@ -1654,7 +1655,18 @@ module.exports = grammar({
           'parameters',
           optional(choice(alias($.parameters, $.lambda_parameters), alias($.bare_parameters, $.lambda_parameters)))
         ),
-        field('body', choice($.block, $.do_block))
+        field('body', choice(alias($._lambda_block, $.block), $.do_block))
+      ),
+
+    // As with parse.y's tLAMBEG, the scanner emits this `{` where a lambda body can start, so that it opens the body
+    // after bare parameters even where a parameter default could take a block or start a hash (`-> a=b() { }`,
+    // `-> x: { }`).
+    _lambda_block: ($) =>
+      seq(
+        alias($._lambda_brace, '{'),
+        field('parameters', optional($.block_parameters)),
+        optional(field('body', $.block_body)),
+        '}'
       ),
 
     empty_statement: () => prec(-1, ';'),
