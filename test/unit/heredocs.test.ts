@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { Language, Parser } from '@willbooster/web-tree-sitter';
+import { Edit, Language, Parser } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
 import { currentWasmPath } from '../helpers/generationInputs.js';
@@ -161,7 +161,11 @@ test.each(['%W', '%I'])('preserves a queued heredoc after trailing whitespace in
               .descendantsOfType('heredoc_content')
               .map(({ text }) => text)
               .join('')
-          ).toContain(`body${newline}`);
+          ).toBe(`${newline}body${newline}`);
+          const body = tree.rootNode.descendantsOfType('heredoc_body')[0]!;
+          expect(body.text).toBe(`${newline}body${newline}EOS`);
+          expect(body.startIndex).toBe(source.indexOf('body') - newline.length);
+          expect(body.endIndex).toBe(source.indexOf(`${newline}EOS`) + newline.length + 3);
           expect(tree.rootNode.descendantsOfType('heredoc_end').map(({ text }) => text)).toEqual(['EOS']);
           expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('following = 1');
         } finally {
@@ -204,6 +208,103 @@ test.each([
         } finally {
           tree.delete();
         }
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});
+
+test.each(['%W', '%I'])('keeps heredoc ranges when editing host whitespace in %s', async (kind) => {
+  await Parser.init();
+  const language = await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')));
+  const parser = new Parser().setLanguage(language);
+  try {
+    for (const newline of ['\n', '\r\n']) {
+      const prefix = `value = ${kind}[a #{<<EOS}`;
+      const tail = `${newline}body${newline}EOS${newline}c]\nfollowing = 1\n`;
+      let whitespace = ' \t';
+      let tree = parser.parse(prefix + whitespace + tail)!;
+      try {
+        for (const replacement of ['\f\v', '\r \t', ' \t']) {
+          const updated = prefix + replacement + tail;
+          tree.edit(
+            new Edit({
+              startIndex: prefix.length,
+              oldEndIndex: prefix.length + whitespace.length,
+              newEndIndex: prefix.length + replacement.length,
+              startPosition: { row: 0, column: prefix.length },
+              oldEndPosition: { row: 0, column: prefix.length + whitespace.length },
+              newEndPosition: { row: 0, column: prefix.length + replacement.length },
+            })
+          );
+          const previous = tree;
+          tree = parser.parse(updated, previous)!;
+          previous.delete();
+          const fresh = parser.parse(updated)!;
+          try {
+            expect(tree.rootNode.hasError).toBe(false);
+            expect(tree.rootNode.toString()).toBe(fresh.rootNode.toString());
+            const body = tree.rootNode.descendantsOfType('heredoc_body')[0]!;
+            expect(body.text).toBe(`${newline}body${newline}EOS`);
+            expect(body.startIndex).toBe(updated.indexOf('body') - newline.length);
+            expect(body.endIndex).toBe(updated.indexOf(`${newline}EOS`) + newline.length + 3);
+            expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('following = 1');
+          } finally {
+            fresh.delete();
+          }
+          whitespace = replacement;
+        }
+      } finally {
+        tree.delete();
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});
+
+test.each([
+  ['string', '"', '"'],
+  ['word array', '%W[', ']'],
+])('preserves physical CRLF boundaries across included ranges in a %s', async (_, open, close) => {
+  await Parser.init();
+  const language = await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')));
+  const parser = new Parser().setLanguage(language);
+  try {
+    for (const gap of ['', 'EXCLUDED']) {
+      const source = `value = ${open}a #{<<EOS} b\r${gap}\nbody\nEOS\nc${close}\nfollowing = 1\n`;
+      const split = source.indexOf('\r') + 1;
+      const position = (index: number): { row: number; column: number } => {
+        const lines = source.slice(0, index).split('\n');
+        return { row: lines.length - 1, column: lines.at(-1)!.length };
+      };
+      const tree = parser.parse(source, undefined, {
+        includedRanges: [
+          { startIndex: 0, endIndex: split, startPosition: position(0), endPosition: position(split) },
+          {
+            startIndex: split + gap.length,
+            endIndex: source.length,
+            startPosition: position(split + gap.length),
+            endPosition: position(source.length),
+          },
+        ],
+      })!;
+      try {
+        expect(tree.rootNode.hasError).toBe(false);
+        const ending = gap ? '\n' : '\r\n';
+        const body = tree.rootNode.descendantsOfType('heredoc_body')[0]!;
+        expect(body.text).toBe(`${ending}body\nEOS`);
+        expect(body.startIndex).toBe(source.indexOf('body') - ending.length);
+        expect(
+          body
+            .descendantsOfType('heredoc_content')
+            .map(({ text }) => text)
+            .join('')
+        ).toBe(`${ending}body\n`);
+        expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('following = 1');
+      } finally {
+        tree.delete();
       }
     }
   } finally {

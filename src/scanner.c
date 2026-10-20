@@ -759,15 +759,18 @@ static inline bool scan_literal_content(Scanner *scanner, TSLexer *lexer, const 
                 lexer->result_symbol = STRING_CONTENT;
                 return true;
             }
+            TSLexerPosition body_start;
+            lexer->get_position(lexer, &body_start);
             if (lexer->lookahead == '\r') {
                 advance(lexer);
-                if (lexer->lookahead != '\n') {
+                if (lexer->lookahead != '\n' || lexer->is_at_included_range_start(lexer)) {
                     lexer->mark_end(lexer);
                     lexer->result_symbol = STRING_CONTENT;
                     return true;
                 }
             }
-            lexer->mark_end(lexer);
+            lexer->mark_start(lexer, &body_start);
+            lexer->mark_end_at(lexer, &body_start);
             return start_heredoc_body(scanner, lexer);
         }
         if (stop_on_space && iswspace(lexer->lookahead)) {
@@ -1204,13 +1207,20 @@ static inline bool has_pending_heredoc_body(Scanner *scanner, const bool *valid_
 }
 
 static inline bool scan_heredoc_after_literal_space(Scanner *scanner, TSLexer *lexer) {
+    TSLexerPosition body_start;
+    bool after_carriage_return = false;
     do {
-        advance(lexer);
+        after_carriage_return = lexer->lookahead == '\r';
+        if (after_carriage_return) lexer->get_position(lexer, &body_start);
+        lexer->advance(lexer, true);
+        if (lexer->is_at_included_range_start(lexer)) after_carriage_return = false;
     } while (is_horizontal_whitespace(lexer->lookahead));
     if (lexer->lookahead != '\n') {
         return false;
     }
-    lexer->mark_end(lexer);
+    if (!after_carriage_return) lexer->get_position(lexer, &body_start);
+    lexer->mark_start(lexer, &body_start);
+    lexer->mark_end_at(lexer, &body_start);
     return start_heredoc_body(scanner, lexer);
 }
 
