@@ -5,6 +5,9 @@
 #include <string.h>
 #include <wctype.h>
 
+_Static_assert(TREE_SITTER_SERIALIZATION_BUFFER_SIZE <= (UINT16_MAX >> 2),
+               "Heredoc length flags must cover the serialization buffer");
+
 typedef enum {
     LINE_BREAK,
     NO_LINE_BREAK,
@@ -59,6 +62,7 @@ typedef struct {
     int32_t close_delimiter;
     int32_t nesting_depth;
     bool allows_interpolation;
+    bool resume_after_heredoc;
 } Literal;
 
 typedef struct {
@@ -66,6 +70,7 @@ typedef struct {
     bool end_word_indentation_allowed;
     bool allows_interpolation;
     bool started;
+    bool newline_consumed;
 } Heredoc;
 
 typedef struct {
@@ -113,19 +118,19 @@ static inline unsigned serialize(Scanner *scanner, char *buffer) {
         }
         buffer[size++] = (char)(literal->nesting_depth & 0xFF);
         buffer[size++] = (char)(literal->nesting_depth >> 8);
-        buffer[size++] = (char)literal->allows_interpolation;
+        buffer[size++] = (char)(literal->allows_interpolation | (literal->resume_after_heredoc << 1));
     }
 
     buffer[size++] = (char)scanner->open_heredocs.size;
     for (uint32_t i = 0; i < scanner->open_heredocs.size; i++) {
         Heredoc *heredoc = array_get(&scanner->open_heredocs, i);
-        if (heredoc->word.size > (UINT16_MAX >> 1) ||
+        if (heredoc->word.size > (UINT16_MAX >> 2) ||
             size + 4 + heredoc->word.size > TREE_SITTER_SERIALIZATION_BUFFER_SIZE) {
             return 0;
         }
         buffer[size++] = (char)heredoc->end_word_indentation_allowed;
         buffer[size++] = (char)heredoc->allows_interpolation;
-        buffer[size++] = (char)(((heredoc->word.size >> 8) << 1) | heredoc->started);
+        buffer[size++] = (char)(((heredoc->word.size >> 8) << 2) | (heredoc->newline_consumed << 1) | heredoc->started);
         buffer[size++] = (char)(heredoc->word.size & 0xFF);
         memcpy(&buffer[size], heredoc->word.contents, heredoc->word.size);
         size += heredoc->word.size;
@@ -151,7 +156,9 @@ static inline void deserialize(Scanner *scanner, const char *buffer, unsigned le
         literal.close_delimiter = (unsigned char)buffer[size++];
         literal.nesting_depth = (unsigned char)buffer[size] | ((unsigned char)buffer[size + 1] << 8);
         size += 2;
-        literal.allows_interpolation = buffer[size++];
+        uint8_t literal_flags = (uint8_t)buffer[size++];
+        literal.allows_interpolation = (literal_flags & 1) != 0;
+        literal.resume_after_heredoc = (literal_flags & 2) != 0;
         array_push(&scanner->literal_stack, literal);
     }
 
@@ -160,11 +167,12 @@ static inline void deserialize(Scanner *scanner, const char *buffer, unsigned le
         Heredoc heredoc = {0};
         heredoc.end_word_indentation_allowed = buffer[size++];
         heredoc.allows_interpolation = buffer[size++];
-        uint8_t started_and_length = (uint8_t)buffer[size++];
-        heredoc.started = (started_and_length & 1) != 0;
+        uint8_t state_and_length = (uint8_t)buffer[size++];
+        heredoc.started = (state_and_length & 1) != 0;
+        heredoc.newline_consumed = (state_and_length & 2) != 0;
 
         heredoc.word = (String)array_new();
-        uint16_t word_length = ((uint16_t)(started_and_length >> 1) << 8) | (uint8_t)buffer[size++];
+        uint16_t word_length = ((uint16_t)(state_and_length >> 2) << 8) | (uint8_t)buffer[size++];
         array_reserve(&heredoc.word, word_length);
         memcpy(heredoc.word.contents, &buffer[size], word_length);
         heredoc.word.size = word_length;
@@ -180,6 +188,7 @@ static inline bool scan_heredoc_after_literal_escape(Scanner *scanner, TSLexer *
 static inline bool finish_literal_content(TSLexer *lexer);
 static inline bool scan_heredoc_after_literal_space(Scanner *scanner, TSLexer *lexer);
 static inline bool is_horizontal_whitespace(int32_t codepoint);
+static inline bool start_literal_heredoc_body(Scanner *scanner, TSLexer *lexer);
 static inline bool start_heredoc_body(Scanner *scanner, TSLexer *lexer);
 static inline bool is_heredoc_word_character(int32_t codepoint);
 static inline uint32_t encode_utf8(int32_t codepoint, char *bytes);
@@ -749,12 +758,18 @@ static inline bool scan_literal_content(Scanner *scanner, TSLexer *lexer, const 
     bool stop_on_space = literal->type == SYMBOL_ARRAY_START || literal->type == STRING_ARRAY_START;
     bool pending_heredoc = has_pending_heredoc_body(scanner, valid_symbols);
 
+    if (literal->resume_after_heredoc && scanner->open_heredocs.size == 0) {
+        literal->resume_after_heredoc = false;
+        if (lexer->lookahead == '\r') lexer->advance(lexer, true);
+        if (lexer->lookahead == '\n') lexer->advance(lexer, true);
+    }
+
     for (;;) {
         if (pending_heredoc && stop_on_space && !has_content && lexer->lookahead != literal->close_delimiter &&
             is_horizontal_whitespace(lexer->lookahead)) {
             return scan_heredoc_after_literal_space(scanner, lexer);
         }
-        if (pending_heredoc && lexer->lookahead != literal->close_delimiter &&
+        if (pending_heredoc && literal->close_delimiter != '\n' && lexer->lookahead != literal->close_delimiter &&
             (lexer->lookahead == '\n' || lexer->lookahead == '\r')) {
             lexer->mark_end(lexer);
             if (has_content) {
@@ -773,7 +788,7 @@ static inline bool scan_literal_content(Scanner *scanner, TSLexer *lexer, const 
             }
             lexer->mark_start(lexer, &body_start);
             lexer->mark_end_at(lexer, &body_start);
-            return start_heredoc_body(scanner, lexer);
+            return start_literal_heredoc_body(scanner, lexer);
         }
         if (stop_on_space && iswspace(lexer->lookahead)) {
             if (has_content) {
@@ -789,13 +804,15 @@ static inline bool scan_literal_content(Scanner *scanner, TSLexer *lexer, const 
                 if (has_content) {
                     lexer->result_symbol = STRING_CONTENT;
                 } else {
+                    bool newline_consumed = pending_heredoc && literal->close_delimiter == '\n';
                     advance(lexer);
-                    if (literal->type == REGEX_START) {
+                    if (literal->type == REGEX_START && !newline_consumed) {
                         while (iswlower(lexer->lookahead)) {
                             advance(lexer);
                         }
                     }
                     array_pop(&scanner->literal_stack);
+                    if (newline_consumed) array_get(&scanner->open_heredocs, 0)->newline_consumed = true;
                     lexer->result_symbol = STRING_END;
                     lexer->mark_end(lexer);
                 }
@@ -850,9 +867,13 @@ static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symb
     }
     scanner->has_leading_whitespace = false;
 
-    if (has_pending_heredoc_body(scanner, valid_symbols) && !lexer->is_at_included_range_start(lexer) &&
-        lexer->get_column(lexer) == 0) {
-        lexer->mark_end(lexer);
+    if (has_pending_heredoc_body(scanner, valid_symbols) &&
+        (array_get(&scanner->open_heredocs, 0)->newline_consumed ||
+         (!lexer->is_at_included_range_start(lexer) && lexer->get_column(lexer) == 0))) {
+        TSLexerPosition body_start;
+        lexer->get_position(lexer, &body_start);
+        lexer->mark_start(lexer, &body_start);
+        lexer->mark_end_at(lexer, &body_start);
         return start_heredoc_body(scanner, lexer);
     }
 
@@ -1072,6 +1093,10 @@ static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symb
 
         if (scan_literal_start_or_assignment(scanner, lexer, &literal, valid_symbols)) {
             if (literal.type != MODULO_ASSIGNMENT) {
+                if (literal.close_delimiter == '\n' && has_pending_heredoc_body(scanner, valid_symbols)) {
+                    array_get(&scanner->open_heredocs, 0)->newline_consumed = true;
+                    literal.resume_after_heredoc = true;
+                }
                 array_push(&scanner->literal_stack, literal);
             }
             lexer->result_symbol = literal.type;
@@ -1212,7 +1237,7 @@ static inline bool scan_heredoc_after_literal_escape(Scanner *scanner, TSLexer *
         lexer->get_position(lexer, &body_start);
         lexer->mark_start(lexer, &body_start);
         lexer->mark_end_at(lexer, &body_start);
-        return start_heredoc_body(scanner, lexer);
+        return start_literal_heredoc_body(scanner, lexer);
     }
     if (!consume_plain_escape) return false;
     if (!carriage_return) advance(lexer);
@@ -1243,15 +1268,23 @@ static inline bool scan_heredoc_after_literal_space(Scanner *scanner, TSLexer *l
     if (!after_carriage_return) lexer->get_position(lexer, &body_start);
     lexer->mark_start(lexer, &body_start);
     lexer->mark_end_at(lexer, &body_start);
-    return start_heredoc_body(scanner, lexer);
+    return start_literal_heredoc_body(scanner, lexer);
 }
 
 static inline bool is_horizontal_whitespace(int32_t codepoint) {
     return codepoint == ' ' || codepoint == '\t' || codepoint == '\f' || codepoint == '\v' || codepoint == '\r';
 }
 
+static inline bool start_literal_heredoc_body(Scanner *scanner, TSLexer *lexer) {
+    Literal *literal = array_back(&scanner->literal_stack);
+    if (literal->close_delimiter == '\n') literal->resume_after_heredoc = true;
+    return start_heredoc_body(scanner, lexer);
+}
+
 static inline bool start_heredoc_body(Scanner *scanner, TSLexer *lexer) {
-    array_get(&scanner->open_heredocs, 0)->started = true;
+    Heredoc *heredoc = array_get(&scanner->open_heredocs, 0);
+    heredoc->started = true;
+    heredoc->newline_consumed = false;
     lexer->result_symbol = HEREDOC_BODY_START;
     return true;
 }
