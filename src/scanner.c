@@ -361,8 +361,8 @@ static inline bool is_iden_char(int32_t c) {
     return c > 0x7f || memchr(&NON_IDENTIFIER_CHARS, c, sizeof(NON_IDENTIFIER_CHARS)) == NULL;
 }
 
-// Whether `c` ends a keyword instead of extending it into a name, a method name, or a hash key.
-static inline bool ends_keyword(int32_t c) { return !is_iden_char(c) && c != '?' && c != '!' && c != ':'; }
+// Whether `c` ends a keyword instead of extending it into a name or a method name.
+static inline bool ends_keyword(int32_t c) { return !is_iden_char(c) && c != '?' && c != '!'; }
 
 static inline bool scan_symbol_identifier(TSLexer *lexer) {
     if (lexer->lookahead == '@') {
@@ -1059,7 +1059,12 @@ static bool scan_word_token(TSLexer *lexer, const bool *valid_symbols, bool resc
         advance(lexer);
     }
     if (rescue_may_end_line && length == sizeof(RESCUE) - 1 && ends_keyword(lexer->lookahead)) {
-        // A zero-width line break ends the hash shorthand before the `rescue` clause.
+        // A zero-width line break ends the hash shorthand before the `rescue` clause, which may name a top-level
+        // constant (`rescue::Foo`). A `rescue:` hash key cannot follow a hash shorthand without a comma.
+        if (lexer->lookahead == ':') {
+            advance(lexer);
+            if (lexer->lookahead != ':') return false;
+        }
         lexer->result_symbol = LINE_BREAK;
         return true;
     }

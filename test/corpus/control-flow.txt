@@ -763,3 +763,26 @@ foo key:
       (pair
         (hash_key_symbol)
         (identifier)))))
+
+==============================================
+rescue of a top-level constant after hash shorthand argument
+==============================================
+
+begin
+  foo key:
+rescue::Foo
+end
+
+---
+
+(program
+  (begin
+    (call
+      (identifier)
+      (argument_list
+        (pair
+          (hash_key_symbol))))
+    (rescue
+      (exceptions
+        (scope_resolution
+          (constant))))))
