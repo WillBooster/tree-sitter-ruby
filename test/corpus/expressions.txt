@@ -3005,3 +3005,28 @@ end
       (rescue
         (then
           (nil))))))
+
+==============================
+lambda with shadow variables
+==============================
+
+->(;a) { a }
+->(x; a, b) do x end
+
+---
+
+(program
+  (lambda
+    parameters: (lambda_parameters
+      locals: (identifier))
+    body: (block
+      body: (block_body
+        (identifier))))
+  (lambda
+    parameters: (lambda_parameters
+      (identifier)
+      locals: (identifier)
+      locals: (identifier))
+    body: (do_block
+      body: (body_statement
+        (identifier)))))
