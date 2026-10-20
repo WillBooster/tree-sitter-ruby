@@ -1556,7 +1556,14 @@ module.exports = grammar({
     instance_variable: () => token(seq('@', ALPHA_CHAR, IDENTIFIER_CHARS)),
     class_variable: () => token(seq('@@', ALPHA_CHAR, IDENTIFIER_CHARS)),
 
-    global_variable: () => /\$(-[a-zA-Z0-9_]|[!@&`'+~=/\\,;.<>*$?:"]|[0-9]+|[a-zA-Z_][a-zA-Z0-9_]*)/,
+    global_variable: () =>
+      token(
+        choice(
+          /\$(-[a-zA-Z0-9_]|[!@&`'+~=/\\,;.<>*$?:"]|[0-9]+)/,
+          seq('$-', /[^\u0000-\u007F]/),
+          seq('$', ALPHA_CHAR, IDENTIFIER_CHARS)
+        )
+      ),
 
     chained_string: ($) => seq($.string, repeat1($.string)),
 

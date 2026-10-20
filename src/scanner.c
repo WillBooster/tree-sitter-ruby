@@ -617,14 +617,16 @@ static inline bool scan_short_interpolation(TSLexer *lexer, const bool has_conte
         advance(lexer);
         bool is_short_interpolation = false;
         if (start == '$') {
-            if (strchr("!@&`'+~=/\\,;.<>*$?:\"", lexer->lookahead) != NULL) {
+            // `strchr` would match the terminator for a NUL lookahead and truncate non-ASCII ones.
+            if (lexer->lookahead > 0 && lexer->lookahead < 0x80 &&
+                strchr("!@&`'+~=/\\,;.<>*$?:\"", (char)lexer->lookahead) != NULL) {
                 is_short_interpolation = true;
             } else {
                 if (lexer->lookahead == '-') {
                     advance(lexer);
-                    is_short_interpolation = iswalpha(lexer->lookahead) || lexer->lookahead == '_';
+                    is_short_interpolation = lexer->lookahead >= 0x80 || iswalpha(lexer->lookahead) || lexer->lookahead == '_';
                 } else {
-                    is_short_interpolation = iswalnum(lexer->lookahead) || lexer->lookahead == '_';
+                    is_short_interpolation = lexer->lookahead >= 0x80 || iswalnum(lexer->lookahead) || lexer->lookahead == '_';
                 }
             }
         }
