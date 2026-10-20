@@ -2655,3 +2655,82 @@ following = 1
   (assignment (identifier) (heredoc_beginning))
   (heredoc_body (heredoc_content) (heredoc_end))
   (assignment (identifier) (integer)))
+
+========================================
+Heredoc opened inside a multiline string
+========================================
+
+x = "a #{<<~EOS} b
+  body
+EOS
+c"
+y = 1
+
+---
+
+(program
+  (assignment
+    (identifier)
+    (string
+      (string_content)
+      (interpolation (heredoc_beginning))
+      (string_content)
+      (heredoc_body
+        (heredoc_content)
+        (heredoc_end))
+      (string_content)))
+  (assignment
+    (identifier)
+    (integer)))
+
+========================================
+Heredoc starts immediately after a string interpolation
+========================================
+
+x = "#{<<EOS}
+body
+EOS
+c"
+y = 1
+
+---
+
+(program
+  (assignment
+    (identifier)
+    (string
+      (interpolation (heredoc_beginning))
+      (heredoc_body
+        (heredoc_content)
+        (heredoc_end))
+      (string_content)))
+  (assignment
+    (identifier)
+    (integer)))
+
+========================================
+Multiple heredocs opened inside a multiline string
+========================================
+
+x = "#{<<A} #{<<B} b
+one
+A
+two
+B
+c"
+y = 1
+
+---
+
+(program
+  (assignment
+    (identifier)
+    (string
+      (interpolation (heredoc_beginning))
+      (string_content)
+      (interpolation (heredoc_beginning))
+      (string_content)
+      (heredoc_body (heredoc_content) (heredoc_end))
+      (heredoc_body (heredoc_content) (heredoc_end))
+      (string_content)))
+  (assignment (identifier) (integer)))

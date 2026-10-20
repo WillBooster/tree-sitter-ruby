@@ -168,6 +168,7 @@ static inline void deserialize(Scanner *scanner, const char *buffer, unsigned le
     assert(size == length);
 }
 
+static inline bool start_heredoc_body(Scanner *scanner, TSLexer *lexer);
 static inline bool is_heredoc_word_character(int32_t codepoint);
 static inline uint32_t encode_utf8(int32_t codepoint, char *bytes);
 static inline void append_heredoc_character(String *word, int32_t codepoint);
@@ -735,12 +736,32 @@ static inline bool scan_heredoc_content(Scanner *scanner, TSLexer *lexer) {
     }
 }
 
-static inline bool scan_literal_content(Scanner *scanner, TSLexer *lexer) {
+static inline bool scan_literal_content(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols) {
     Literal *literal = array_back(&scanner->literal_stack);
     bool has_content = false;
     bool stop_on_space = literal->type == SYMBOL_ARRAY_START || literal->type == STRING_ARRAY_START;
+    bool pending_heredoc = valid_symbols[HEREDOC_BODY_START] && scanner->open_heredocs.size > 0 &&
+                           !array_get(&scanner->open_heredocs, 0)->started;
 
     for (;;) {
+        if (pending_heredoc && lexer->lookahead != literal->close_delimiter &&
+            (lexer->lookahead == '\n' || lexer->lookahead == '\r')) {
+            lexer->mark_end(lexer);
+            if (has_content) {
+                lexer->result_symbol = STRING_CONTENT;
+                return true;
+            }
+            if (lexer->lookahead == '\r') {
+                advance(lexer);
+                if (lexer->lookahead != '\n') {
+                    if (stop_on_space) return false;
+                    lexer->mark_end(lexer);
+                    lexer->result_symbol = STRING_CONTENT;
+                    return true;
+                }
+            }
+            return start_heredoc_body(scanner, lexer);
+        }
         if (stop_on_space && iswspace(lexer->lookahead)) {
             if (has_content) {
                 lexer->mark_end(lexer);
@@ -817,9 +838,15 @@ static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symb
     }
     scanner->has_leading_whitespace = false;
 
+    if (valid_symbols[HEREDOC_BODY_START] && scanner->open_heredocs.size > 0 &&
+        !array_get(&scanner->open_heredocs, 0)->started && !lexer->is_at_included_range_start(lexer) &&
+        lexer->get_column(lexer) == 0) {
+        return start_heredoc_body(scanner, lexer);
+    }
+
     if (!valid_symbols[STRING_START]) {
         if ((valid_symbols[STRING_CONTENT] || valid_symbols[STRING_END]) && scanner->literal_stack.size > 0) {
-            return scan_literal_content(scanner, lexer);
+            return scan_literal_content(scanner, lexer, valid_symbols);
         }
         if ((valid_symbols[HEREDOC_CONTENT] || valid_symbols[HEREDOC_BODY_END]) && scanner->open_heredocs.size > 0) {
             return scan_heredoc_content(scanner, lexer);
@@ -1139,6 +1166,13 @@ static bool scan_embdoc(TSLexer *lexer) {
         if (!lexer->eof(lexer)) advance(lexer);
     }
     return false;
+}
+
+static inline bool start_heredoc_body(Scanner *scanner, TSLexer *lexer) {
+    lexer->mark_end(lexer);
+    array_get(&scanner->open_heredocs, 0)->started = true;
+    lexer->result_symbol = HEREDOC_BODY_START;
+    return true;
 }
 
 static inline bool is_heredoc_word_character(int32_t codepoint) {
