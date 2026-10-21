@@ -2831,3 +2831,22 @@ following = 1
   (assignment
     (identifier)
     (integer)))
+
+==============================
+continued heredoc host modifier
+==============================
+
+value = <<EOS \
+  body
+EOS
+  if true
+following = 1
+
+---
+
+(program
+  (if_modifier
+    (assignment (identifier) (heredoc_beginning))
+    (heredoc_body (heredoc_content) (heredoc_end))
+    (true))
+  (assignment (identifier) (integer)))

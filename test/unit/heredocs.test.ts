@@ -88,6 +88,108 @@ test.each([
   }
 });
 
+test.each([
+  ['if true', 'if_modifier'],
+  ['unless false', 'unless_modifier'],
+  ['rescue nil', 'rescue_modifier'],
+  ['+ "tail"', 'binary'],
+])('resumes a continued heredoc host expression before %s', (suffix, kind) => {
+  const parser = new Parser().setLanguage(language);
+  try {
+    for (const newline of ['\n', '\r\n']) {
+      const prefix = `value = <<EOS \\${newline}`;
+      let source = `${prefix}  body${newline}EOS${newline}  ${suffix}\nfollowing = 1\n`;
+      let tree = parser.parse(source)!;
+      let previous = 'body';
+      try {
+        for (const content of ['body', 'changed', 'body']) {
+          if (content !== previous) {
+            const start = source.indexOf(previous);
+            const updated = source.slice(0, start) + content + source.slice(start + previous.length);
+            tree.edit(
+              new Edit({
+                startIndex: start,
+                oldEndIndex: start + previous.length,
+                newEndIndex: start + content.length,
+                startPosition: positionInText(source, start),
+                oldEndPosition: positionInText(source, start + previous.length),
+                newEndPosition: positionInText(updated, start + content.length),
+              })
+            );
+            const old = tree;
+            tree = parser.parse(updated, old)!;
+            old.delete();
+            source = updated;
+            previous = content;
+          }
+          const fresh = parser.parse(source)!;
+          try {
+            expect(tree.rootNode.toString()).toBe(fresh.rootNode.toString());
+            for (const parsed of [tree, fresh]) {
+              expect(parsed.rootNode.hasError, source).toBe(false);
+              expect(parsed.rootNode.descendantsOfType(kind)).toHaveLength(1);
+              const body = parsed.rootNode.descendantsOfType('heredoc_body')[0]!;
+              const end = parsed.rootNode.descendantsOfType('heredoc_end')[0]!;
+              expect(body.text).toBe(`  ${content}${newline}EOS`);
+              expect(body.startIndex).toBe(prefix.length);
+              expect(body.endIndex).toBe(prefix.length + 2 + content.length + newline.length + 3);
+              expect(end.text).toBe('EOS');
+              expect(parsed.rootNode.lastNamedChild?.text).toBe('following = 1');
+            }
+          } finally {
+            fresh.delete();
+          }
+        }
+      } finally {
+        tree.delete();
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});
+
+test.each(['\n', '\r\n'])(
+  'keeps a statement boundary after a resumed heredoc across included ranges with %j',
+  (newline) => {
+    const parser = new Parser().setLanguage(language);
+    const prefix = `value = <<EOS \\${newline}  body${newline}EOS${newline}`;
+    const gap = 'EXCLUDED';
+    const source = `${prefix}${gap}if true\n inside = 1\nend\nfollowing = 1\n`;
+    const tree = parser.parse(source, undefined, {
+      includedRanges: [
+        {
+          startIndex: 0,
+          endIndex: prefix.length,
+          startPosition: positionInText(source, 0),
+          endPosition: positionInText(source, prefix.length),
+        },
+        {
+          startIndex: prefix.length + gap.length,
+          endIndex: source.length,
+          startPosition: positionInText(source, prefix.length + gap.length),
+          endPosition: positionInText(source, source.length),
+        },
+      ],
+    })!;
+    try {
+      expect(tree.rootNode.hasError).toBe(false);
+      expect(tree.rootNode.namedChildren.map(({ type }) => type)).toEqual([
+        'assignment',
+        'heredoc_body',
+        'if',
+        'assignment',
+      ]);
+      expect(tree.rootNode.descendantsOfType('if_modifier')).toHaveLength(0);
+      expect(tree.rootNode.descendantsOfType('heredoc_body')[0]!.text).toBe(`  body${newline}EOS`);
+      expect(tree.rootNode.lastNamedChild?.text).toBe('following = 1');
+    } finally {
+      tree.delete();
+      parser.delete();
+    }
+  }
+);
+
 test.each(['\f', '\v'])('preserves statements after a heredoc label followed by %j', (whitespace) => {
   const parser = new Parser().setLanguage(language);
   const tree = parser.parse(`value = <<EOS${whitespace}\nhello\nEOS\nfollowing = 1\n`)!;

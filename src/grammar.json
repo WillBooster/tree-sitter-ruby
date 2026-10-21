@@ -15600,7 +15600,7 @@
     },
     {
       "type": "SYMBOL",
-      "name": "_heredoc_literal_resume"
+      "name": "_heredoc_resume"
     },
     {
       "type": "PATTERN",
@@ -16144,7 +16144,7 @@
     },
     {
       "type": "SYMBOL",
-      "name": "_heredoc_literal_resume"
+      "name": "_heredoc_resume"
     }
   ],
   "inline": [
