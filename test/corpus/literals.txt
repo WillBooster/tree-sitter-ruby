@@ -2807,3 +2807,27 @@ following = 1
   (assignment
     (identifier)
     (integer)))
+
+==============================
+heredocs after host continuations
+==============================
+
+value = (<<EOS\
+  body
+EOS
+)
+following = 1
+
+---
+
+(program
+  (assignment
+    (identifier)
+    (parenthesized_statements
+      (heredoc_beginning)
+      (heredoc_body
+        (heredoc_content)
+        (heredoc_end))))
+  (assignment
+    (identifier)
+    (integer)))

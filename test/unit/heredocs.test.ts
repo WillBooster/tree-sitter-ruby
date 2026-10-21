@@ -11,6 +11,83 @@ beforeAll(async () => {
   language = await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')));
 });
 
+test.each([
+  ['parenthesized expression', 'value = (<<EOS', ')'],
+  ['array element', 'value = [<<EOS,', '1]'],
+  ['semicolon', 'value = <<EOS;', ''],
+])('preserves an indented heredoc after a host continuation in a %s', (_, prefix, suffix) => {
+  const parser = new Parser().setLanguage(language);
+  try {
+    for (const newline of ['\n', '\r\n']) {
+      for (const gap of ['', 'EXCLUDED']) {
+        const beginning = `${prefix}\\${newline}`;
+        let source = `${beginning}${gap}  body${newline}EOS${newline}${suffix}\nfollowing = 1\n`;
+        const options = (text: string): ParseOptions => ({
+          includedRanges: [
+            {
+              startIndex: 0,
+              endIndex: beginning.length,
+              startPosition: positionInText(text, 0),
+              endPosition: positionInText(text, beginning.length),
+            },
+            {
+              startIndex: beginning.length + gap.length,
+              endIndex: text.length,
+              startPosition: positionInText(text, beginning.length + gap.length),
+              endPosition: positionInText(text, text.length),
+            },
+          ],
+        });
+        let tree = parser.parse(source, undefined, options(source))!;
+        let previousContent = 'body';
+        try {
+          for (const content of ['body', 'longer', 'body']) {
+            if (content !== previousContent) {
+              const start = source.indexOf(previousContent, beginning.length);
+              const updated = source.slice(0, start) + content + source.slice(start + previousContent.length);
+              tree.edit(
+                new Edit({
+                  startIndex: start,
+                  oldEndIndex: start + previousContent.length,
+                  newEndIndex: start + content.length,
+                  startPosition: positionInText(source, start),
+                  oldEndPosition: positionInText(source, start + previousContent.length),
+                  newEndPosition: positionInText(updated, start + content.length),
+                })
+              );
+              const old = tree;
+              tree = parser.parse(updated, old, options(updated))!;
+              old.delete();
+              source = updated;
+              previousContent = content;
+            }
+            const fresh = parser.parse(source, undefined, options(source))!;
+            try {
+              expect(tree.rootNode.toString()).toBe(fresh.rootNode.toString());
+              for (const parsed of [tree, fresh]) {
+                expect(parsed.rootNode.hasError, source).toBe(false);
+                const bodies = parsed.rootNode.descendantsOfType('heredoc_body');
+                const contents = parsed.rootNode.descendantsOfType('heredoc_content');
+                expect(bodies.map(({ text }) => text)).toEqual([`  ${content}${newline}EOS`]);
+                expect(contents.map(({ text }) => text)).toEqual([`  ${content}${newline}`]);
+                expect(bodies[0]!.startIndex).toBe(beginning.length + gap.length);
+                expect(contents[0]!.startIndex).toBe(beginning.length + gap.length);
+                expect(parsed.rootNode.lastNamedChild?.text).toBe('following = 1');
+              }
+            } finally {
+              fresh.delete();
+            }
+          }
+        } finally {
+          tree.delete();
+        }
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});
+
 test.each(['\f', '\v'])('preserves statements after a heredoc label followed by %j', (whitespace) => {
   const parser = new Parser().setLanguage(language);
   const tree = parser.parse(`value = <<EOS${whitespace}\nhello\nEOS\nfollowing = 1\n`)!;
