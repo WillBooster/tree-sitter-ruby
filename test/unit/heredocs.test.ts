@@ -1075,6 +1075,96 @@ test.each(['%', '%Q', '%q', '%s', '%x', '%r'])('preserves independent bare CR ch
   }
 });
 
+test('keeps delimiter-like text after interpolation and escaped newlines in heredoc bodies', () => {
+  const parser = new Parser().setLanguage(language);
+  try {
+    for (const newline of ['\n', '\r\n']) {
+      const ordinaryPrefix = `value = <<EOS`;
+      const continuedPrefix = `value = <<EOS \\${newline}`;
+      for (const fixture of [
+        {
+          source: `${ordinaryPrefix}${newline}#{y}EOS${newline}content${newline}EOS${newline}following = 1${newline}`,
+          bodyStart: ordinaryPrefix.length,
+          label: 'EOS',
+          firstEnd: false,
+        },
+        {
+          source: `${continuedPrefix}\\${newline}EOS${newline}content${newline}EOS${newline} if true${newline}following = 1${newline}`,
+          bodyStart: continuedPrefix.length,
+          label: 'EOS',
+          firstEnd: false,
+        },
+        ...['#{x}', '#@x'].flatMap((label) =>
+          ['', '~'].map((indent) => {
+            const prefix = `value = <<${indent}"${label}"`;
+            return {
+              source: `${prefix}${newline}\\${newline}${label}${newline}content${newline}${label}${newline}following = 1${newline}`,
+              bodyStart: prefix.length,
+              label,
+              firstEnd: indent === '',
+            };
+          })
+        ),
+      ]) {
+        let source = fixture.source;
+        let tree = parser.parse(source)!;
+        let previous = 'content';
+        try {
+          for (const content of ['content', 'longer content', 'content']) {
+            if (content !== previous) {
+              const start = source.indexOf(previous);
+              const updated = source.slice(0, start) + content + source.slice(start + previous.length);
+              tree.edit(
+                new Edit({
+                  startIndex: start,
+                  oldEndIndex: start + previous.length,
+                  newEndIndex: start + content.length,
+                  startPosition: positionInText(source, start),
+                  oldEndPosition: positionInText(source, start + previous.length),
+                  newEndPosition: positionInText(updated, start + content.length),
+                })
+              );
+              const old = tree;
+              tree = parser.parse(updated, old)!;
+              old.delete();
+              source = updated;
+              previous = content;
+            }
+            const fresh = parser.parse(source)!;
+            try {
+              expect(tree.rootNode.toString()).toBe(fresh.rootNode.toString());
+              for (const parsed of [tree, fresh]) {
+                expect(parsed.rootNode.hasError, source).toBe(false);
+                const endStart = fixture.firstEnd
+                  ? source.indexOf(fixture.label, fixture.bodyStart)
+                  : source.lastIndexOf(fixture.label);
+                const endIndex = endStart + fixture.label.length;
+                const ends = parsed.rootNode.descendantsOfType('heredoc_end');
+                expect(ends).toHaveLength(1);
+                expect(ends[0]!.text).toBe(fixture.label);
+                expect(ends[0]!.startIndex).toBe(endStart);
+                expect(ends[0]!.endIndex).toBe(endIndex);
+                const bodies = parsed.rootNode.descendantsOfType('heredoc_body');
+                expect(bodies).toHaveLength(1);
+                expect(bodies[0]!.text).toBe(source.slice(fixture.bodyStart, endIndex));
+                expect(bodies[0]!.startPosition).toEqual(positionInText(source, fixture.bodyStart));
+                expect(bodies[0]!.endPosition).toEqual(positionInText(source, endIndex));
+                expect(parsed.rootNode.lastNamedChild?.text).toBe('following = 1');
+              }
+            } finally {
+              fresh.delete();
+            }
+          }
+        } finally {
+          tree.delete();
+        }
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});
+
 function positionInText(text: string, index: number): { row: number; column: number } {
   const lines = text.slice(0, index).split('\n');
   return { row: lines.length - 1, column: lines.at(-1)!.length };
