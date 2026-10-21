@@ -1000,7 +1000,10 @@ module.exports = grammar({
           choice(field('method', choice($._variable, $._function_identifier, $.super)), $._call),
           field('arguments', alias($._yield_argument_list, $.argument_list))
         ),
-        seq(field('method', $.super), field('arguments', alias($._yield_signed_argument_list, $.argument_list)))
+        seq(
+          choice(field('method', $.super), $._call),
+          field('arguments', alias($._yield_signed_argument_list, $.argument_list))
+        )
       ),
 
     _yield_signed_argument_list: ($) =>

@@ -8283,12 +8283,21 @@
           "type": "SEQ",
           "members": [
             {
-              "type": "FIELD",
-              "name": "method",
-              "content": {
-                "type": "SYMBOL",
-                "name": "super"
-              }
+              "type": "CHOICE",
+              "members": [
+                {
+                  "type": "FIELD",
+                  "name": "method",
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "super"
+                  }
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_call"
+                }
+              ]
             },
             {
               "type": "FIELD",
