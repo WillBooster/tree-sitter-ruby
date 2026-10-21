@@ -86,9 +86,11 @@ module.exports = grammar({
     $._block_comment,
     $._uninterpreted,
     $._not_parenthesized,
+    $._lambda_brace,
+    $._heredoc_literal_resume,
   ],
 
-  extras: ($) => [$.comment, $.heredoc_body, /\s/, /\\\r?\n/],
+  extras: ($) => [$.comment, $.heredoc_body, $._heredoc_literal_resume, /\s/, /\\\r?\n/],
 
   word: ($) => $.identifier,
 
@@ -1208,9 +1210,19 @@ module.exports = grammar({
         PREC.CURLY_BLOCK,
         prec.dynamic(
           2,
-          seq('{', field('parameters', optional($.block_parameters)), optional(field('body', $.block_body)), '}')
+          seq(
+            $._block_open,
+            field('parameters', optional($.block_parameters)),
+            optional(field('body', $.block_body)),
+            '}'
+          )
         )
       ),
+
+    // Where both a block and a hash argument can start (`foo {`, `x.y {`), the `{` would otherwise be shared until a
+    // later conflict picks the hash. Reducing the brace on its own forces the choice right after it, and the precedence
+    // makes it a block, as in Ruby.
+    _block_open: () => prec(PREC.CURLY_BLOCK, '{'),
 
     _arg_rhs: ($) => choice($._arg, alias($.rescue_modifier_arg, $.rescue_modifier)),
 
@@ -1612,6 +1624,7 @@ module.exports = grammar({
         seq(
           '\\',
           choice(
+            /\r\n/,
             /[^ux0-7]/, // single character
             /x[0-9a-fA-F]{1,2}/, // hex code
             /[0-7]{1,3}/, // octal
@@ -1668,7 +1681,18 @@ module.exports = grammar({
             )
           )
         ),
-        field('body', choice($.block, $.do_block))
+        field('body', choice(alias($._lambda_block, $.block), $.do_block))
+      ),
+
+    // As with parse.y's tLAMBEG, the scanner emits this `{` where a lambda body can start, so that it opens the body
+    // after bare parameters even where a parameter default could take a block or start a hash (`-> a=b() { }`,
+    // `-> x: { }`).
+    _lambda_block: ($) =>
+      seq(
+        alias($._lambda_brace, '{'),
+        field('parameters', optional($.block_parameters)),
+        optional(field('body', $.block_body)),
+        '}'
       ),
 
     _parenthesized_lambda_parameters: ($) =>
