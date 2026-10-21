@@ -190,7 +190,7 @@ static inline void deserialize(Scanner *scanner, const char *buffer, unsigned le
 
 static inline bool scan_literal_resume(Literal *literal, TSLexer *lexer, const bool *valid_symbols);
 static inline bool scan_heredoc_host_resume(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols);
-static inline void finish_heredoc(Scanner *scanner, TSLexer *lexer, bool at_newline);
+static inline void finish_heredoc(Scanner *scanner, TSLexer *lexer, bool can_resume);
 static inline bool has_pending_heredoc_body(Scanner *scanner, const bool *valid_symbols);
 static inline bool scan_heredoc_after_literal_escape(Scanner *scanner, TSLexer *lexer, bool consume_plain_escape);
 static inline bool finish_literal_content(TSLexer *lexer);
@@ -688,14 +688,16 @@ static inline bool scan_heredoc_content(Scanner *scanner, TSLexer *lexer) {
             if (!has_content) {
                 lexer->mark_end(lexer);
             }
+            bool crossed_range_boundary = lexer->is_at_included_range_start(lexer);
             while (lexer->lookahead == ' ' || lexer->lookahead == '\t') {
                 advance(lexer);
+                crossed_range_boundary |= lexer->is_at_included_range_start(lexer);
             }
             if (lexer->lookahead == '\n' || lexer->lookahead == '\r') {
                 if (has_content) {
                     lexer->result_symbol = HEREDOC_CONTENT;
                 } else {
-                    finish_heredoc(scanner, lexer, true);
+                    finish_heredoc(scanner, lexer, !crossed_range_boundary);
                 }
                 return true;
             }
@@ -1272,9 +1274,9 @@ static inline bool scan_heredoc_host_resume(Scanner *scanner, TSLexer *lexer, co
     return true;
 }
 
-static inline void finish_heredoc(Scanner *scanner, TSLexer *lexer, bool at_newline) {
+static inline void finish_heredoc(Scanner *scanner, TSLexer *lexer, bool can_resume) {
     Heredoc *heredoc = array_get(&scanner->open_heredocs, 0);
-    bool resume_host = heredoc->host_line_continued && scanner->open_heredocs.size == 1 && at_newline;
+    bool resume_host = heredoc->host_line_continued && scanner->open_heredocs.size == 1 && can_resume;
     if (resume_host && lexer->lookahead == '\r') {
         advance(lexer);
         resume_host = lexer->lookahead == '\n' && !lexer->is_at_included_range_start(lexer);
