@@ -72,7 +72,7 @@ fuzzed with. The parser requires runtime 10.0.2 or later:
 ```toml
 [dependencies]
 tree-sitter = { package = "willbooster-tree-sitter", version = "10.0.2" }
-tree-sitter-ruby = { package = "willbooster-tree-sitter-ruby", version = "3" }
+tree-sitter-ruby = { package = "willbooster-tree-sitter-ruby", version = "4" }
 ```
 
 ```rust
