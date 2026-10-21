@@ -14945,6 +14945,10 @@
             "members": [
               {
                 "type": "PATTERN",
+                "value": "\\r\\n"
+              },
+              {
+                "type": "PATTERN",
                 "value": "[^ux0-7]"
               },
               {
@@ -15517,6 +15521,10 @@
       "name": "heredoc_body"
     },
     {
+      "type": "SYMBOL",
+      "name": "_heredoc_literal_resume"
+    },
+    {
       "type": "PATTERN",
       "value": "\\s"
     },
@@ -16055,6 +16063,10 @@
     {
       "type": "SYMBOL",
       "name": "_lambda_brace"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_heredoc_literal_resume"
     }
   ],
   "inline": [
