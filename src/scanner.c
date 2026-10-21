@@ -677,7 +677,7 @@ static inline bool scan_heredoc_content(Scanner *scanner, TSLexer *lexer) {
     Heredoc *heredoc = array_get(&scanner->open_heredocs, 0);
     size_t position_in_word = 0;
     bool look_for_heredoc_end = !heredoc->mid_line ||
-        (!heredoc->squiggly && lexer->get_column(lexer) == 0 && heredoc_word_starts_interpolation(heredoc));
+        (!heredoc->squiggly && heredoc_word_starts_interpolation(heredoc) && lexer->get_column(lexer) == 0);
     bool has_content = false;
 
     for (;;) {
