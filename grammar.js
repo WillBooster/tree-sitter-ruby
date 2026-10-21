@@ -87,10 +87,10 @@ module.exports = grammar({
     $._uninterpreted,
     $._not_parenthesized,
     $._lambda_brace,
-    $._heredoc_literal_resume,
+    $._heredoc_resume,
   ],
 
-  extras: ($) => [$.comment, $.heredoc_body, $._heredoc_literal_resume, /\s/, /\\\r?\n/],
+  extras: ($) => [$.comment, $.heredoc_body, $._heredoc_resume, /\s/, /\\\r?\n/],
 
   word: ($) => $.identifier,
 
