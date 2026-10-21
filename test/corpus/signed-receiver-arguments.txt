@@ -1,0 +1,70 @@
+========================================
+Unary plus arguments on explicit receivers
+========================================
+
+obj.foo +x
+obj&.foo +x, y
+Obj::Foo +x
+obj.foo +1
+
+---
+
+(program
+  (call (identifier) (identifier) (argument_list (unary (identifier))))
+  (call (identifier) (identifier) (argument_list (unary (identifier)) (identifier)))
+  (call (constant) (constant) (argument_list (unary (identifier))))
+  (call (identifier) (identifier) (argument_list (unary (integer)))))
+
+========================================
+Unary plus argument expression ownership
+========================================
+
+obj.foo +x * y
+obj.foo +x ** 2
+obj.foo +x..y
+obj.foo +x => y
+obj.foo +x ? y : z
+
+---
+
+(program
+  (call (identifier) (identifier) (argument_list (binary (unary (identifier)) (identifier))))
+  (call (identifier) (identifier) (argument_list (binary (unary (identifier)) (integer))))
+  (call (identifier) (identifier) (argument_list (range (unary (identifier)) (identifier))))
+  (call (identifier) (identifier) (argument_list (pair (unary (identifier)) (identifier))))
+  (call (identifier) (identifier) (argument_list (conditional (unary (identifier)) (identifier) (identifier)))))
+
+========================================
+Block ownership after unary plus arguments
+========================================
+
+obj.foo +x do y end
+obj.foo +x { y }
+
+---
+
+(program
+  (call (identifier) (identifier) (argument_list (unary (identifier))) (do_block (body_statement (identifier))))
+  (call (identifier) (identifier) (argument_list (unary (call (identifier) (block (block_body (identifier))))))))
+
+========================================
+Binary plus remains outside command arguments
+========================================
+
+obj.foo + x
+obj.foo+x
+obj.foo() +x
+(obj.foo) +x
+@foo +x
+foo = 1; foo +x
+
+---
+
+(program
+  (binary (call (identifier) (identifier)) (identifier))
+  (binary (call (identifier) (identifier)) (identifier))
+  (binary (call (identifier) (identifier) (argument_list)) (identifier))
+  (binary (parenthesized_statements (call (identifier) (identifier))) (identifier))
+  (binary (instance_variable) (identifier))
+  (assignment (identifier) (integer))
+  (binary (identifier) (identifier)))

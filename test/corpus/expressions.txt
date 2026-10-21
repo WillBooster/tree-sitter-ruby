@@ -3095,3 +3095,89 @@ lambda body brace after bare parameters with a default or keyword
     body: (block
       body: (block_body
         (identifier)))))
+
+===================
+Signed receiver arguments inside yield
+===================
+def f
+  yield obj.foo +x, y
+  yield obj&.foo +x, y
+  yield Obj::Foo +x, y
+  yield obj.foo +x, y => z
+  yield obj.foo +x + y, z
+  yield obj.foo +x, y if condition
+  yield obj.foo + x, y
+end
+---
+(program
+  (method
+    (identifier)
+    (body_statement
+      (yield
+        (argument_list
+          (call
+            (identifier)
+            (identifier)
+            (argument_list
+              (unary
+                (identifier))
+              (identifier)))))
+      (yield
+        (argument_list
+          (call
+            (identifier)
+            (identifier)
+            (argument_list
+              (unary
+                (identifier))
+              (identifier)))))
+      (yield
+        (argument_list
+          (call
+            (constant)
+            (constant)
+            (argument_list
+              (unary
+                (identifier))
+              (identifier)))))
+      (yield
+        (argument_list
+          (call
+            (identifier)
+            (identifier)
+            (argument_list
+              (unary
+                (identifier))
+              (pair
+                (identifier)
+                (identifier))))))
+      (yield
+        (argument_list
+          (call
+            (identifier)
+            (identifier)
+            (argument_list
+              (binary
+                (unary
+                  (identifier))
+                (identifier))
+              (identifier)))))
+      (if_modifier
+        (yield
+          (argument_list
+            (call
+              (identifier)
+              (identifier)
+              (argument_list
+                (unary
+                  (identifier))
+                (identifier)))))
+        (identifier))
+      (yield
+        (argument_list
+          (binary
+            (call
+              (identifier)
+              (identifier))
+            (identifier))
+          (identifier))))))

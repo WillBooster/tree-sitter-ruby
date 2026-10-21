@@ -887,7 +887,8 @@ module.exports = grammar({
         )
       ),
 
-    _receiver_command: ($) => seq($._call, field('arguments', alias($.command_argument_list, $.argument_list))),
+    _receiver_command: ($) =>
+      seq($._call, field('arguments', alias($._chained_command_argument_list, $.argument_list))),
 
     _chained_command: ($) =>
       seq($._chained_command_call, field('arguments', alias($._chained_command_argument_list, $.argument_list))),
@@ -896,9 +897,10 @@ module.exports = grammar({
       choice(
         commandCallWithBlock(
           $,
-          choice($._call, field('method', choice($._variable, $._function_identifier, $.super))),
+          field('method', choice($._variable, $._function_identifier, $.super)),
           $.command_argument_list
         ),
+        commandCallWithBlock($, $._call, $._chained_command_argument_list),
         commandCallWithBlock($, $._chained_command_call, $._chained_command_argument_list)
       ),
 
@@ -998,7 +1000,10 @@ module.exports = grammar({
           choice(field('method', choice($._variable, $._function_identifier, $.super)), $._call),
           field('arguments', alias($._yield_argument_list, $.argument_list))
         ),
-        seq(field('method', $.super), field('arguments', alias($._yield_signed_argument_list, $.argument_list)))
+        seq(
+          choice(field('method', $.super), $._call),
+          field('arguments', alias($._yield_signed_argument_list, $.argument_list))
+        )
       ),
 
     _yield_signed_argument_list: ($) =>
