@@ -1236,6 +1236,123 @@ test('keeps ordinary hashes between heredoc interpolations as content', () => {
   }
 });
 
+test('keeps nested heredoc bodies inside their owning body', () => {
+  const parser = new Parser().setLanguage(language);
+  try {
+    for (const newline of ['\n', '\r\n']) {
+      for (const multiline of [false, true]) {
+        for (const inner of ['INNER', 'OUT']) {
+          const interpolation = multiline ? `#{${newline}  <<${inner}` : `#{<<${inner}}`;
+          let source = `value = <<OUT${newline}before ${interpolation}${newline}inner text${newline}${inner}${newline}${multiline ? `}${newline}` : ''}after${newline}OUT${newline}following = 1${newline}`;
+          let tree = parser.parse(source)!;
+          let previous = 'inner text';
+          try {
+            for (const content of ['inner text', 'changed inner text', 'inner text']) {
+              if (content !== previous) {
+                const start = source.indexOf(previous);
+                const updated = source.slice(0, start) + content + source.slice(start + previous.length);
+                tree.edit(
+                  new Edit({
+                    startIndex: start,
+                    oldEndIndex: start + previous.length,
+                    newEndIndex: start + content.length,
+                    startPosition: positionInText(source, start),
+                    oldEndPosition: positionInText(source, start + previous.length),
+                    newEndPosition: positionInText(updated, start + content.length),
+                  })
+                );
+                const old = tree;
+                tree = parser.parse(updated, old)!;
+                old.delete();
+                source = updated;
+                previous = content;
+              }
+              const fresh = parser.parse(source)!;
+              try {
+                expect(tree.rootNode.toString()).toBe(fresh.rootNode.toString());
+                for (const parsed of [tree, fresh]) {
+                  expect(parsed.rootNode.hasError, source).toBe(false);
+                  const bodies = parsed.rootNode.descendantsOfType('heredoc_body');
+                  expect(bodies).toHaveLength(2);
+                  const outer = bodies[0]!;
+                  const nested = bodies[1]!;
+                  let owner = nested.parent;
+                  while (owner && owner.type !== 'heredoc_body') owner = owner.parent;
+                  expect(owner?.id).toBe(outer.id);
+                  const innerStart = source.indexOf(`${newline}${inner}${newline}`) + newline.length;
+                  const outerStart = source.lastIndexOf(`${newline}OUT${newline}`) + newline.length;
+                  for (const [body, start, label] of [
+                    [nested, innerStart, inner],
+                    [outer, outerStart, 'OUT'],
+                  ] as const) {
+                    const end = body.namedChildren.find((node) => node.type === 'heredoc_end')!;
+                    expect(end.text).toBe(label);
+                    expect(end.startIndex).toBe(start);
+                    expect(end.endIndex).toBe(start + label.length);
+                    expect(body.endPosition).toEqual(positionInText(source, start + label.length));
+                  }
+                  expect(nested.text).toContain(content);
+                  expect(outer.text).toContain(`after${newline}OUT`);
+                  expect(parsed.rootNode.lastNamedChild?.text).toBe('following = 1');
+                }
+              } finally {
+                fresh.delete();
+              }
+            }
+          } finally {
+            tree.delete();
+          }
+        }
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});
+
+test('resumes a nested continued heredoc host before its outer body', () => {
+  const parser = new Parser().setLanguage(language);
+  try {
+    for (const newline of ['\n', '\r\n']) {
+      for (const outerContinued of [false, true]) {
+        for (const queued of [false, true]) {
+          const beginning = queued ? '[<<FIRST, <<INNER]' : '<<INNER';
+          const content = queued ? `first${newline}FIRST${newline}inner${newline}INNER` : `inner${newline}INNER`;
+          const source = `value = <<OUT${outerContinued ? ` \\${newline}` : newline}before #{${newline}  nested = ${beginning} \\${newline}${content}${newline} + "suffix"${newline}}${newline}after${newline}OUT${newline}${outerContinued ? ` if true${newline}` : ''}following = 1${newline}`;
+          const tree = parser.parse(source)!;
+          try {
+            expect(tree.rootNode.hasError, source).toBe(false);
+            expect(tree.rootNode.lastNamedChild?.text).toBe('following = 1');
+            const assignment = tree.rootNode
+              .descendantsOfType('assignment')
+              .find((node) => node.childForFieldName('left')?.text === 'nested')!;
+            const value = assignment.childForFieldName('right')!;
+            expect(value.type).toBe('binary');
+            expect(value.childForFieldName('left')?.type).toBe(queued ? 'array' : 'heredoc_beginning');
+            expect(value.childForFieldName('operator')?.text).toBe('+');
+            expect(value.childForFieldName('right')?.text).toBe('"suffix"');
+            expect(tree.rootNode.descendantsOfType('if_modifier')).toHaveLength(outerContinued ? 1 : 0);
+            const bodies = tree.rootNode.descendantsOfType('heredoc_body');
+            expect(bodies).toHaveLength(queued ? 3 : 2);
+            const outer = bodies.find((body) =>
+              body.namedChildren.some((node) => node.type === 'heredoc_end' && node.text === 'OUT')
+            )!;
+            for (const body of bodies.filter((node) => node.id !== outer.id)) {
+              let owner = body.parent;
+              while (owner && owner.type !== 'heredoc_body') owner = owner.parent;
+              expect(owner?.id).toBe(outer.id);
+            }
+          } finally {
+            tree.delete();
+          }
+        }
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});
+
 function positionInText(text: string, index: number): { row: number; column: number } {
   const lines = text.slice(0, index).split('\n');
   return { row: lines.length - 1, column: lines.at(-1)!.length };

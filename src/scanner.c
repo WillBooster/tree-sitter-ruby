@@ -196,7 +196,8 @@ static inline void deserialize(Scanner *scanner, const char *buffer, unsigned le
 
 static inline bool scan_literal_resume(Literal *literal, TSLexer *lexer, const bool *valid_symbols);
 static inline bool scan_heredoc_host_resume(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols);
-static inline void finish_heredoc(Scanner *scanner, TSLexer *lexer, bool can_resume);
+static inline void finish_heredoc(Scanner *scanner, TSLexer *lexer, bool can_resume, uint32_t index);
+static inline uint32_t first_started_heredoc_index(Scanner *scanner);
 static inline bool has_pending_heredoc_body(Scanner *scanner, const bool *valid_symbols);
 static inline bool scan_heredoc_after_literal_escape(Scanner *scanner, TSLexer *lexer, bool consume_plain_escape);
 static inline bool finish_literal_content(TSLexer *lexer);
@@ -207,7 +208,7 @@ static inline bool start_heredoc_body(Scanner *scanner, TSLexer *lexer);
 static inline bool is_short_interpolation_name_start(int32_t prefix, int32_t codepoint);
 static inline bool heredoc_word_starts_interpolation(const Heredoc *heredoc);
 static inline bool scan_heredoc_end_word(Heredoc *heredoc, TSLexer *lexer);
-static inline bool finish_heredoc_at_line_end(Scanner *scanner, TSLexer *lexer, bool has_content);
+static inline bool finish_heredoc_at_line_end(Scanner *scanner, TSLexer *lexer, bool has_content, uint32_t index);
 static inline bool advance_heredoc_line(Heredoc *heredoc, TSLexer *lexer);
 static inline void mark_current_heredoc_position(TSLexer *lexer);
 static inline bool is_heredoc_word_character(int32_t codepoint);
@@ -673,8 +674,10 @@ static inline bool scan_short_interpolation(TSLexer *lexer, const bool has_conte
     return false;
 }
 
-static inline bool scan_heredoc_content(Scanner *scanner, TSLexer *lexer) {
-    Heredoc *heredoc = array_get(&scanner->open_heredocs, 0);
+static inline bool scan_heredoc_content(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols) {
+    uint32_t current = first_started_heredoc_index(scanner);
+    if (current == scanner->open_heredocs.size) current = 0;
+    Heredoc *heredoc = array_get(&scanner->open_heredocs, current);
     size_t position_in_word = 0;
     bool look_for_heredoc_end = !heredoc->mid_line ||
         (!heredoc->squiggly && heredoc_word_starts_interpolation(heredoc) && lexer->get_column(lexer) == 0);
@@ -685,7 +688,7 @@ static inline bool scan_heredoc_content(Scanner *scanner, TSLexer *lexer) {
             if (!has_content) {
                 lexer->mark_end(lexer);
             }
-            if (finish_heredoc_at_line_end(scanner, lexer, has_content)) return true;
+            if (finish_heredoc_at_line_end(scanner, lexer, has_content, current)) return true;
             has_content = true;
             position_in_word = 0;
         }
@@ -695,7 +698,7 @@ static inline bool scan_heredoc_content(Scanner *scanner, TSLexer *lexer) {
             if (has_content) {
                 lexer->result_symbol = HEREDOC_CONTENT;
             } else {
-                finish_heredoc(scanner, lexer, false);
+                finish_heredoc(scanner, lexer, false, current);
             }
             return true;
         }
@@ -738,6 +741,13 @@ static inline bool scan_heredoc_content(Scanner *scanner, TSLexer *lexer) {
             has_content = true;
             lexer->mark_end(lexer);
         } else if (lexer->lookahead == '\r' || lexer->lookahead == '\n') {
+            if (current > 0 && valid_symbols[HEREDOC_BODY_START]) {
+                if (has_content) {
+                    lexer->result_symbol = HEREDOC_CONTENT;
+                    return true;
+                }
+                return start_heredoc_body(scanner, lexer);
+            }
             look_for_heredoc_end = advance_heredoc_line(heredoc, lexer);
             has_content = true;
         } else {
@@ -748,7 +758,7 @@ static inline bool scan_heredoc_content(Scanner *scanner, TSLexer *lexer) {
     }
 }
 
-static inline bool finish_heredoc_at_line_end(Scanner *scanner, TSLexer *lexer, bool has_content) {
+static inline bool finish_heredoc_at_line_end(Scanner *scanner, TSLexer *lexer, bool has_content, uint32_t index) {
     bool crossed_range_boundary = lexer->is_at_included_range_start(lexer);
     while (lexer->lookahead == ' ' || lexer->lookahead == '\t') {
         advance(lexer);
@@ -756,10 +766,10 @@ static inline bool finish_heredoc_at_line_end(Scanner *scanner, TSLexer *lexer, 
     }
     if (lexer->lookahead != '\n' && lexer->lookahead != '\r') return false;
     if (has_content) {
-        array_get(&scanner->open_heredocs, 0)->mid_line = false;
+        array_get(&scanner->open_heredocs, index)->mid_line = false;
         lexer->result_symbol = HEREDOC_CONTENT;
     } else {
-        finish_heredoc(scanner, lexer, !crossed_range_boundary);
+        finish_heredoc(scanner, lexer, !crossed_range_boundary, index);
     }
     return true;
 }
@@ -940,7 +950,7 @@ static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symb
             return scan_literal_content(scanner, lexer, valid_symbols);
         }
         if ((valid_symbols[HEREDOC_CONTENT] || valid_symbols[HEREDOC_BODY_END]) && scanner->open_heredocs.size > 0) {
-            return scan_heredoc_content(scanner, lexer);
+            return scan_heredoc_content(scanner, lexer, valid_symbols);
         }
     }
 
@@ -1145,7 +1155,8 @@ static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symb
                 array_delete(&heredoc.word);
                 return false;
             }
-            array_push(&scanner->open_heredocs, heredoc);
+            uint32_t index = first_started_heredoc_index(scanner);
+            array_insert(&scanner->open_heredocs, index, heredoc);
             lexer->result_symbol = HEREDOC_START;
             return true;
         }
@@ -1301,9 +1312,11 @@ static inline bool scan_heredoc_host_resume(Scanner *scanner, TSLexer *lexer, co
     return true;
 }
 
-static inline void finish_heredoc(Scanner *scanner, TSLexer *lexer, bool can_resume) {
-    Heredoc *heredoc = array_get(&scanner->open_heredocs, 0);
-    bool resume_host = heredoc->host_line_continued && scanner->open_heredocs.size == 1 && can_resume;
+static inline void finish_heredoc(Scanner *scanner, TSLexer *lexer, bool can_resume, uint32_t index) {
+    Heredoc *heredoc = array_get(&scanner->open_heredocs, index);
+    bool has_pending_sibling = index + 1 < scanner->open_heredocs.size &&
+                               !array_get(&scanner->open_heredocs, index + 1)->started;
+    bool resume_host = heredoc->host_line_continued && index == 0 && !has_pending_sibling && can_resume;
     if (resume_host && lexer->lookahead == '\r') {
         advance(lexer);
         resume_host = lexer->lookahead == '\n' && !lexer->is_at_included_range_start(lexer);
@@ -1311,13 +1324,19 @@ static inline void finish_heredoc(Scanner *scanner, TSLexer *lexer, bool can_res
     if (resume_host) {
         heredoc->finished = true;
     } else {
-        if (heredoc->host_line_continued && scanner->open_heredocs.size > 1) {
-            array_get(&scanner->open_heredocs, 1)->host_line_continued = true;
+        if (heredoc->host_line_continued && has_pending_sibling) {
+            array_get(&scanner->open_heredocs, index + 1)->host_line_continued = true;
         }
         array_delete(&heredoc->word);
-        array_erase(&scanner->open_heredocs, 0);
+        array_erase(&scanner->open_heredocs, index);
     }
     lexer->result_symbol = HEREDOC_BODY_END;
+}
+
+static inline uint32_t first_started_heredoc_index(Scanner *scanner) {
+    uint32_t index = 0;
+    while (index < scanner->open_heredocs.size && !array_get(&scanner->open_heredocs, index)->started) index++;
+    return index;
 }
 
 static inline bool has_pending_heredoc_body(Scanner *scanner, const bool *valid_symbols) {
