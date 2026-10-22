@@ -3,12 +3,6 @@
   "extends": ["github>WillBooster/willbooster-configs:renovate.jsonc"],
   "packageRules": [
     {
-      // tree-sitter-cli provides only the DSL types that type-check grammar.js. The CLI of WillBooster/tree-sitter that
-      // script/tree-sitter runs, which generates the parser, takes tree-sitter 0.27's DSL.
-      "matchPackageNames": ["tree-sitter-cli"],
-      "allowedVersions": "0.27.x",
-    },
-    {
       // The Wasm tests run on @willbooster/web-tree-sitter, and the Rust tests, the fuzz job, and script/tree-sitter,
       // which generates, builds, and tests the parser, on the version of willbooster-tree-sitter that Cargo.lock locks.
       // Both are the same runtime, so they are updated together.

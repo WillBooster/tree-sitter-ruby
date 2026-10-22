@@ -20,7 +20,6 @@
         "playwright": "1.64.0",
         "semantic-release": "25.0.9",
         "sort-package-json": "4.0.0",
-        "tree-sitter-cli": "0.27.1",
         "vite": "8.3.4",
         "vitest": "5.0.3",
         "wrangler": "4.149.0",
@@ -1115,8 +1114,6 @@
     "totalist": ["totalist@3.0.1", "", {}, "sha512-sf4i37nQ2LBx4m3wB74y+ubopq6W/dIzXg0FDGjsYnZHVa1Da8FH853wlL2gtUhg+xJXjfk3kUZS3BRoQeoQBQ=="],
 
     "traverse": ["traverse@0.6.8", "", {}, "sha512-aXJDbk6SnumuaZSANd21XAo15ucCDE38H4fkqiGsc3MhCK+wOlZvLP9cB/TvpHT0mOyWgC4Z8EwRlzqYSUzdsA=="],
-
-    "tree-sitter-cli": ["tree-sitter-cli@0.27.1", "", { "bin": { "tree-sitter": "cli.js" } }, "sha512-WFPEjxwscCjZP9uYj0rxT2TyGBkDcXUkGTthrMpxZFGvzXEYsbC3J0633Ps8dd2mMsdsbU8oVwmQ148lLHI7Xw=="],
 
     "trough": ["trough@1.0.5", "", {}, "sha512-rvuRbTarPXmMb79SmzEp8aqXNKcK+y0XaB298IXueQ8I2PsrATcPBCSPyK/dDNa2iWOhKlfNnOjdAOTBU/nkFA=="],
 
