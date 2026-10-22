@@ -1165,6 +1165,77 @@ test('keeps delimiter-like text after interpolation and escaped newlines in here
   }
 });
 
+test('keeps ordinary hashes between heredoc interpolations as content', () => {
+  const parser = new Parser().setLanguage(language);
+  try {
+    for (const newline of ['\n', '\r\n']) {
+      for (const continued of [false, true]) {
+        const prefix = `value = <<EOS${continued ? ` \\${newline}` : ''}`;
+        const leadingNewline = continued ? '' : newline;
+        let source = `${prefix}${leadingNewline}#{first}##{second}${newline}EOS${newline}${continued ? ` if true${newline}` : ''}following = 1${newline}`;
+        let tree = parser.parse(source)!;
+        let previous = '#';
+        const hashStart = prefix.length + leadingNewline.length + '#{first}'.length;
+        try {
+          for (const hashes of ['#', '##', '#']) {
+            if (hashes !== previous) {
+              const updated = source.slice(0, hashStart) + hashes + source.slice(hashStart + previous.length);
+              tree.edit(
+                new Edit({
+                  startIndex: hashStart,
+                  oldEndIndex: hashStart + previous.length,
+                  newEndIndex: hashStart + hashes.length,
+                  startPosition: positionInText(source, hashStart),
+                  oldEndPosition: positionInText(source, hashStart + previous.length),
+                  newEndPosition: positionInText(updated, hashStart + hashes.length),
+                })
+              );
+              const old = tree;
+              tree = parser.parse(updated, old)!;
+              old.delete();
+              source = updated;
+              previous = hashes;
+            }
+            const fresh = parser.parse(source)!;
+            try {
+              expect(tree.rootNode.toString()).toBe(fresh.rootNode.toString());
+              for (const parsed of [tree, fresh]) {
+                expect(parsed.rootNode.hasError, source).toBe(false);
+                const body = parsed.rootNode.descendantsOfType('heredoc_body')[0]!;
+                expect(body.descendantsOfType('interpolation').map(({ text }) => text)).toEqual([
+                  '#{first}',
+                  '#{second}',
+                ]);
+                expect(body.descendantsOfType('comment')).toHaveLength(0);
+                expect(
+                  body
+                    .descendantsOfType('heredoc_content')
+                    .map(({ text }) => text)
+                    .join('')
+                ).toBe(`${leadingNewline}${hashes}${newline}`);
+                const endStart = source.lastIndexOf('EOS');
+                const end = body.descendantsOfType('heredoc_end')[0]!;
+                expect(end.startIndex).toBe(endStart);
+                expect(end.endIndex).toBe(endStart + 3);
+                expect(body.text).toBe(source.slice(prefix.length, endStart + 3));
+                expect(body.startPosition).toEqual(positionInText(source, prefix.length));
+                expect(body.endPosition).toEqual(positionInText(source, endStart + 3));
+                expect(parsed.rootNode.lastNamedChild?.text).toBe('following = 1');
+              }
+            } finally {
+              fresh.delete();
+            }
+          }
+        } finally {
+          tree.delete();
+        }
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});
+
 function positionInText(text: string, index: number): { row: number; column: number } {
   const lines = text.slice(0, index).split('\n');
   return { row: lines.length - 1, column: lines.at(-1)!.length };
