@@ -1353,6 +1353,80 @@ test('resumes a nested continued heredoc host before its outer body', () => {
   }
 });
 
+test.each(['%', '%Q', '%q', '%s', '%x', '%r'])(
+  'resumes an LF-delimited %s before its suspended heredoc owner',
+  (kind) => {
+    const parser = new Parser().setLanguage(language);
+    try {
+      for (const newline of ['\n', '\r\n']) {
+        for (const queued of [false, true]) {
+          for (const depth of [1, 2]) {
+            const labels = queued ? ['FIRST', 'INNER'] : ['INNER'];
+            const bodies = labels.map((label) => `body ${label}${newline}${label}${newline}`).join('');
+            const host = `[${labels.map((label) => `<<${label}`).join(', ')}, ${kind}\n${bodies}tail\n]`;
+            const middle = depth === 1 ? host : `<<MIDDLE}\nmiddle #{${host}}\nMIDDLE\n`;
+            let source = `value = <<OUT\nbefore #{${middle}${depth === 1 ? '}\n' : ''}after\nOUT\nfollowing = 1\n`;
+            let tree = parser.parse(source)!;
+            let previousTail = 'tail';
+            try {
+              for (const tail of ['tail', 'tailx', 'tail']) {
+                const start = source.indexOf(previousTail);
+                const updated = source.slice(0, start) + tail + source.slice(start + previousTail.length);
+                tree.edit(
+                  new Edit({
+                    startIndex: start,
+                    oldEndIndex: start + previousTail.length,
+                    newEndIndex: start + tail.length,
+                    startPosition: positionInText(source, start),
+                    oldEndPosition: positionInText(source, start + previousTail.length),
+                    newEndPosition: positionInText(updated, start + tail.length),
+                  })
+                );
+                const previous = tree;
+                tree = parser.parse(updated, previous)!;
+                previous.delete();
+                source = updated;
+                previousTail = tail;
+                const fresh = parser.parse(source)!;
+                try {
+                  expect(tree.rootNode.toString()).toBe(fresh.rootNode.toString());
+                  for (const parsed of [tree, fresh]) {
+                    expect(parsed.rootNode.hasError, source).toBe(false);
+                    const literal = parsed.rootNode.descendantsOfType([
+                      'string',
+                      'delimited_symbol',
+                      'subshell',
+                      'regex',
+                    ])[0]!;
+                    expect(literal.text).toBe(`${kind}\n${bodies}${tail}\n`);
+                    expect(literal.lastChild!.text).toBe('\n');
+                    expect(literal.lastChild!.startIndex).toBe(source.indexOf(`${tail}\n`) + tail.length);
+                    const heredocs = parsed.rootNode.descendantsOfType('heredoc_body');
+                    expect(heredocs).toHaveLength(depth + labels.length);
+                    for (const label of labels) {
+                      const body = heredocs.find((node) => node.namedChildren.some((child) => child.text === label))!;
+                      let owner = body.parent;
+                      while (owner && owner.type !== 'heredoc_body') owner = owner.parent;
+                      expect(owner?.lastNamedChild?.text).toBe(depth === 1 ? 'OUT' : 'MIDDLE');
+                    }
+                    expect(parsed.rootNode.lastNamedChild?.text).toBe('following = 1');
+                  }
+                } finally {
+                  fresh.delete();
+                }
+              }
+            } finally {
+              tree.delete();
+            }
+          }
+        }
+      }
+    } finally {
+      parser.delete();
+    }
+  }
+);
+
 function positionInText(text: string, index: number): { row: number; column: number } {
   const lines = text.slice(0, index).split('\n');
   return { row: lines.length - 1, column: lines.at(-1)!.length };

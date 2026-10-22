@@ -815,7 +815,8 @@ static inline bool scan_literal_content(Scanner *scanner, TSLexer *lexer, const 
     bool stop_on_space = literal->type == SYMBOL_ARRAY_START || literal->type == STRING_ARRAY_START;
     bool pending_heredoc = has_pending_heredoc_body(scanner, valid_symbols);
 
-    if (literal->resume_after_heredoc && scanner->open_heredocs.size == 0) {
+    if (literal->resume_after_heredoc &&
+        (scanner->open_heredocs.size == 0 || array_get(&scanner->open_heredocs, 0)->started)) {
         return scan_literal_resume(literal, lexer, valid_symbols);
     }
 
