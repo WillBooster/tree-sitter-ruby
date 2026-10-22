@@ -1,5 +1,8 @@
-/// <reference types="tree-sitter-cli/dsl" />
 // @ts-check
+
+/** @import { ChoiceRule, DSL, GrammarSymbols, Rule, RuleOrLiteral, SeqRule } from '@willbooster/web-tree-sitter/dsl' */
+const { alias, choice, field, grammar, optional, prec, repeat, repeat1, reserved, seq, token } =
+  /** @type {typeof globalThis & DSL} */ (globalThis);
 
 const PREC = {
   COMMENT: -2,
