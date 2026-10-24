@@ -1,9 +1,9 @@
-import { expect, test } from 'vitest';
 import path from 'node:path';
 
-import { currentWasmPath } from '../helpers/generationInputs.js';
-
 import { Language, Parser } from '@willbooster/web-tree-sitter';
+import { expect, test } from 'vitest';
+
+import { currentWasmPath } from '../helpers/generationInputs.js';
 
 const Root = path.join(import.meta.dirname, '../..');
 await Parser.init();

@@ -5,7 +5,7 @@
 [![Test](https://github.com/WillBooster/tree-sitter-ruby/actions/workflows/test.yml/badge.svg)](https://github.com/WillBooster/tree-sitter-ruby/actions/workflows/test.yml)
 [![Test rust](https://github.com/WillBooster/tree-sitter-ruby/actions/workflows/test-rust.yml/badge.svg)](https://github.com/WillBooster/tree-sitter-ruby/actions/workflows/test-rust.yml)
 [![semantic-release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg)](https://github.com/semantic-release/semantic-release)
-[![wbfy](https://img.shields.io/badge/wbfy-20.43.2-1e90ff.svg)](https://github.com/WillBooster/shared/tree/main/packages/wbfy)
+[![wbfy](https://img.shields.io/badge/wbfy-20.48.9-1e90ff.svg)](https://github.com/WillBooster/shared/tree/main/packages/wbfy)
 [![crates.io](https://img.shields.io/crates/v/willbooster-tree-sitter-ruby.svg)](https://crates.io/crates/willbooster-tree-sitter-ruby)
 
 Ruby grammar for [tree-sitter](https://github.com/tree-sitter/tree-sitter), forked from
@@ -30,6 +30,7 @@ In Node.js and Bun, load the grammar from its path:
 
 ```js
 import { fileURLToPath } from 'node:url';
+
 import { Language, Parser } from '@willbooster/web-tree-sitter';
 
 await Parser.init();
@@ -42,9 +43,9 @@ const tree = parser.parse('puts "Hello"\n');
 In browsers, load the grammar from its URL. With Vite:
 
 ```js
+import rubyUrl from '@willbooster/tree-sitter-ruby/tree-sitter-ruby.wasm?url';
 import { Language, Parser } from '@willbooster/web-tree-sitter';
 import runtimeUrl from '@willbooster/web-tree-sitter/web-tree-sitter.wasm?url';
-import rubyUrl from '@willbooster/tree-sitter-ruby/tree-sitter-ruby.wasm?url';
 
 await Parser.init({ locateFile: () => runtimeUrl });
 const parser = new Parser();
@@ -54,9 +55,9 @@ parser.setLanguage(await Language.load(rubyUrl));
 In Cloudflare Workers, which do not allow compiling Wasm at run time, import both `.wasm` files as modules:
 
 ```js
+import ruby from '@willbooster/tree-sitter-ruby/tree-sitter-ruby.wasm';
 import { Language, Parser } from '@willbooster/web-tree-sitter';
 import runtime from '@willbooster/web-tree-sitter/web-tree-sitter.wasm';
-import ruby from '@willbooster/tree-sitter-ruby/tree-sitter-ruby.wasm';
 
 await Parser.init({ wasmModule: runtime });
 const parser = new Parser();

@@ -1,4 +1,5 @@
 import path from 'node:path';
+
 import { Edit, Language, Parser, type Point, type Range } from '@willbooster/web-tree-sitter';
 import { afterEach, beforeAll, beforeEach, expect, test } from 'vitest';
 
