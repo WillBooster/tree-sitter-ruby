@@ -220,6 +220,9 @@ static bool scan_word_token(TSLexer *lexer, const bool *valid_symbols, bool resc
 static bool scan_not_parentheses_gap(TSLexer *lexer);
 static bool scan_embdoc(TSLexer *lexer);
 static bool scan_word_text(TSLexer *lexer, const char *word);
+static bool scan_leading_logical_operator(TSLexer *lexer);
+static bool scan_line_break(TSLexer *lexer);
+static bool scan_host_line_escape(Scanner *scanner, TSLexer *lexer, bool heredoc_body_start_is_valid);
 
 static inline bool scan_whitespace(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols,
                                    bool *rescue_may_end_line) {
@@ -262,45 +265,59 @@ static inline bool scan_whitespace(Scanner *scanner, TSLexer *lexer, const bool 
                     skip(scanner, lexer);
                 }
                 break;
-            case '\\': {
-                advance(lexer);
-                if (heredoc_body_start_is_valid && lexer->is_at_included_range_start(lexer)) return false;
-                if (lexer->lookahead == '\r') {
-                    skip(scanner, lexer);
-                    if (heredoc_body_start_is_valid && lexer->is_at_included_range_start(lexer)) return false;
-                }
-                if (iswspace(lexer->lookahead)) {
-                    bool starts_body = heredoc_body_start_is_valid && lexer->lookahead == '\n';
-                    skip(scanner, lexer);
-                    if (starts_body) {
-                        array_get(&scanner->open_heredocs, 0)->host_line_continued = true;
-                        mark_current_heredoc_position(lexer);
-                        return start_heredoc_body(scanner, lexer);
-                    }
-                } else {
-                    return false;
-                }
+            case '\\':
+                if (!scan_host_line_escape(scanner, lexer, heredoc_body_start_is_valid)) return false;
+                if (lexer->result_symbol == HEREDOC_BODY_START) return true;
                 break;
-            }
             default:
-                if (crossed_newline) {
-                    if (lexer->lookahead != '.' && lexer->lookahead != '&' && lexer->lookahead != '#') {
-                        lexer->result_symbol = LINE_BREAK;
-                    } else if (lexer->lookahead == '.') {
-                        // Don't return LINE_BREAK for the call operator (`.`) but do return one for range
-                        // operators
-                        // (`..` and `...`)
-                        advance(lexer);
-                        if (!lexer->eof(lexer) && lexer->lookahead == '.') {
-                            lexer->result_symbol = LINE_BREAK;
-                        } else {
-                            return false;
-                        }
-                    }
-                }
-                return true;
+                return !crossed_newline || scan_line_break(lexer);
         }
     }
+}
+
+static bool scan_line_break(TSLexer *lexer) {
+    switch (lexer->lookahead) {
+        case '|':
+        case 'a':
+        case 'o':
+            if (scan_leading_logical_operator(lexer)) return false;
+            break;
+        case '.':
+            advance(lexer);
+            if (lexer->eof(lexer) || lexer->lookahead != '.') return false;
+            break;
+        case '&':
+        case '#':
+            return true;
+    }
+    lexer->result_symbol = LINE_BREAK;
+    return true;
+}
+
+static bool scan_host_line_escape(Scanner *scanner, TSLexer *lexer, bool heredoc_body_start_is_valid) {
+    advance(lexer);
+    if (heredoc_body_start_is_valid && lexer->is_at_included_range_start(lexer)) return false;
+    if (lexer->lookahead == '\r') {
+        skip(scanner, lexer);
+        if (heredoc_body_start_is_valid && lexer->is_at_included_range_start(lexer)) return false;
+    }
+    if (!iswspace(lexer->lookahead)) return false;
+    bool starts_body = heredoc_body_start_is_valid && lexer->lookahead == '\n';
+    skip(scanner, lexer);
+    if (!starts_body) return true;
+    array_get(&scanner->open_heredocs, 0)->host_line_continued = true;
+    mark_current_heredoc_position(lexer);
+    return start_heredoc_body(scanner, lexer);
+}
+
+static bool scan_leading_logical_operator(TSLexer *lexer) {
+    if (lexer->lookahead == '|') {
+        advance(lexer);
+        return lexer->lookahead == '|';
+    }
+    if (!scan_word_text(lexer, lexer->lookahead == 'a' ? "and" : "or")) return false;
+    return lexer->lookahead < 0x80 && !iswalnum(lexer->lookahead) && lexer->lookahead != '_' &&
+        lexer->lookahead != '?' && lexer->lookahead != '!' && lexer->lookahead != ':';
 }
 
 static inline bool scan_operator(TSLexer *lexer) {
