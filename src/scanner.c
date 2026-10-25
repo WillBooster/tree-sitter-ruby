@@ -317,7 +317,7 @@ static bool scan_leading_logical_operator(TSLexer *lexer) {
     }
     if (!scan_word_text(lexer, lexer->lookahead == 'a' ? "and" : "or")) return false;
     return lexer->lookahead < 0x80 && !iswalnum(lexer->lookahead) && lexer->lookahead != '_' &&
-        lexer->lookahead != '?' && lexer->lookahead != '!' && lexer->lookahead != ':';
+        lexer->lookahead != '?' && lexer->lookahead != '!';
 }
 
 static inline bool scan_operator(TSLexer *lexer) {

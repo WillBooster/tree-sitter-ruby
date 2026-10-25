@@ -3269,3 +3269,22 @@ foo {
     (block
       (block_parameters (identifier))
       (block_body (identifier)))))
+
+======================================================
+leading logical keywords before root constant references
+======================================================
+
+a
+and::B
+c
+or::D
+
+---
+
+(program
+  (binary
+    (identifier)
+    (scope_resolution (constant)))
+  (binary
+    (identifier)
+    (scope_resolution (constant))))
