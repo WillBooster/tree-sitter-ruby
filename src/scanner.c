@@ -834,8 +834,8 @@ static inline bool scan_literal_content(Scanner *scanner, TSLexer *lexer, const 
                 lexer->result_symbol = STRING_CONTENT;
                 return true;
             }
-            TSLexerPosition body_start;
-            lexer->get_position(lexer, &body_start);
+            TSLexerCheckpoint body_start;
+            lexer->get_checkpoint(lexer, &body_start);
             if (lexer->lookahead == '\r') {
                 advance(lexer);
                 if (lexer->lookahead != '\n' || lexer->is_at_included_range_start(lexer)) {
@@ -853,8 +853,8 @@ static inline bool scan_literal_content(Scanner *scanner, TSLexer *lexer, const 
             return false;
         }
         if (literal->close_delimiter == '\n' && lexer->lookahead == '\r') {
-            TSLexerPosition closing_start;
-            lexer->get_position(lexer, &closing_start);
+            TSLexerCheckpoint closing_start;
+            lexer->get_checkpoint(lexer, &closing_start);
             advance(lexer);
             if (lexer->lookahead != '\n' || lexer->is_at_included_range_start(lexer)) {
                 has_content = true;
@@ -1374,11 +1374,11 @@ static inline bool finish_literal_content(TSLexer *lexer) {
 }
 
 static inline bool scan_heredoc_after_literal_space(Scanner *scanner, TSLexer *lexer) {
-    TSLexerPosition body_start;
+    TSLexerCheckpoint body_start;
     bool after_carriage_return = false;
     do {
         after_carriage_return = lexer->lookahead == '\r';
-        if (after_carriage_return) lexer->get_position(lexer, &body_start);
+        if (after_carriage_return) lexer->get_checkpoint(lexer, &body_start);
         lexer->advance(lexer, true);
         if (lexer->is_at_included_range_start(lexer)) after_carriage_return = false;
     } while (is_horizontal_whitespace(lexer->lookahead));
@@ -1388,7 +1388,7 @@ static inline bool scan_heredoc_after_literal_space(Scanner *scanner, TSLexer *l
     if (lexer->lookahead != '\n') {
         return false;
     }
-    if (!after_carriage_return) lexer->get_position(lexer, &body_start);
+    if (!after_carriage_return) lexer->get_checkpoint(lexer, &body_start);
     lexer->mark_start(lexer, &body_start);
     lexer->mark_end_at(lexer, &body_start);
     return start_literal_heredoc_body(scanner, lexer);
@@ -1430,8 +1430,8 @@ static inline bool scan_heredoc_end_word(Heredoc *heredoc, TSLexer *lexer) {
 }
 
 static inline void mark_current_heredoc_position(TSLexer *lexer) {
-    TSLexerPosition body_start;
-    lexer->get_position(lexer, &body_start);
+    TSLexerCheckpoint body_start;
+    lexer->get_checkpoint(lexer, &body_start);
     lexer->mark_start(lexer, &body_start);
     lexer->mark_end_at(lexer, &body_start);
 }
