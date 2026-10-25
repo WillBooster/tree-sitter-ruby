@@ -84,6 +84,12 @@ typedef struct {
     Array(Heredoc) open_heredocs;
 } Scanner;
 
+typedef enum {
+    HEREDOC_SCAN_CONTINUE,
+    HEREDOC_SCAN_TOKEN,
+    HEREDOC_SCAN_DEFER,
+} HeredocScanResult;
+
 const char NON_IDENTIFIER_CHARS[] = {
     '\0', '\n', '\r', '\t', ' ', ':', ';', '`',  '"', '\'', '@', '$', '#', '.', ',', '|', '^', '&',
     '<',  '=',  '>',  '+',  '-', '*', '/', '\\', '%', '?',  '!', '~', '(', ')', '[', ']', '{', '}',
@@ -208,6 +214,9 @@ static inline bool start_heredoc_body(Scanner *scanner, TSLexer *lexer);
 static inline bool is_short_interpolation_name_start(int32_t prefix, int32_t codepoint);
 static inline bool heredoc_word_starts_interpolation(const Heredoc *heredoc);
 static inline bool scan_heredoc_end_word(Heredoc *heredoc, TSLexer *lexer);
+static bool scan_heredoc_prefix_token(Heredoc *heredoc, TSLexer *lexer, size_t matched);
+static HeredocScanResult scan_heredoc_line_prefix(Scanner *scanner, TSLexer *lexer, uint32_t current, bool *has_content);
+static HeredocScanResult scan_heredoc_interpolation(Heredoc *heredoc, TSLexer *lexer, bool *has_content);
 static inline bool finish_heredoc_at_line_end(Scanner *scanner, TSLexer *lexer, bool has_content, uint32_t index);
 static inline bool advance_heredoc_line(Heredoc *heredoc, TSLexer *lexer);
 static inline void mark_current_heredoc_position(TSLexer *lexer);
@@ -695,98 +704,143 @@ static inline bool scan_heredoc_content(Scanner *scanner, TSLexer *lexer, const 
     uint32_t current = first_started_heredoc_index(scanner);
     if (current == scanner->open_heredocs.size) current = 0;
     Heredoc *heredoc = array_get(&scanner->open_heredocs, current);
-    size_t position_in_word = 0;
     bool look_for_heredoc_end = !heredoc->mid_line ||
         (!heredoc->squiggly && heredoc_word_starts_interpolation(heredoc) && lexer->get_column(lexer) == 0);
     bool has_content = false;
 
     for (;;) {
-        if (position_in_word == heredoc->word.size) {
-            if (!has_content) {
-                lexer->mark_end(lexer);
-            }
-            if (finish_heredoc_at_line_end(scanner, lexer, has_content, current)) return true;
-            has_content = true;
-            position_in_word = 0;
+        if (look_for_heredoc_end) {
+            HeredocScanResult result = scan_heredoc_line_prefix(scanner, lexer, current, &has_content);
+            if (result != HEREDOC_SCAN_CONTINUE) return result == HEREDOC_SCAN_TOKEN;
+            look_for_heredoc_end = false;
         }
-
         if (lexer->eof(lexer)) {
             lexer->mark_end(lexer);
-            if (has_content) {
-                lexer->result_symbol = HEREDOC_CONTENT;
-            } else {
-                finish_heredoc(scanner, lexer, false, current);
-            }
+            if (has_content) lexer->result_symbol = HEREDOC_CONTENT;
+            else finish_heredoc(scanner, lexer, false, current);
             return true;
         }
-
-        char utf8[4];
-        uint32_t utf8_length = encode_utf8(lexer->lookahead, utf8);
-        if (look_for_heredoc_end && position_in_word + utf8_length <= heredoc->word.size &&
-            memcmp(&heredoc->word.contents[position_in_word], utf8, utf8_length) == 0) {
-            advance(lexer);
-            position_in_word += utf8_length;
+        if (heredoc->allows_interpolation && (lexer->lookahead == '#' || lexer->lookahead == '\\')) {
+            HeredocScanResult result = scan_heredoc_interpolation(heredoc, lexer, &has_content);
+            if (result != HEREDOC_SCAN_CONTINUE) return result == HEREDOC_SCAN_TOKEN;
             continue;
         }
-        position_in_word = 0;
-        look_for_heredoc_end = false;
-
-        if (heredoc->allows_interpolation && lexer->lookahead == '\\') {
-            if (has_content) {
-                heredoc->mid_line = true;
-                lexer->result_symbol = HEREDOC_CONTENT;
-                return true;
-            }
-            return false;
+        bool line_end = lexer->lookahead == '\r' || lexer->lookahead == '\n';
+        if (line_end && current > 0 && valid_symbols[HEREDOC_BODY_START]) {
+            lexer->result_symbol = HEREDOC_CONTENT;
+            return has_content || start_heredoc_body(scanner, lexer);
         }
-
-        if (heredoc->allows_interpolation && lexer->lookahead == '#') {
-            lexer->mark_end(lexer);
-            advance(lexer);
-            if (lexer->lookahead == '{') {
-                if (has_content) {
-                    heredoc->mid_line = true;
-                    lexer->result_symbol = HEREDOC_CONTENT;
-                    return true;
-                }
-                return false;
-            }
-            heredoc->mid_line = true;
-            if (scan_short_interpolation(lexer, has_content, HEREDOC_CONTENT)) {
-                return true;
-            }
-            has_content = true;
-            lexer->mark_end(lexer);
-        } else if (lexer->lookahead == '\r' || lexer->lookahead == '\n') {
-            if (current > 0 && valid_symbols[HEREDOC_BODY_START]) {
-                if (has_content) {
-                    lexer->result_symbol = HEREDOC_CONTENT;
-                    return true;
-                }
-                return start_heredoc_body(scanner, lexer);
-            }
+        if (line_end) {
             look_for_heredoc_end = advance_heredoc_line(heredoc, lexer);
-            has_content = true;
         } else {
-            has_content = true;
             advance(lexer);
             lexer->mark_end(lexer);
         }
+        has_content = true;
     }
 }
 
-static inline bool finish_heredoc_at_line_end(Scanner *scanner, TSLexer *lexer, bool has_content, uint32_t index) {
-    bool crossed_range_boundary = lexer->is_at_included_range_start(lexer);
-    while (lexer->lookahead == ' ' || lexer->lookahead == '\t') {
+static HeredocScanResult scan_heredoc_line_prefix(Scanner *scanner, TSLexer *lexer, uint32_t current, bool *has_content) {
+    Heredoc *heredoc = array_get(&scanner->open_heredocs, current);
+    size_t matched = 0;
+    TSLexerCheckpoint interpolation_start;
+    TSLexerCheckpoint interior_token_start;
+    bool has_interior_token = false;
+    while (matched < heredoc->word.size && !lexer->eof(lexer)) {
+        if (!has_interior_token && matched > 0 && heredoc->allows_interpolation &&
+            (lexer->lookahead == '#' || lexer->lookahead == '\\')) {
+            lexer->get_checkpoint(lexer, &interior_token_start);
+            has_interior_token = true;
+        }
+        char utf8[4];
+        uint32_t length = encode_utf8(lexer->lookahead, utf8);
+        if (matched + length > heredoc->word.size ||
+            memcmp(&heredoc->word.contents[matched], utf8, length) != 0) break;
         advance(lexer);
-        crossed_range_boundary |= lexer->is_at_included_range_start(lexer);
+        matched += length;
+        if (matched == 1 && heredoc->word.contents[0] == '#') lexer->get_checkpoint(lexer, &interpolation_start);
     }
-    if (lexer->lookahead != '\n' && lexer->lookahead != '\r') return false;
+    if (matched == heredoc->word.size) {
+        if (!*has_content) lexer->mark_end(lexer);
+        if (finish_heredoc_at_line_end(scanner, lexer, *has_content, current)) return HEREDOC_SCAN_TOKEN;
+    }
+    if (scan_heredoc_prefix_token(heredoc, lexer, matched)) {
+        heredoc->mid_line = true;
+        if (*has_content) {
+            lexer->result_symbol = HEREDOC_CONTENT;
+            return HEREDOC_SCAN_TOKEN;
+        }
+        if (lexer->result_symbol != SHORT_INTERPOLATION) return HEREDOC_SCAN_DEFER;
+        lexer->mark_end_at(lexer, &interpolation_start);
+        return HEREDOC_SCAN_TOKEN;
+    }
+    if (has_interior_token) {
+        heredoc->mid_line = true;
+        lexer->mark_end_at(lexer, &interior_token_start);
+        lexer->result_symbol = HEREDOC_CONTENT;
+        return HEREDOC_SCAN_TOKEN;
+    }
+    if (matched > 0) {
+        *has_content = true;
+        lexer->mark_end(lexer);
+    }
+    return HEREDOC_SCAN_CONTINUE;
+}
+
+static bool scan_heredoc_prefix_token(Heredoc *heredoc, TSLexer *lexer, size_t matched) {
+    if (!heredoc->allows_interpolation || matched == 0) return false;
+    if (heredoc->word.contents[0] == '\\') {
+        lexer->result_symbol = NONE;
+        return true;
+    }
+    if (heredoc->word.contents[0] != '#') return false;
+    int32_t prefix = matched > 1 ? (unsigned char)heredoc->word.contents[1] : lexer->lookahead;
+    if (prefix == '{') {
+        lexer->result_symbol = NONE;
+        return true;
+    }
+    if (prefix != '@' && prefix != '$') return false;
+    if (matched == 1) advance(lexer);
+    int32_t character = matched > 2 ? (unsigned char)heredoc->word.contents[2] : lexer->lookahead;
+    bool extended = (prefix == '@' && character == '@') || (prefix == '$' && character == '-');
+    if (extended && matched <= 2) advance(lexer);
+    if (extended && prefix == '$') prefix = '-';
+    size_t name_position = extended ? 3 : 2;
+    character = matched > name_position ? (unsigned char)heredoc->word.contents[name_position] : lexer->lookahead;
+    if (!is_short_interpolation_name_start(prefix, character)) return false;
+    lexer->result_symbol = SHORT_INTERPOLATION;
+    return true;
+}
+
+static HeredocScanResult scan_heredoc_interpolation(Heredoc *heredoc, TSLexer *lexer, bool *has_content) {
+    if (lexer->lookahead == '\\') {
+        if (!*has_content) return HEREDOC_SCAN_DEFER;
+        heredoc->mid_line = true;
+        lexer->result_symbol = HEREDOC_CONTENT;
+        return HEREDOC_SCAN_TOKEN;
+    }
+    lexer->mark_end(lexer);
+    advance(lexer);
+    if (lexer->lookahead == '{') {
+        if (!*has_content) return HEREDOC_SCAN_DEFER;
+        heredoc->mid_line = true;
+        lexer->result_symbol = HEREDOC_CONTENT;
+        return HEREDOC_SCAN_TOKEN;
+    }
+    heredoc->mid_line = true;
+    if (scan_short_interpolation(lexer, *has_content, HEREDOC_CONTENT)) return HEREDOC_SCAN_TOKEN;
+    *has_content = true;
+    lexer->mark_end(lexer);
+    return HEREDOC_SCAN_CONTINUE;
+}
+
+static inline bool finish_heredoc_at_line_end(Scanner *scanner, TSLexer *lexer, bool has_content, uint32_t index) {
+    if (lexer->lookahead != '\n' && lexer->lookahead != '\r' && !lexer->eof(lexer)) return false;
     if (has_content) {
         array_get(&scanner->open_heredocs, index)->mid_line = false;
         lexer->result_symbol = HEREDOC_CONTENT;
     } else {
-        finish_heredoc(scanner, lexer, !crossed_range_boundary, index);
+        finish_heredoc(scanner, lexer, !lexer->is_at_included_range_start(lexer), index);
     }
     return true;
 }
@@ -1442,7 +1496,6 @@ static inline bool scan_heredoc_end_word(Heredoc *heredoc, TSLexer *lexer) {
         position += length;
         advance(lexer);
     }
-    while (lexer->lookahead == ' ' || lexer->lookahead == '\t') advance(lexer);
     return lexer->lookahead == '\r' || lexer->lookahead == '\n' || lexer->eof(lexer);
 }
 

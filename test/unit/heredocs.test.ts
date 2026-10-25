@@ -153,10 +153,11 @@ test.each([
 test.each(['\n', '\r\n'])('keeps template statements separate at terminator range boundaries with %j', (newline) => {
   const parser = new Parser().setLanguage(language);
   try {
-    for (const terminatorTail of [newline, ` \t ${newline}`]) {
+    for (const candidate of ['', `EOS \t ${newline}`]) {
+      const terminatorTail = newline;
       for (let boundary = 0; boundary <= terminatorTail.length; boundary++) {
         const gap = 'EXCLUDED';
-        const prefix = `value = <<EOS \\${newline}  body${newline}EOS`;
+        const prefix = `value = <<EOS \\${newline}  body${newline}${candidate}EOS`;
         let source = `${prefix}${terminatorTail.slice(0, boundary)}${gap}${terminatorTail.slice(boundary)}if true\n inside = 1\nend\nfollowing = 1\n`;
         const options = (text: string): ParseOptions => {
           const start = text.indexOf(gap);
@@ -213,9 +214,10 @@ test.each(['\n', '\r\n'])('keeps template statements separate at terminator rang
                 ]);
                 expect(parsed.rootNode.descendantsOfType('if_modifier')).toHaveLength(0);
                 const body = parsed.rootNode.descendantsOfType('heredoc_body')[0]!;
-                expect(body.text).toBe(`  ${content}${newline}EOS`);
+                const endIndex = source.lastIndexOf('EOS') + 3;
+                expect(body.text).toBe(source.slice(source.indexOf('  '), endIndex));
                 expect(body.startIndex).toBe(source.indexOf('  '));
-                expect(body.endIndex).toBe(source.indexOf('EOS', body.startIndex) + 3);
+                expect(body.endIndex).toBe(endIndex);
                 expect(parsed.rootNode.lastNamedChild?.text).toBe('following = 1');
               }
             } finally {
