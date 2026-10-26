@@ -117,10 +117,7 @@ Profiles in `.tmp/generation-profiles/` are temporary and must not be committed.
   parse exactly as listed in `script/known-failures.txt`. The first run clones the repository, which is pinned to a
   commit in `script/parse-examples`. After a grammar change or a moved pin alters that list, `script/parse-examples`
   rewrites it; review its diff before committing;
-- a performance check (`test/unit/performance.test.ts`) that recovering from an error on each line takes linear time
-  (ten times the lines take about ten times the CPU time, under a ceiling), since consumers parse files while they are
-  being edited. It loads the Wasm build through @willbooster/web-tree-sitter, which `bun run build/ci` rebuilds after
-  regenerating the parser;
+- bounded CPU-growth checks for error recovery and comment chains (`test/unit/performance.test.ts`);
 - a check that `package.json` and `Cargo.lock` test the same runtime version (`test/unit/runtimeVersion.test.ts`);
 - checks that the Wasm build parses in Chromium (`test/unit/browser/`) and in Cloudflare Workers with and without
   Node.js compatibility (`test/unit/workerd.test.ts`). Run `bun run test/ci-setup` once to install Chromium.
