@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { Language, Parser, Query } from '@willbooster/web-tree-sitter';
@@ -104,6 +105,52 @@ test('queries restricted assignment, negation and rescue values as public expres
           query.captures(tree.rootNode).map(({ node }) => node.text),
           source
         ).toEqual(expected);
+      } finally {
+        tree.delete();
+      }
+    }
+  } finally {
+    query.delete();
+    parser.delete();
+  }
+});
+
+test('highlights visibility names as ordinary methods, parameters and variables', async () => {
+  await Parser.init();
+  const root = path.join(import.meta.dirname, '../..');
+  const language = await Language.load(currentWasmPath(root));
+  const parser = new Parser().setLanguage(language);
+  const query = new Query(language, await readFile(path.join(root, 'queries/highlights.scm'), 'utf8'));
+  try {
+    for (const name of ['private', 'protected', 'public']) {
+      const source = `${name}\nreceiver.${name}\ndef ${name}(${name})\n  ${name} = 1\n  ${name}\nend\n:${name}\nif true\n  return\nend`;
+      const tree = parser.parse(source)!;
+      try {
+        expect(tree.rootNode.hasError, source).toBe(false);
+        const captures = query.captures(tree.rootNode);
+        expect(captures.filter(({ name: capture }) => capture === 'keyword').map(({ node }) => node.text)).toEqual([
+          'def',
+          'end',
+          'if',
+          'return',
+          'end',
+        ]);
+        for (const startIndex of [0, source.indexOf(`.${name}`) + 1, source.indexOf(`def ${name}`) + 4]) {
+          expect(
+            captures.some(({ name: capture, node }) => capture === 'function.method' && node.startIndex === startIndex)
+          ).toBe(true);
+        }
+        expect(
+          captures.filter(({ name: capture }) => capture === 'variable.parameter').map(({ node }) => node.text)
+        ).toEqual([name]);
+        const assignment = tree.rootNode.descendantsOfType('assignment')[0]!;
+        const local = assignment.childForFieldName('left')!;
+        expect(
+          captures.some(({ name: capture, node }) => capture === 'variable' && node.startIndex === local.startIndex)
+        ).toBe(true);
+        expect(
+          captures.filter(({ name: capture }) => capture === 'string.special.symbol').map(({ node }) => node.text)
+        ).toEqual([`:${name}`]);
       } finally {
         tree.delete();
       }
