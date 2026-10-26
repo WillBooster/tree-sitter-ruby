@@ -16208,7 +16208,8 @@
   ],
   "inline": [
     "_arg_rhs",
-    "_call_operator"
+    "_call_operator",
+    "_body_statement"
   ],
   "supertypes": [
     "_statement",

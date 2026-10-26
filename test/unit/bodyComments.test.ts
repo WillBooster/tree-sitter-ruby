@@ -386,6 +386,56 @@ test.each([
   }
 });
 
+test.each(['def a', 'class A', 'module A', 'foo do', 'class << f'])(
+  'restores %s after inserting and undoing an early end following a comment',
+  (header) => {
+    const source = `${header}\n  # doc\n  x; # note\n  d\nend`;
+    const startIndex = source.indexOf('  d\n');
+    const inserted = 'end\n';
+    const changed = source.slice(0, startIndex) + inserted + source.slice(startIndex);
+    const parser = new Parser().setLanguage(language);
+    const original = parser.parse(source)!;
+    let middle: Tree | undefined;
+    let restored: Tree | undefined;
+    let fresh: Tree | undefined;
+    try {
+      expect(original.rootNode.hasError).toBe(false);
+      original.edit(
+        new Edit({
+          startIndex,
+          oldEndIndex: startIndex,
+          newEndIndex: startIndex + inserted.length,
+          startPosition: pointAt(source, startIndex),
+          oldEndPosition: pointAt(source, startIndex),
+          newEndPosition: pointAt(changed, startIndex + inserted.length),
+        })
+      );
+      middle = parser.parse(changed, original)!;
+      middle.edit(
+        new Edit({
+          startIndex,
+          oldEndIndex: startIndex + inserted.length,
+          newEndIndex: startIndex,
+          startPosition: pointAt(changed, startIndex),
+          oldEndPosition: pointAt(changed, startIndex + inserted.length),
+          newEndPosition: pointAt(source, startIndex),
+        })
+      );
+      restored = parser.parse(source, middle)!;
+      fresh = parser.parse(source)!;
+      expect(restored.rootNode.hasError).toBe(false);
+      expect(restored.rootNode.toString()).toBe(fresh.rootNode.toString());
+      expect(restored.rootNode.descendantsOfType('comment').map(({ text }) => text)).toEqual(['# doc', '# note']);
+    } finally {
+      fresh?.delete();
+      restored?.delete();
+      middle?.delete();
+      original.delete();
+      parser.delete();
+    }
+  }
+);
+
 function pointAt(source: string, index: number): Point {
   const prefix = source.slice(0, index);
   return { row: prefix.split('\n').length - 1, column: index - prefix.lastIndexOf('\n') - 1 };

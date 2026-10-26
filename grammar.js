@@ -45,7 +45,7 @@ const ALPHA_CHAR = /[^\x00-\x1F\s0-9:;`"'@$#.,|^&<=>+\-*/\\%?!~()\[\]{}]/;
 // oxlint-disable-next-line unicorn/prefer-module -- This package is CommonJS, so tree-sitter loads grammar.js as CommonJS.
 module.exports = grammar({
   name: 'ruby',
-  inline: ($) => [$._arg_rhs, $._call_operator],
+  inline: ($) => [$._arg_rhs, $._call_operator, $._body_statement],
   externals: ($) => [
     $._line_break,
     $._no_line_break,
