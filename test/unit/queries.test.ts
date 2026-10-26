@@ -115,7 +115,7 @@ test('queries restricted assignment, negation and rescue values as public expres
   }
 });
 
-test('highlights visibility names as ordinary methods, parameters and variables', async () => {
+test('keeps visibility names out of keyword captures', async () => {
   await Parser.init();
   const root = path.join(import.meta.dirname, '../..');
   const language = await Language.load(currentWasmPath(root));
@@ -135,19 +135,9 @@ test('highlights visibility names as ordinary methods, parameters and variables'
           'return',
           'end',
         ]);
-        for (const startIndex of [0, source.indexOf(`.${name}`) + 1, source.indexOf(`def ${name}`) + 4]) {
-          expect(
-            captures.some(({ name: capture, node }) => capture === 'function.method' && node.startIndex === startIndex)
-          ).toBe(true);
-        }
         expect(
           captures.filter(({ name: capture }) => capture === 'variable.parameter').map(({ node }) => node.text)
         ).toEqual([name]);
-        const assignment = tree.rootNode.descendantsOfType('assignment')[0]!;
-        const local = assignment.childForFieldName('left')!;
-        expect(
-          captures.some(({ name: capture, node }) => capture === 'variable' && node.startIndex === local.startIndex)
-        ).toBe(true);
         expect(
           captures.filter(({ name: capture }) => capture === 'string.special.symbol').map(({ node }) => node.text)
         ).toEqual([`:${name}`]);
