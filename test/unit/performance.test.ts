@@ -40,6 +40,8 @@ test.each([
   ['class', 'class X\n', '  value\nend\n'],
   ['module', 'module X\n', '  value\nend\n'],
   ['do block', 'foo do\n', '  value\nend\n'],
+  ['do block parameters', 'foo do\n', '|value|\n  value\nend\n'],
+  ['empty do block parameters', 'foo do\n', '||\n  value\nend\n'],
   ['comment-only method', 'def x\n', 'end\n'],
   ['comment-only class', 'class X\n', 'end\n'],
   [
@@ -52,6 +54,16 @@ test.each([
   const large = `${header}${'  # comment\n'.repeat(5000)}${tail}`;
   checkCommentGrowth(small, large);
 });
+
+test.each(['|value|', '||'])(
+  'bounds embedded-document chains before block parameters %s',
+  { timeout: 60_000 },
+  (parameters) => {
+    const small = `foo do\n${'=begin\ncomment\n=end\n'.repeat(500)}${parameters}\nvalue\nend\n`;
+    const large = `foo do\n${'=begin\ncomment\n=end\n'.repeat(5000)}${parameters}\nvalue\nend\n`;
+    checkCommentGrowth(small, large);
+  }
+);
 
 function checkCommentGrowth(small: string, large: string): void {
   parseCpuTime(large, false);

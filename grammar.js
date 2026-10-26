@@ -652,8 +652,9 @@ module.exports = grammar({
 
     exception_variable: ($) => seq('=>', $._lhs),
 
-    body_statement: ($) =>
-      choice(seq(repeat1(alias($._body_comment, $.comment)), optional($._body_statement)), $._body_statement),
+    body_statement: ($) => choice(seq($._body_comments, optional($._body_statement)), $._body_statement),
+
+    _body_comments: ($) => repeat1(alias($._body_comment, $.comment)),
 
     _body_statement: ($) =>
       choice(
@@ -1209,7 +1210,7 @@ module.exports = grammar({
       seq(
         'do',
         optional($._terminator),
-        optional(seq(field('parameters', $.block_parameters), optional($._terminator))),
+        optional(seq(optional($._body_comments), field('parameters', $.block_parameters), optional($._terminator))),
         optional(field('body', $.body_statement)),
         'end'
       ),

@@ -101,6 +101,72 @@ test('keeps block comments and rescue clauses in the method body', () => {
   }
 });
 
+test.each([
+  ['# before parameters', '|x|'],
+  ['# before parameters', '||'],
+  ['=begin\nbefore parameters\n=end', '|x|'],
+  ['=begin\nbefore parameters\n=end', '||'],
+])('preserves %j before do-block parameters %s through edits', (comment, parameters) => {
+  const parser = new Parser().setLanguage(language);
+  const query = new Query(language, '(do_block (comment) @header.comment) (body_statement (comment) @body.comment)');
+  try {
+    for (const newline of ['\n', '\r\n']) {
+      const prefix = `foo do\n${comment}\n`;
+      const source = `${prefix}${parameters}\n  # body\n  x\nend`.replaceAll('\n', newline);
+      const removed = `${parameters}${newline}`;
+      const startIndex = prefix.replaceAll('\n', newline).length;
+      let tree = parser.parse(source)!;
+      try {
+        expect(tree.rootNode.hasError, source).toBe(false);
+        const block = tree.rootNode.firstNamedChild!.childForFieldName('block')!;
+        expect(block.childForFieldName('parameters')!.text).toBe(parameters);
+        expect(block.namedChildren[0]!.type).toBe('comment');
+        expect(block.namedChildren[0]!.startIndex).toBe(source.indexOf(comment.split('\n')[0]!));
+        expect(block.namedChildren[0]!.endIndex).toBe(startIndex - 1);
+        expect(query.captures(tree.rootNode).map(({ name }) => name)).toEqual(['header.comment', 'body.comment']);
+        expect(block.childForFieldName('body')!.namedChildren.map(({ text }) => text)).toEqual([
+          `# body${newline.slice(0, -1)}`,
+          'x',
+        ]);
+        const changed = source.slice(0, startIndex) + source.slice(startIndex + removed.length);
+        tree.edit(
+          new Edit({
+            startIndex,
+            oldEndIndex: startIndex + removed.length,
+            newEndIndex: startIndex,
+            startPosition: pointAt(source, startIndex),
+            oldEndPosition: pointAt(source, startIndex + removed.length),
+            newEndPosition: pointAt(changed, startIndex),
+          })
+        );
+        tree = replaceTree(parser, tree, changed);
+        expect(tree.rootNode.firstNamedChild!.childForFieldName('block')!.childForFieldName('parameters')).toBeNull();
+        expect(query.captures(tree.rootNode).map(({ name }) => name)).toEqual(['body.comment', 'body.comment']);
+        tree.edit(
+          new Edit({
+            startIndex,
+            oldEndIndex: startIndex,
+            newEndIndex: startIndex + removed.length,
+            startPosition: pointAt(changed, startIndex),
+            oldEndPosition: pointAt(changed, startIndex),
+            newEndPosition: pointAt(source, startIndex + removed.length),
+          })
+        );
+        tree = replaceTree(parser, tree, source);
+        expect(query.captures(tree.rootNode).map(({ name }) => name)).toEqual(['header.comment', 'body.comment']);
+        expect(tree.rootNode.firstNamedChild!.childForFieldName('block')!.childForFieldName('parameters')!.text).toBe(
+          parameters
+        );
+      } finally {
+        tree.delete();
+      }
+    }
+  } finally {
+    query.delete();
+    parser.delete();
+  }
+});
+
 test.each(['\n', '\r\n'])('reparents leading comments after insertion and undo with %j', (newline) => {
   const parser = new Parser().setLanguage(language);
   const source = `def example${newline}  first${newline}end`;
