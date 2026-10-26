@@ -33,9 +33,6 @@
   "yield"
 ] @keyword
 
-((identifier) @keyword
- (#match? @keyword "^(private|protected|public)$"))
-
 (constant) @constructor
 
 ; Function calls
