@@ -80,6 +80,7 @@ typedef struct {
 
 typedef struct {
     bool has_leading_whitespace;
+    uint32_t continuation_comments;
     Array(Literal) literal_stack;
     Array(Heredoc) open_heredocs;
 } Scanner;
@@ -103,6 +104,7 @@ static inline void skip(Scanner *scanner, TSLexer *lexer) {
 static inline void advance(TSLexer *lexer) { lexer->advance(lexer, false); }
 
 static inline void reset(Scanner *scanner) {
+    scanner->continuation_comments = 0;
     array_delete(&scanner->literal_stack);
     for (uint32_t i = 0; i < scanner->open_heredocs.size; i++) {
         array_delete(&array_get(&scanner->open_heredocs, i)->word);
@@ -112,8 +114,9 @@ static inline void reset(Scanner *scanner) {
 
 static inline unsigned serialize(Scanner *scanner, char *buffer) {
     unsigned size = 0;
+    unsigned continuation_size = scanner->continuation_comments > 0 ? sizeof(scanner->continuation_comments) : 0;
 
-    if (scanner->literal_stack.size * 6 + 2 >= TREE_SITTER_SERIALIZATION_BUFFER_SIZE) {
+    if (scanner->literal_stack.size * 6 + 2 + continuation_size >= TREE_SITTER_SERIALIZATION_BUFFER_SIZE) {
         return 0;
     }
 
@@ -136,7 +139,7 @@ static inline unsigned serialize(Scanner *scanner, char *buffer) {
     for (uint32_t i = 0; i < scanner->open_heredocs.size; i++) {
         Heredoc *heredoc = array_get(&scanner->open_heredocs, i);
         if (heredoc->word.size > (UINT16_MAX >> 4) ||
-            size + 4 + heredoc->word.size > TREE_SITTER_SERIALIZATION_BUFFER_SIZE) {
+            size + 4 + heredoc->word.size + continuation_size > TREE_SITTER_SERIALIZATION_BUFFER_SIZE) {
             return 0;
         }
         buffer[size++] = (char)(heredoc->end_word_indentation_allowed | (heredoc->squiggly << 1));
@@ -147,7 +150,8 @@ static inline unsigned serialize(Scanner *scanner, char *buffer) {
         size += heredoc->word.size;
     }
 
-    return size;
+    if (continuation_size > 0) memcpy(&buffer[size], &scanner->continuation_comments, continuation_size);
+    return size + continuation_size;
 }
 
 static inline void deserialize(Scanner *scanner, const char *buffer, unsigned length) {
@@ -197,6 +201,10 @@ static inline void deserialize(Scanner *scanner, const char *buffer, unsigned le
         array_push(&scanner->open_heredocs, heredoc);
     }
 
+    if (size < length) {
+        memcpy(&scanner->continuation_comments, &buffer[size], sizeof(scanner->continuation_comments));
+        size += sizeof(scanner->continuation_comments);
+    }
     assert(size == length);
 }
 
@@ -224,6 +232,8 @@ static inline bool is_heredoc_word_character(int32_t codepoint);
 static inline uint32_t encode_utf8(int32_t codepoint, char *bytes);
 static inline void append_heredoc_character(String *word, int32_t codepoint);
 static inline bool scan_line_comment(TSLexer *lexer);
+static bool scan_comment_line_break(Scanner *scanner, TSLexer *lexer);
+static bool scan_after_whitespace(Scanner *scanner, TSLexer *lexer, bool crossed_newline);
 static bool scan_splat(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols);
 static bool scan_word_token(TSLexer *lexer, const bool *valid_symbols, bool rescue_may_end_line);
 static bool scan_not_parentheses_gap(TSLexer *lexer);
@@ -279,9 +289,23 @@ static inline bool scan_whitespace(Scanner *scanner, TSLexer *lexer, const bool 
                 if (lexer->result_symbol == HEREDOC_BODY_START) return true;
                 break;
             default:
-                return !crossed_newline || scan_line_break(lexer);
+                return scan_after_whitespace(scanner, lexer, crossed_newline);
         }
     }
+}
+
+static bool scan_after_whitespace(Scanner *scanner, TSLexer *lexer, bool crossed_newline) {
+    if (lexer->lookahead == '#') {
+        if (scanner->continuation_comments > 0) {
+            scanner->continuation_comments--;
+            scan_line_comment(lexer);
+            lexer->mark_end(lexer);
+            lexer->result_symbol = LINE_COMMENT;
+            return true;
+        }
+        if (crossed_newline) return scan_comment_line_break(scanner, lexer);
+    }
+    return !crossed_newline || scan_line_break(lexer);
 }
 
 static bool scan_line_break(TSLexer *lexer) {
@@ -300,6 +324,31 @@ static bool scan_line_break(TSLexer *lexer) {
             return true;
     }
     lexer->result_symbol = LINE_BREAK;
+    return true;
+}
+
+static bool scan_comment_line_break(Scanner *scanner, TSLexer *lexer) {
+    TSLexerCheckpoint comment_start;
+    TSLexerCheckpoint comment_end;
+    lexer->get_checkpoint(lexer, &comment_start);
+    uint32_t comment_count = 0;
+    do {
+        bool range_boundary = scan_line_comment(lexer);
+        if (comment_count++ == 0) lexer->get_checkpoint(lexer, &comment_end);
+        if (range_boundary) break;
+        while (iswspace(lexer->lookahead) && !lexer->is_at_included_range_start(lexer)) advance(lexer);
+    } while (lexer->lookahead == '#' && !lexer->is_at_included_range_start(lexer));
+
+    bool continued = !lexer->is_at_included_range_start(lexer) &&
+                     (!scan_line_break(lexer) || lexer->result_symbol != LINE_BREAK);
+    if (continued) {
+        scanner->continuation_comments = comment_count - 1;
+        lexer->mark_start(lexer, &comment_start);
+        lexer->mark_end_at(lexer, &comment_end);
+        lexer->result_symbol = LINE_COMMENT;
+    } else {
+        lexer->result_symbol = LINE_BREAK;
+    }
     return true;
 }
 

@@ -29,13 +29,27 @@ test('recovers from an error on each line with bounded CPU growth', { timeout: 6
   expect(largeFastest).toBeLessThan(5_000_000);
 });
 
-function parseCpuTime(source: string): number {
+test('continues calls through comment chains with bounded CPU growth', { timeout: 60_000 }, () => {
+  const small = `receiver\n${'# comment\n'.repeat(500)}.call\n`;
+  const large = `receiver\n${'# comment\n'.repeat(5000)}.call\n`;
+  parseCpuTime(large, false);
+  let smallFastest = Infinity;
+  let largeFastest = Infinity;
+  for (let run = 0; run < 5; run++) {
+    smallFastest = Math.min(smallFastest, parseCpuTime(small, false));
+    largeFastest = Math.min(largeFastest, parseCpuTime(large, false));
+  }
+  expect(largeFastest / smallFastest).toBeLessThan(18);
+  expect(largeFastest).toBeLessThan(5_000_000);
+});
+
+function parseCpuTime(source: string, expectedError = true): number {
   const start = process.threadCpuUsage();
   const tree = parser.parse(source);
   const { system, user } = process.threadCpuUsage(start);
   if (!tree) throw new Error('The parser returned no tree');
   const { hasError } = tree.rootNode;
   tree.delete();
-  expect(hasError).toBe(true);
+  expect(hasError).toBe(expectedError);
   return system + user;
 }

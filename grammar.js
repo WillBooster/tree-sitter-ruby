@@ -650,7 +650,7 @@ module.exports = grammar({
 
     exception_variable: ($) => seq('=>', $._lhs),
 
-    body_statement: ($) => $._body_statement,
+    body_statement: ($) => choice(seq(repeat1($.comment), optional($._body_statement)), $._body_statement),
 
     _body_statement: ($) =>
       choice(

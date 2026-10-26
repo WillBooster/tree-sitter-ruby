@@ -1216,6 +1216,10 @@
           "named": true
         },
         {
+          "type": "comment",
+          "named": true
+        },
+        {
           "type": "else",
           "named": true
         },

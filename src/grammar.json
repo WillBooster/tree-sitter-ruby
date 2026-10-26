@@ -3892,8 +3892,37 @@
       ]
     },
     "body_statement": {
-      "type": "SYMBOL",
-      "name": "_body_statement"
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "SEQ",
+          "members": [
+            {
+              "type": "REPEAT1",
+              "content": {
+                "type": "SYMBOL",
+                "name": "comment"
+              }
+            },
+            {
+              "type": "CHOICE",
+              "members": [
+                {
+                  "type": "SYMBOL",
+                  "name": "_body_statement"
+                },
+                {
+                  "type": "BLANK"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "SYMBOL",
+          "name": "_body_statement"
+        }
+      ]
     },
     "_body_statement": {
       "type": "CHOICE",
