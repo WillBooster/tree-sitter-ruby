@@ -345,6 +345,47 @@ test.each([
   }
 });
 
+test.each([
+  ['rescue', 'def a\nrescue\n  0\n# c\nrescue\n  z\nend', 3],
+  ['ensure', 'begin\nrescue\n  0\n  # c\nensure\n  z\nend', 5],
+] as const)('reparses a %s keyword edit after comments and its undo', (keyword, before, keep) => {
+  const parser = new Parser().setLanguage(language);
+  const startIndex = before.lastIndexOf(keyword) + keep;
+  const removed = keyword.slice(keep);
+  const after = before.slice(0, startIndex) + before.slice(startIndex + removed.length);
+  let tree = parser.parse(before)!;
+  const original = tree.rootNode.toString();
+  try {
+    tree.edit(
+      new Edit({
+        startIndex,
+        oldEndIndex: startIndex + removed.length,
+        newEndIndex: startIndex,
+        startPosition: pointAt(before, startIndex),
+        oldEndPosition: pointAt(before, startIndex + removed.length),
+        newEndPosition: pointAt(after, startIndex),
+      })
+    );
+    tree = replaceTree(parser, tree, after);
+    expect(tree.rootNode.descendantsOfType('identifier').map(({ text }) => text)).toContain(keyword.slice(0, keep));
+    tree.edit(
+      new Edit({
+        startIndex,
+        oldEndIndex: startIndex,
+        newEndIndex: startIndex + removed.length,
+        startPosition: pointAt(after, startIndex),
+        oldEndPosition: pointAt(after, startIndex),
+        newEndPosition: pointAt(before, startIndex + removed.length),
+      })
+    );
+    tree = replaceTree(parser, tree, before);
+    expect(tree.rootNode.toString()).toBe(original);
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});
+
 function pointAt(source: string, index: number): Point {
   const prefix = source.slice(0, index);
   return { row: prefix.split('\n').length - 1, column: index - prefix.lastIndexOf('\n') - 1 };
