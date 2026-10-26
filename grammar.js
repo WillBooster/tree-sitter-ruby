@@ -91,6 +91,7 @@ module.exports = grammar({
     $._not_parenthesized,
     $._lambda_brace,
     $._heredoc_resume,
+    $._body_comment,
   ],
 
   extras: ($) => [$.comment, $.heredoc_body, $._heredoc_resume, /\s/, /\\\r?\n/],
@@ -650,7 +651,8 @@ module.exports = grammar({
 
     exception_variable: ($) => seq('=>', $._lhs),
 
-    body_statement: ($) => choice(seq(repeat1($.comment), optional($._body_statement)), $._body_statement),
+    body_statement: ($) =>
+      choice(seq(repeat1(alias($._body_comment, $.comment)), optional($._body_statement)), $._body_statement),
 
     _body_statement: ($) =>
       choice(

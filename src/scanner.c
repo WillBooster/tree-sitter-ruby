@@ -51,6 +51,7 @@ typedef enum {
     NOT_PARENTHESIZED,
     LAMBDA_BRACE,
     HEREDOC_RESUME,
+    BODY_COMMENT,
 
     NONE
 } TokenType;
@@ -80,7 +81,7 @@ typedef struct {
 
 typedef struct {
     bool has_leading_whitespace;
-    uint32_t continuation_comments;
+    bool continuation_comments;
     Array(Literal) literal_stack;
     Array(Heredoc) open_heredocs;
 } Scanner;
@@ -114,9 +115,8 @@ static inline void reset(Scanner *scanner) {
 
 static inline unsigned serialize(Scanner *scanner, char *buffer) {
     unsigned size = 0;
-    unsigned continuation_size = scanner->continuation_comments > 0 ? sizeof(scanner->continuation_comments) : 0;
 
-    if (scanner->literal_stack.size * 6 + 2 + continuation_size >= TREE_SITTER_SERIALIZATION_BUFFER_SIZE) {
+    if (scanner->literal_stack.size * 6 + 2 >= TREE_SITTER_SERIALIZATION_BUFFER_SIZE) {
         return 0;
     }
 
@@ -132,17 +132,17 @@ static inline unsigned serialize(Scanner *scanner, char *buffer) {
         }
         buffer[size++] = (char)(literal->nesting_depth & 0xFF);
         buffer[size++] = (char)(literal->nesting_depth >> 8);
-        buffer[size++] = (char)(literal->allows_interpolation | (literal->resume_after_heredoc << 1));
+        buffer[size++] = (char)(literal->allows_interpolation | (literal->resume_after_heredoc << 1) | ((i == 0 && scanner->continuation_comments) << 2));
     }
 
     buffer[size++] = (char)scanner->open_heredocs.size;
     for (uint32_t i = 0; i < scanner->open_heredocs.size; i++) {
         Heredoc *heredoc = array_get(&scanner->open_heredocs, i);
         if (heredoc->word.size > (UINT16_MAX >> 4) ||
-            size + 4 + heredoc->word.size + continuation_size > TREE_SITTER_SERIALIZATION_BUFFER_SIZE) {
+            size + 4 + heredoc->word.size > TREE_SITTER_SERIALIZATION_BUFFER_SIZE) {
             return 0;
         }
-        buffer[size++] = (char)(heredoc->end_word_indentation_allowed | (heredoc->squiggly << 1));
+        buffer[size++] = (char)(heredoc->end_word_indentation_allowed | (heredoc->squiggly << 1) | ((i == 0 && scanner->literal_stack.size == 0 && scanner->continuation_comments) << 2));
         buffer[size++] = (char)(heredoc->allows_interpolation | (heredoc->mid_line << 1));
         buffer[size++] = (char)(((heredoc->word.size >> 8) << 4) | (heredoc->finished << 3) | (heredoc->host_line_continued << 2) | (heredoc->newline_consumed << 1) | heredoc->started);
         buffer[size++] = (char)(heredoc->word.size & 0xFF);
@@ -150,8 +150,10 @@ static inline unsigned serialize(Scanner *scanner, char *buffer) {
         size += heredoc->word.size;
     }
 
-    if (continuation_size > 0) memcpy(&buffer[size], &scanner->continuation_comments, continuation_size);
-    return size + continuation_size;
+    if (scanner->literal_stack.size == 0 && scanner->open_heredocs.size == 0 && scanner->continuation_comments) {
+        buffer[size++] = 1;
+    }
+    return size;
 }
 
 static inline void deserialize(Scanner *scanner, const char *buffer, unsigned length) {
@@ -174,6 +176,7 @@ static inline void deserialize(Scanner *scanner, const char *buffer, unsigned le
         uint8_t literal_flags = (uint8_t)buffer[size++];
         literal.allows_interpolation = (literal_flags & 1) != 0;
         literal.resume_after_heredoc = (literal_flags & 2) != 0;
+        if (j == 0) scanner->continuation_comments = (literal_flags & 4) != 0;
         array_push(&scanner->literal_stack, literal);
     }
 
@@ -183,6 +186,7 @@ static inline void deserialize(Scanner *scanner, const char *buffer, unsigned le
         uint8_t indentation_flags = (uint8_t)buffer[size++];
         heredoc.end_word_indentation_allowed = (indentation_flags & 1) != 0;
         heredoc.squiggly = (indentation_flags & 2) != 0;
+        if (j == 0 && literal_depth == 0) scanner->continuation_comments = (indentation_flags & 4) != 0;
         uint8_t interpolation_flags = (uint8_t)buffer[size++];
         heredoc.allows_interpolation = (interpolation_flags & 1) != 0;
         heredoc.mid_line = (interpolation_flags & 2) != 0;
@@ -201,10 +205,7 @@ static inline void deserialize(Scanner *scanner, const char *buffer, unsigned le
         array_push(&scanner->open_heredocs, heredoc);
     }
 
-    if (size < length) {
-        memcpy(&scanner->continuation_comments, &buffer[size], sizeof(scanner->continuation_comments));
-        size += sizeof(scanner->continuation_comments);
-    }
+    if (size < length) scanner->continuation_comments = buffer[size++] != 0;
     assert(size == length);
 }
 
@@ -233,7 +234,8 @@ static inline uint32_t encode_utf8(int32_t codepoint, char *bytes);
 static inline void append_heredoc_character(String *word, int32_t codepoint);
 static inline bool scan_line_comment(TSLexer *lexer);
 static bool scan_comment_line_break(Scanner *scanner, TSLexer *lexer);
-static bool scan_after_whitespace(Scanner *scanner, TSLexer *lexer, bool crossed_newline);
+static bool scan_after_whitespace(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols, bool crossed_newline, bool crossed_line);
+static bool scan_continuation_comment(Scanner *scanner, TSLexer *lexer);
 static bool scan_splat(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols);
 static bool scan_word_token(TSLexer *lexer, const bool *valid_symbols, bool rescue_may_end_line);
 static bool scan_not_parentheses_gap(TSLexer *lexer);
@@ -247,6 +249,7 @@ static inline bool scan_whitespace(Scanner *scanner, TSLexer *lexer, const bool 
                                    bool *rescue_may_end_line) {
     bool heredoc_body_start_is_valid = has_pending_heredoc_body(scanner, valid_symbols);
     bool crossed_newline = false;
+    bool crossed_line = lexer->is_at_included_range_start(lexer);
 
     for (;;) {
         if (!valid_symbols[NO_LINE_BREAK] && valid_symbols[LINE_BREAK] && lexer->is_at_included_range_start(lexer)) {
@@ -270,6 +273,7 @@ static inline bool scan_whitespace(Scanner *scanner, TSLexer *lexer, const bool 
                     break;
                 }
             case '\n':
+                crossed_line = true;
                 if (heredoc_body_start_is_valid) {
                     return start_heredoc_body(scanner, lexer);
                 } else if (!valid_symbols[NO_LINE_BREAK] && valid_symbols[LINE_BREAK] && !crossed_newline) {
@@ -289,23 +293,40 @@ static inline bool scan_whitespace(Scanner *scanner, TSLexer *lexer, const bool 
                 if (lexer->result_symbol == HEREDOC_BODY_START) return true;
                 break;
             default:
-                return scan_after_whitespace(scanner, lexer, crossed_newline);
+                return scan_after_whitespace(scanner, lexer, valid_symbols, crossed_newline, crossed_line);
         }
     }
 }
 
-static bool scan_after_whitespace(Scanner *scanner, TSLexer *lexer, bool crossed_newline) {
+static bool scan_after_whitespace(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols,
+                                  bool crossed_newline, bool crossed_line) {
     if (lexer->lookahead == '#') {
-        if (scanner->continuation_comments > 0) {
-            scanner->continuation_comments--;
+        if (scanner->continuation_comments) return scan_continuation_comment(scanner, lexer);
+        if (crossed_newline) return scan_comment_line_break(scanner, lexer);
+        if (crossed_line && valid_symbols[BODY_COMMENT]) {
             scan_line_comment(lexer);
             lexer->mark_end(lexer);
-            lexer->result_symbol = LINE_COMMENT;
+            lexer->result_symbol = BODY_COMMENT;
             return true;
         }
-        if (crossed_newline) return scan_comment_line_break(scanner, lexer);
+    } else if (crossed_line && valid_symbols[BODY_COMMENT] && lexer->lookahead == '=' &&
+               lexer->get_column(lexer) == 0 && scan_embdoc(lexer)) {
+        lexer->mark_end(lexer);
+        lexer->result_symbol = BODY_COMMENT;
+        return true;
     }
     return !crossed_newline || scan_line_break(lexer);
+}
+
+static bool scan_continuation_comment(Scanner *scanner, TSLexer *lexer) {
+    bool range_boundary = scan_line_comment(lexer);
+    TSLexerCheckpoint comment_end;
+    lexer->get_checkpoint(lexer, &comment_end);
+    while (!range_boundary && iswspace(lexer->lookahead) && !lexer->is_at_included_range_start(lexer)) advance(lexer);
+    scanner->continuation_comments = !range_boundary && !lexer->is_at_included_range_start(lexer) && lexer->lookahead == '#';
+    lexer->mark_end_at(lexer, &comment_end);
+    lexer->result_symbol = LINE_COMMENT;
+    return true;
 }
 
 static bool scan_line_break(TSLexer *lexer) {
@@ -342,7 +363,7 @@ static bool scan_comment_line_break(Scanner *scanner, TSLexer *lexer) {
     bool continued = !lexer->is_at_included_range_start(lexer) &&
                      (!scan_line_break(lexer) || lexer->result_symbol != LINE_BREAK);
     if (continued) {
-        scanner->continuation_comments = comment_count - 1;
+        scanner->continuation_comments = comment_count > 1;
         lexer->mark_start(lexer, &comment_start);
         lexer->mark_end_at(lexer, &comment_end);
         lexer->result_symbol = LINE_COMMENT;

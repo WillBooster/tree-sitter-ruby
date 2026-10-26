@@ -3900,8 +3900,13 @@
             {
               "type": "REPEAT1",
               "content": {
-                "type": "SYMBOL",
-                "name": "comment"
+                "type": "ALIAS",
+                "content": {
+                  "type": "SYMBOL",
+                  "name": "_body_comment"
+                },
+                "named": true,
+                "value": "comment"
               }
             },
             {
@@ -16174,6 +16179,10 @@
     {
       "type": "SYMBOL",
       "name": "_heredoc_resume"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_body_comment"
     }
   ],
   "inline": [

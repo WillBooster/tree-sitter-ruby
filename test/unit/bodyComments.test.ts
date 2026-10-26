@@ -15,12 +15,16 @@ beforeAll(async () => {
 test.each([
   'def example',
   'def example(value)',
+  'def example;',
+  'def example(value);',
   'def example value',
   'def self.example',
   'class Example',
+  'class Example;',
   'class Example < Parent',
   'class << self',
   'module Example',
+  'module Example;',
 ])('owns leading comments in the body of %s', (header) => {
   const parser = new Parser().setLanguage(language);
   const query = new Query(language, '(body_statement (comment) @body.comment)');
@@ -235,6 +239,25 @@ test.each(['operator', 'comment'] as const)('invalidates continuation comments a
       '# one',
       '# two',
     ]);
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});
+
+test.each([1016, 1018])('preserves a %i-byte heredoc delimiter through continued interpolation comments', (length) => {
+  const word = 'A'.repeat(length);
+  const source = `x = <<~${word}\n  #{receiver\n  # c\n  # d\n  .call}\n${word}\nfoo\n`;
+  const parser = new Parser().setLanguage(language);
+  const tree = parser.parse(source)!;
+  try {
+    expect(tree.rootNode.hasError).toBe(false);
+    const body = tree.rootNode.descendantsOfType('heredoc_body')[0]!;
+    expect(body.descendantsOfType('comment').map(({ text }) => text)).toEqual(['# c', '# d']);
+    const end = body.descendantsOfType('heredoc_end')[0]!;
+    expect(end.text).toBe(word);
+    expect(end.endIndex).toBe(source.lastIndexOf(word) + word.length);
+    expect(tree.rootNode.lastNamedChild!.text).toBe('foo');
   } finally {
     tree.delete();
     parser.delete();

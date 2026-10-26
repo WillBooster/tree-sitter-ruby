@@ -32,6 +32,28 @@ test('recovers from an error on each line with bounded CPU growth', { timeout: 6
 test('continues calls through comment chains with bounded CPU growth', { timeout: 60_000 }, () => {
   const small = `receiver\n${'# comment\n'.repeat(500)}.call\n`;
   const large = `receiver\n${'# comment\n'.repeat(5000)}.call\n`;
+  checkCommentGrowth(small, large);
+});
+
+test.each([
+  ['method', 'def x\n', '  value\nend\n'],
+  ['class', 'class X\n', '  value\nend\n'],
+  ['module', 'module X\n', '  value\nend\n'],
+  ['do block', 'foo do\n', '  value\nend\n'],
+  ['comment-only method', 'def x\n', 'end\n'],
+  ['comment-only class', 'class X\n', 'end\n'],
+  [
+    'near-capacity heredoc interpolation',
+    `x = <<~${'A'.repeat(1018)}\n#{receiver\n`,
+    `.call}\n${'A'.repeat(1018)}\nfoo\n`,
+  ],
+] as const)('bounds leading comment growth in a %s', { timeout: 60_000 }, (_, header, tail) => {
+  const small = `${header}${'  # comment\n'.repeat(500)}${tail}`;
+  const large = `${header}${'  # comment\n'.repeat(5000)}${tail}`;
+  checkCommentGrowth(small, large);
+});
+
+function checkCommentGrowth(small: string, large: string): void {
   parseCpuTime(large, false);
   let smallFastest = Infinity;
   let largeFastest = Infinity;
@@ -41,7 +63,7 @@ test('continues calls through comment chains with bounded CPU growth', { timeout
   }
   expect(largeFastest / smallFastest).toBeLessThan(18);
   expect(largeFastest).toBeLessThan(5_000_000);
-});
+}
 
 function parseCpuTime(source: string, expectedError = true): number {
   const start = process.threadCpuUsage();
