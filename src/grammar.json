@@ -416,7 +416,7 @@
                 },
                 {
                   "type": "SYMBOL",
-                  "name": "_terminator"
+                  "name": "_body_separator"
                 },
                 {
                   "type": "CHOICE",
@@ -1348,7 +1348,7 @@
                 },
                 {
                   "type": "SYMBOL",
-                  "name": "_terminator"
+                  "name": "_body_separator"
                 }
               ]
             },
@@ -1427,7 +1427,7 @@
         },
         {
           "type": "SYMBOL",
-          "name": "_terminator"
+          "name": "_body_separator"
         },
         {
           "type": "CHOICE",
@@ -3892,8 +3892,46 @@
       ]
     },
     "body_statement": {
-      "type": "SYMBOL",
-      "name": "_body_statement"
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "SEQ",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "_body_comments"
+            },
+            {
+              "type": "CHOICE",
+              "members": [
+                {
+                  "type": "SYMBOL",
+                  "name": "_body_statement"
+                },
+                {
+                  "type": "BLANK"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "SYMBOL",
+          "name": "_body_statement"
+        }
+      ]
+    },
+    "_body_comments": {
+      "type": "REPEAT1",
+      "content": {
+        "type": "ALIAS",
+        "content": {
+          "type": "SYMBOL",
+          "name": "_body_comment"
+        },
+        "named": true,
+        "value": "comment"
+      }
     },
     "_body_statement": {
       "type": "CHOICE",
@@ -9980,6 +10018,18 @@
               "type": "SEQ",
               "members": [
                 {
+                  "type": "CHOICE",
+                  "members": [
+                    {
+                      "type": "SYMBOL",
+                      "name": "_body_comments"
+                    },
+                    {
+                      "type": "BLANK"
+                    }
+                  ]
+                },
+                {
                   "type": "FIELD",
                   "name": "parameters",
                   "content": {
@@ -15571,6 +15621,23 @@
         "value": ";"
       }
     },
+    "_body_separator": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "PREC_DYNAMIC",
+          "value": 1,
+          "content": {
+            "type": "SYMBOL",
+            "name": "_body_line_break"
+          }
+        },
+        {
+          "type": "STRING",
+          "value": ";"
+        }
+      ]
+    },
     "_terminator": {
       "type": "CHOICE",
       "members": [
@@ -16145,11 +16212,20 @@
     {
       "type": "SYMBOL",
       "name": "_heredoc_resume"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_body_comment"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_body_line_break"
     }
   ],
   "inline": [
     "_arg_rhs",
-    "_call_operator"
+    "_call_operator",
+    "_body_statement"
   ],
   "supertypes": [
     "_statement",

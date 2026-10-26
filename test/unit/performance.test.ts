@@ -29,13 +29,80 @@ test('recovers from an error on each line with bounded CPU growth', { timeout: 6
   expect(largeFastest).toBeLessThan(5_000_000);
 });
 
-function parseCpuTime(source: string): number {
+test('continues calls through comment chains with bounded CPU growth', { timeout: 60_000 }, () => {
+  const small = `receiver\n${'# comment\n'.repeat(500)}.call\n`;
+  const large = `receiver\n${'# comment\n'.repeat(5000)}.call\n`;
+  checkCommentGrowth(small, large);
+});
+
+test.each([
+  ['method', 'def x\n', '  value\nend\n'],
+  ['class', 'class X\n', '  value\nend\n'],
+  ['module', 'module X\n', '  value\nend\n'],
+  ['do block', 'foo do\n', '  value\nend\n'],
+  ['do block parameters', 'foo do\n', '|value|\n  value\nend\n'],
+  ['empty do block parameters', 'foo do\n', '||\n  value\nend\n'],
+  ['comment-only method', 'def x\n', 'end\n'],
+  ['comment-only class', 'class X\n', 'end\n'],
+  [
+    'near-capacity heredoc interpolation',
+    `x = <<~${'A'.repeat(1018)}\n#{class Nested < receiver\n`,
+    `.call\nend}\n${'A'.repeat(1018)}\nfoo\n`,
+  ],
+] as const)('bounds leading comment growth in a %s', { timeout: 60_000 }, (_, header, tail) => {
+  const small = `${header}${'  # comment\n'.repeat(500)}${tail}`;
+  const large = `${header}${'  # comment\n'.repeat(5000)}${tail}`;
+  checkCommentGrowth(small, large);
+});
+
+test.each(['|value|', '||'])(
+  'bounds embedded-document chains before block parameters %s',
+  { timeout: 60_000 },
+  (parameters) => {
+    const small = `foo do\n${'=begin\ncomment\n=end\n'.repeat(500)}${parameters}\nvalue\nend\n`;
+    const large = `foo do\n${'=begin\ncomment\n=end\n'.repeat(5000)}${parameters}\nvalue\nend\n`;
+    checkCommentGrowth(small, large);
+  }
+);
+
+function checkCommentGrowth(small: string, large: string): void {
+  parseCpuTime(large, false);
+  let smallFastest = Infinity;
+  let largeFastest = Infinity;
+  for (let run = 0; run < 5; run++) {
+    smallFastest = Math.min(smallFastest, parseCommentSample(small));
+    largeFastest = Math.min(largeFastest, parseCommentSample(large));
+  }
+  expect(largeFastest / smallFastest).toBeLessThan(18);
+  expect(largeFastest).toBeLessThan(5_000_000);
+}
+
+function parseCpuTime(source: string, expectedError = true): number {
   const start = process.threadCpuUsage();
   const tree = parser.parse(source);
   const { system, user } = process.threadCpuUsage(start);
   if (!tree) throw new Error('The parser returned no tree');
   const { hasError } = tree.rootNode;
   tree.delete();
-  expect(hasError).toBe(true);
+  expect(hasError).toBe(expectedError);
   return system + user;
+}
+
+function parseCommentSample(source: string): number {
+  const start = process.threadCpuUsage();
+  let parses = 0;
+  let microseconds = 0;
+  let errors = 0;
+  do {
+    const tree = parser.parse(source);
+    if (!tree) throw new Error('The parser returned no tree');
+    errors += Number(tree.rootNode.hasError);
+    tree.delete();
+    parses++;
+    const { system, user } = process.threadCpuUsage(start);
+    microseconds = system + user;
+  } while (microseconds < 50_000 && parses < 4096);
+  expect(errors).toBe(0);
+  expect(microseconds).toBeGreaterThan(0);
+  return microseconds / parses;
 }

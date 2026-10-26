@@ -45,7 +45,7 @@ const ALPHA_CHAR = /[^\x00-\x1F\s0-9:;`"'@$#.,|^&<=>+\-*/\\%?!~()\[\]{}]/;
 // oxlint-disable-next-line unicorn/prefer-module -- This package is CommonJS, so tree-sitter loads grammar.js as CommonJS.
 module.exports = grammar({
   name: 'ruby',
-  inline: ($) => [$._arg_rhs, $._call_operator],
+  inline: ($) => [$._arg_rhs, $._call_operator, $._body_statement],
   externals: ($) => [
     $._line_break,
     $._no_line_break,
@@ -91,6 +91,8 @@ module.exports = grammar({
     $._not_parenthesized,
     $._lambda_brace,
     $._heredoc_resume,
+    $._body_comment,
+    $._body_line_break,
   ],
 
   extras: ($) => [$.comment, $.heredoc_body, $._heredoc_resume, /\s/, /\\\r?\n/],
@@ -349,7 +351,7 @@ module.exports = grammar({
       seq(
         'class',
         field('name', choice($.constant, $.scope_resolution)),
-        choice(seq(field('superclass', $.superclass), $._terminator), optional($._terminator)),
+        choice(seq(field('superclass', $.superclass), $._body_separator), optional($._terminator)),
         optional(field('body', $.body_statement)),
         'end'
       ),
@@ -361,7 +363,7 @@ module.exports = grammar({
         'class',
         alias($._singleton_class_left_angle_left_langle, '<<'),
         field('value', $._arg),
-        $._terminator,
+        $._body_separator,
         optional(field('body', $.body_statement)),
         'end'
       ),
@@ -650,7 +652,9 @@ module.exports = grammar({
 
     exception_variable: ($) => seq('=>', $._lhs),
 
-    body_statement: ($) => $._body_statement,
+    body_statement: ($) => choice(seq($._body_comments, optional($._body_statement)), $._body_statement),
+
+    _body_comments: ($) => repeat1(alias($._body_comment, $.comment)),
 
     _body_statement: ($) =>
       choice(
@@ -1206,7 +1210,7 @@ module.exports = grammar({
       seq(
         'do',
         optional($._terminator),
-        optional(seq(field('parameters', $.block_parameters), optional($._terminator))),
+        optional(seq(optional($._body_comments), field('parameters', $.block_parameters), optional($._terminator))),
         optional(field('body', $.body_statement)),
         'end'
       ),
@@ -1706,6 +1710,8 @@ module.exports = grammar({
 
     empty_statement: () => prec(-1, ';'),
 
+    _body_separator: ($) => choice(prec.dynamic(1, $._body_line_break), ';'),
+
     _terminator: ($) => choice(prec.dynamic(1, $._line_break), ';'),
   },
 });
@@ -2115,7 +2121,7 @@ function methodRest($, bodyExpression) {
       ),
       seq(
         optional(field('parameters', alias($.bare_parameters, $.method_parameters))),
-        $._terminator,
+        $._body_separator,
         optional(field('body', $.body_statement)),
         'end'
       )

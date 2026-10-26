@@ -119,6 +119,39 @@ test('preserves the raw-data tail after an incomplete included heredoc', () => {
   }
 });
 
+test('owns comments at included body boundaries', () => {
+  const source = '<% def example %>\n<% # body %>\n<% value %>\n<% end %>';
+  const tree = parser.parse(source, undefined, { includedRanges: includedRanges(source) })!;
+  try {
+    expect(tree.rootNode.hasError).toBe(false);
+    const body = tree.rootNode.firstNamedChild!.childForFieldName('body')!;
+    const comment = body.firstNamedChild!;
+    expect(comment.type).toBe('comment');
+    expect(comment.text).toBe('# body ');
+    expect(comment.startIndex).toBe(source.indexOf('# body'));
+    expect(comment.endIndex).toBe(source.indexOf('%>', comment.startIndex));
+    expect(comment.nextNamedSibling?.text).toBe('value');
+  } finally {
+    tree.delete();
+  }
+});
+
+test.each(['|value|', '||'])('keeps included comments before block parameters %s', (parameters) => {
+  const source = `<% foo do %>\n<% # header %>\n<% ${parameters} %>\n<% # body %>\n<% value %>\n<% end %>`;
+  const tree = parser.parse(source, undefined, { includedRanges: includedRanges(source) })!;
+  try {
+    expect(tree.rootNode.hasError).toBe(false);
+    const block = tree.rootNode.firstNamedChild!.childForFieldName('block')!;
+    expect(block.childForFieldName('parameters')!.text).toBe(parameters);
+    expect(block.namedChildren[0]!.text).toBe('# header ');
+    expect(block.namedChildren[0]!.startIndex).toBe(source.indexOf('# header'));
+    expect(block.namedChildren[0]!.endIndex).toBe(source.indexOf('%>', source.indexOf('# header')));
+    expect(block.childForFieldName('body')!.namedChildren.map(({ text }) => text)).toEqual(['# body ', 'value']);
+  } finally {
+    tree.delete();
+  }
+});
+
 function includedRanges(source: string): Range[] {
   return [...source.matchAll(/<%([\s\S]*?)%>/g)].map((match) => {
     const startIndex = match.index + 2;
