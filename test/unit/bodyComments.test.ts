@@ -247,19 +247,100 @@ test.each(['operator', 'comment'] as const)('invalidates continuation comments a
 
 test.each([1016, 1018])('preserves a %i-byte heredoc delimiter through continued interpolation comments', (length) => {
   const word = 'A'.repeat(length);
-  const source = `x = <<~${word}\n  #{receiver\n  # c\n  # d\n  .call}\n${word}\nfoo\n`;
   const parser = new Parser().setLanguage(language);
-  const tree = parser.parse(source)!;
   try {
-    expect(tree.rootNode.hasError).toBe(false);
-    const body = tree.rootNode.descendantsOfType('heredoc_body')[0]!;
-    expect(body.descendantsOfType('comment').map(({ text }) => text)).toEqual(['# c', '# d']);
-    const end = body.descendantsOfType('heredoc_end')[0]!;
-    expect(end.text).toBe(word);
-    expect(end.endIndex).toBe(source.lastIndexOf(word) + word.length);
-    expect(tree.rootNode.lastNamedChild!.text).toBe('foo');
+    for (const expression of [
+      'receiver\n  # c\n  # d\n  .call',
+      'class Nested < receiver\n  # c\n  # d\n  .call\nend',
+    ]) {
+      const source = `x = <<~${word}\n  #{${expression}}\n${word}\nfoo\n`;
+      const tree = parser.parse(source)!;
+      try {
+        expect(tree.rootNode.hasError).toBe(false);
+        const body = tree.rootNode.descendantsOfType('heredoc_body')[0]!;
+        expect(body.descendantsOfType('comment').map(({ text }) => text)).toEqual(['# c', '# d']);
+        const end = body.descendantsOfType('heredoc_end')[0]!;
+        expect(end.text).toBe(word);
+        expect(end.endIndex).toBe(source.lastIndexOf(word) + word.length);
+        expect(tree.rootNode.lastNamedChild!.text).toBe('foo');
+      } finally {
+        tree.delete();
+      }
+    }
   } finally {
-    tree.delete();
+    parser.delete();
+  }
+});
+
+test.each([
+  ['def example', 'body_statement'],
+  ['class Example', 'body_statement'],
+  ['module Example', 'body_statement'],
+  ['foo do', 'body_statement'],
+  ['if ready', 'then'],
+  ['def example\n  work\nrescue StandardError', 'rescue'],
+] as const)('retains trailing comments inside %s', (header, ownerType) => {
+  const parser = new Parser().setLanguage(language);
+  const query = new Query(language, '(comment) @trailing');
+  try {
+    for (const newline of ['\n', '\r\n']) {
+      const source = `${header.replaceAll('\n', newline)}${newline}${ownerType === 'rescue' ? '' : `  first${newline}`}  # trailing${newline}end`;
+      const tree = parser.parse(source)!;
+      try {
+        expect(tree.rootNode.hasError).toBe(false);
+        const comment = tree.rootNode.descendantsOfType('comment')[0]!;
+        expect(comment.parent!.type).toBe(ownerType);
+        expect(comment.parent!.endIndex).toBe(comment.endIndex);
+        expect(query.captures(tree.rootNode).map(({ node }) => node.text)).toEqual([
+          `# trailing${newline.slice(0, -1)}`,
+        ]);
+      } finally {
+        tree.delete();
+      }
+    }
+  } finally {
+    query.delete();
+    parser.delete();
+  }
+});
+
+test.each([
+  ['def example', 'body_statement'],
+  ['if ready', 'then'],
+] as const)('preserves trailing ranges through edits in %s', (header, ownerType) => {
+  const parser = new Parser().setLanguage(language);
+  try {
+    for (const newline of ['\n', '\r\n']) {
+      const source = `${header}${newline}  first${newline}  # old${newline}end`;
+      const changed = source.replace('old', 'new trailing');
+      let tree = parser.parse(source)!;
+      try {
+        for (const [from, to, removed, inserted] of [
+          [source, changed, 'old', 'new trailing'],
+          [changed, source, 'new trailing', 'old'],
+        ]) {
+          const startIndex = from!.indexOf(removed!);
+          tree.edit(
+            new Edit({
+              startIndex,
+              oldEndIndex: startIndex + removed!.length,
+              newEndIndex: startIndex + inserted!.length,
+              startPosition: pointAt(from!, startIndex),
+              oldEndPosition: pointAt(from!, startIndex + removed!.length),
+              newEndPosition: pointAt(to!, startIndex + inserted!.length),
+            })
+          );
+          tree = replaceTree(parser, tree, to!);
+          const comment = tree.rootNode.descendantsOfType('comment')[0]!;
+          expect(comment.parent!.type).toBe(ownerType);
+          expect(comment.parent!.endIndex).toBe(comment.endIndex);
+          expect(comment.text).toBe(`# ${inserted}${newline.slice(0, -1)}`);
+        }
+      } finally {
+        tree.delete();
+      }
+    }
+  } finally {
     parser.delete();
   }
 });

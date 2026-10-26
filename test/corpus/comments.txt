@@ -119,3 +119,44 @@ comment
 ---
 
 (program (comment))
+
+====================================================
+Trailing comments remain in their bodies and handlers
+====================================================
+
+if ready
+  first
+  # if tail
+end
+def example
+  first
+  # method tail
+end
+class Example
+  first
+  # class tail
+end
+module Example
+  first
+  # module tail
+end
+foo do
+  first
+  # block tail
+end
+def recovered
+  first
+rescue StandardError
+  # handler tail
+end
+
+---
+
+(program
+  (if (identifier) (then (identifier) (comment)))
+  (method (identifier) (body_statement (identifier) (comment)))
+  (class (constant) (body_statement (identifier) (comment)))
+  (module (constant) (body_statement (identifier) (comment)))
+  (call (identifier) (do_block (body_statement (identifier) (comment))))
+  (method (identifier)
+    (body_statement (identifier) (rescue (exceptions (constant)) (comment)))))

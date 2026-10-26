@@ -52,6 +52,7 @@ typedef enum {
     LAMBDA_BRACE,
     HEREDOC_RESUME,
     BODY_COMMENT,
+    BODY_LINE_BREAK,
 
     NONE
 } TokenType;
@@ -250,9 +251,10 @@ static inline bool scan_whitespace(Scanner *scanner, TSLexer *lexer, const bool 
     bool heredoc_body_start_is_valid = has_pending_heredoc_body(scanner, valid_symbols);
     bool crossed_newline = false;
     bool crossed_line = lexer->is_at_included_range_start(lexer);
+    bool line_break_valid = valid_symbols[LINE_BREAK] || valid_symbols[BODY_LINE_BREAK];
 
     for (;;) {
-        if (!valid_symbols[NO_LINE_BREAK] && valid_symbols[LINE_BREAK] && lexer->is_at_included_range_start(lexer)) {
+        if (!valid_symbols[NO_LINE_BREAK] && line_break_valid && lexer->is_at_included_range_start(lexer)) {
             lexer->mark_end(lexer);
             lexer->result_symbol = LINE_BREAK;
             return true;
@@ -276,7 +278,7 @@ static inline bool scan_whitespace(Scanner *scanner, TSLexer *lexer, const bool 
                 crossed_line = true;
                 if (heredoc_body_start_is_valid) {
                     return start_heredoc_body(scanner, lexer);
-                } else if (!valid_symbols[NO_LINE_BREAK] && valid_symbols[LINE_BREAK] && !crossed_newline) {
+                } else if (!valid_symbols[NO_LINE_BREAK] && line_break_valid && !crossed_newline) {
                     lexer->mark_end(lexer);
                     // Keep the saved LINE_BREAK endpoint, but exclude this newline from a following external token.
                     lexer->advance(lexer, true);
@@ -284,7 +286,7 @@ static inline bool scan_whitespace(Scanner *scanner, TSLexer *lexer, const bool 
                 } else {
                     // After a hash shorthand (`foo key:`) or `..`, the operand may follow on the next line unless that
                     // line starts a `rescue` clause.
-                    *rescue_may_end_line = valid_symbols[NO_LINE_BREAK] && valid_symbols[LINE_BREAK];
+                    *rescue_may_end_line = valid_symbols[NO_LINE_BREAK] && line_break_valid;
                     skip(scanner, lexer);
                 }
                 break;
@@ -302,7 +304,10 @@ static bool scan_after_whitespace(Scanner *scanner, TSLexer *lexer, const bool *
                                   bool crossed_newline, bool crossed_line) {
     if (lexer->lookahead == '#') {
         if (scanner->continuation_comments) return scan_continuation_comment(scanner, lexer);
-        if (crossed_newline) return scan_comment_line_break(scanner, lexer);
+        if (crossed_newline && (valid_symbols[BODY_LINE_BREAK] || valid_symbols[BODY_COMMENT])) {
+            return scan_comment_line_break(scanner, lexer);
+        }
+        if (crossed_newline) return true;
         if (crossed_line && valid_symbols[BODY_COMMENT]) {
             scan_line_comment(lexer);
             lexer->mark_end(lexer);
@@ -1626,7 +1631,11 @@ void *tree_sitter_ruby_external_scanner_create() {
 
 bool tree_sitter_ruby_external_scanner_scan(void *payload, TSLexer *lexer, const bool *valid_symbols) {
     Scanner *scanner = (Scanner *)payload;
-    return scan(scanner, lexer, valid_symbols);
+    bool scanned = scan(scanner, lexer, valid_symbols);
+    if (scanned && lexer->result_symbol == LINE_BREAK && valid_symbols[BODY_LINE_BREAK]) {
+        lexer->result_symbol = BODY_LINE_BREAK;
+    }
+    return scanned;
 }
 
 unsigned tree_sitter_ruby_external_scanner_serialize(void *payload, char *buffer) {

@@ -92,6 +92,7 @@ module.exports = grammar({
     $._lambda_brace,
     $._heredoc_resume,
     $._body_comment,
+    $._body_line_break,
   ],
 
   extras: ($) => [$.comment, $.heredoc_body, $._heredoc_resume, /\s/, /\\\r?\n/],
@@ -350,7 +351,7 @@ module.exports = grammar({
       seq(
         'class',
         field('name', choice($.constant, $.scope_resolution)),
-        choice(seq(field('superclass', $.superclass), $._terminator), optional($._terminator)),
+        choice(seq(field('superclass', $.superclass), $._body_separator), optional($._terminator)),
         optional(field('body', $.body_statement)),
         'end'
       ),
@@ -362,7 +363,7 @@ module.exports = grammar({
         'class',
         alias($._singleton_class_left_angle_left_langle, '<<'),
         field('value', $._arg),
-        $._terminator,
+        $._body_separator,
         optional(field('body', $.body_statement)),
         'end'
       ),
@@ -1708,6 +1709,8 @@ module.exports = grammar({
 
     empty_statement: () => prec(-1, ';'),
 
+    _body_separator: ($) => choice(prec.dynamic(1, $._body_line_break), ';'),
+
     _terminator: ($) => choice(prec.dynamic(1, $._line_break), ';'),
   },
 });
@@ -2117,7 +2120,7 @@ function methodRest($, bodyExpression) {
       ),
       seq(
         optional(field('parameters', alias($.bare_parameters, $.method_parameters))),
-        $._terminator,
+        $._body_separator,
         optional(field('body', $.body_statement)),
         'end'
       )

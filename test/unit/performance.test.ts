@@ -44,8 +44,8 @@ test.each([
   ['comment-only class', 'class X\n', 'end\n'],
   [
     'near-capacity heredoc interpolation',
-    `x = <<~${'A'.repeat(1018)}\n#{receiver\n`,
-    `.call}\n${'A'.repeat(1018)}\nfoo\n`,
+    `x = <<~${'A'.repeat(1018)}\n#{class Nested < receiver\n`,
+    `.call\nend}\n${'A'.repeat(1018)}\nfoo\n`,
   ],
 ] as const)('bounds leading comment growth in a %s', { timeout: 60_000 }, (_, header, tail) => {
   const small = `${header}${'  # comment\n'.repeat(500)}${tail}`;
