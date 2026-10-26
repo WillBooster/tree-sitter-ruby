@@ -622,10 +622,12 @@ static inline bool scan_literal_start_or_assignment(Scanner *scanner, TSLexer *l
             };
             literal->type = STRING_START;
             literal->allows_interpolation = true;
+            bool has_type_prefix = false;
             for (unsigned i = 0; i < sizeof(kinds) / sizeof(kinds[0]); i++) {
                 if (lexer->lookahead == kinds[i].prefix) {
                     literal->type = kinds[i].type;
                     literal->allows_interpolation = kinds[i].allows_interpolation;
+                    has_type_prefix = true;
                     advance(lexer);
                     break;
                 }
@@ -660,10 +662,7 @@ static inline bool scan_literal_start_or_assignment(Scanner *scanner, TSLexer *l
                 case '\n':
                 case ' ':
                 case '\t':
-                    // If the `/` operator is valid, then so is the `%` operator, which means
-                    // that a `%` followed by whitespace should be considered an operator,
-                    // not a percent string.
-                    if (binary_operator_valid) {
+                    if (binary_operator_valid && (!has_type_prefix || !scanner->has_leading_whitespace)) {
                         return false;
                     }
                     literal->open_delimiter = lexer->lookahead;
@@ -708,6 +707,7 @@ static inline bool scan_literal_start_or_assignment(Scanner *scanner, TSLexer *l
             advance(lexer);
             if (literal->close_delimiter == '\r' && lexer->lookahead == '\n' &&
                 !lexer->is_at_included_range_start(lexer)) {
+                if (binary_operator_valid && literal->type == REGEX_START) return false;
                 literal->open_delimiter = literal->close_delimiter = '\n';
                 advance(lexer);
             }
