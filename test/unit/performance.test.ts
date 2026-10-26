@@ -36,8 +36,8 @@ test('continues calls through comment chains with bounded CPU growth', { timeout
   let smallFastest = Infinity;
   let largeFastest = Infinity;
   for (let run = 0; run < 5; run++) {
-    smallFastest = Math.min(smallFastest, parseCpuTime(small, false));
-    largeFastest = Math.min(largeFastest, parseCpuTime(large, false));
+    smallFastest = Math.min(smallFastest, parseCommentSample(small));
+    largeFastest = Math.min(largeFastest, parseCommentSample(large));
   }
   expect(largeFastest / smallFastest).toBeLessThan(18);
   expect(largeFastest).toBeLessThan(5_000_000);
@@ -52,4 +52,23 @@ function parseCpuTime(source: string, expectedError = true): number {
   tree.delete();
   expect(hasError).toBe(expectedError);
   return system + user;
+}
+
+function parseCommentSample(source: string): number {
+  const start = process.threadCpuUsage();
+  let parses = 0;
+  let microseconds = 0;
+  let errors = 0;
+  do {
+    const tree = parser.parse(source);
+    if (!tree) throw new Error('The parser returned no tree');
+    errors += Number(tree.rootNode.hasError);
+    tree.delete();
+    parses++;
+    const { system, user } = process.threadCpuUsage(start);
+    microseconds = system + user;
+  } while (microseconds < 50_000 && parses < 4096);
+  expect(errors).toBe(0);
+  expect(microseconds).toBeGreaterThan(0);
+  return microseconds / parses;
 }
