@@ -11,6 +11,7 @@ _Static_assert(TREE_SITTER_SERIALIZATION_BUFFER_SIZE <= (UINT16_MAX >> 4),
 typedef enum {
     LINE_BREAK,
     NO_LINE_BREAK,
+    JUMP_OPERAND,
 
     SIMPLE_SYMBOL,
     STRING_START,
@@ -541,14 +542,15 @@ static inline bool scan_symbol_identifier(TSLexer *lexer) {
 
 // NO_LINE_BREAK is valid after `..` and `...` (an endless range) and after a hash shorthand (`foo key:`), where Ruby
 // reads an operand on the same or the next line although binary operators are valid because the expression may
-// already be complete. STRING_CONTENT is valid along with STRING_START only in error recovery.
-static inline bool expects_operand_across_line_break(const bool *valid_symbols) {
-    return valid_symbols[NO_LINE_BREAK] && !valid_symbols[STRING_CONTENT];
+// already be complete. JUMP_OPERAND marks the same-line operand after return, break, and next without suppressing
+// their terminating newline. STRING_CONTENT is valid along with STRING_START only in error recovery.
+static inline bool expects_literal_operand(const bool *valid_symbols) {
+    return (valid_symbols[NO_LINE_BREAK] || valid_symbols[JUMP_OPERAND]) && !valid_symbols[STRING_CONTENT];
 }
 
 static inline bool scan_literal_start_or_assignment(Scanner *scanner, TSLexer *lexer, Literal *literal, const bool *valid_symbols) {
     const bool binary_operator_valid =
-        valid_symbols[FORWARD_SLASH] && !expects_operand_across_line_break(valid_symbols);
+        valid_symbols[FORWARD_SLASH] && !expects_literal_operand(valid_symbols);
 
     switch (lexer->lookahead) {
         case '"':
@@ -708,6 +710,7 @@ static inline bool scan_literal_start_or_assignment(Scanner *scanner, TSLexer *l
             advance(lexer);
             if (literal->close_delimiter == '\r' && lexer->lookahead == '\n' &&
                 !lexer->is_at_included_range_start(lexer)) {
+                if (valid_symbols[JUMP_OPERAND] && literal->type == REGEX_START) return false;
                 literal->open_delimiter = literal->close_delimiter = '\n';
                 advance(lexer);
             }
@@ -1277,10 +1280,9 @@ static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symb
         literal.nesting_depth = 1;
 
         if (lexer->lookahead == '<') {
-            // After an operand, `<<` is a shift unless it starts a command argument (`foo <<EOS`). Without whitespace,
-            // it still starts the argument of `return`, `break`, or `next`, whose states, unlike those after a name or a
-            // call, admit no operator assignment.
-            if (valid_symbols[BINARY_STAR] && !expects_operand_across_line_break(valid_symbols) &&
+            // A completed operand needs a separating gap for a heredoc command argument (`foo <<EOS`);
+            // explicit operand contexts also allow an adjacent heredoc (`return<<EOS`).
+            if (valid_symbols[BINARY_STAR] && !expects_literal_operand(valid_symbols) &&
                 (!valid_symbols[SPLAT_STAR] || (!scanner->has_leading_whitespace && valid_symbols[MODULO_ASSIGNMENT]))) {
                 return false;
             }
