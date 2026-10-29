@@ -239,3 +239,17 @@ test.each([
     parser.delete();
   }
 });
+
+test.each(['def a', 'class A', 'module A', 'foo do', 'class << f'])(
+  'parses %s with comments before its last statement',
+  (header) => {
+    const parser = new Parser().setLanguage(language);
+    const tree = parser.parse(`${header}\n  # doc\n  x; # note\n  d\nend`)!;
+    try {
+      expect(tree.rootNode.hasError).toBe(false);
+    } finally {
+      tree.delete();
+      parser.delete();
+    }
+  }
+);

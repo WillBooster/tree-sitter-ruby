@@ -19,16 +19,17 @@ test.each([
   ['single quoted', "<<'EOS'", '', false],
   ['double quoted', '<<"EOS"', '', true],
   ['command', '<<`EOS`', '', true],
-] as const)('keeps blank-suffixed %s terminators in the body', (_, opening, indentation, interpolates) => {
+] as const)('distinguishes blank-suffixed %s terminators from exact ones', (_, opening, indentation, interpolates) => {
   const parser = new Parser().setLanguage(language);
   try {
     for (const newline of ['\n', '\r\n']) {
-      for (const suffix of [' ', '\t', ' \t ']) {
+      for (const suffix of ['', ' ', '\t', ' \t ']) {
         const header = `value = ${opening}`;
         const source = `${header}${newline}${indentation}EOS${suffix}${newline}#{value}${newline}${indentation}EOS${newline}following = 1`;
         const tree = parser.parse(source)!;
         try {
-          expectHeredoc(tree, source, header.length, source.lastIndexOf('EOS'), interpolates ? ['#{value}'] : []);
+          const endStart = suffix === '' ? source.indexOf('EOS', header.length) : source.lastIndexOf('EOS');
+          expectHeredoc(tree, source, header.length, endStart, interpolates && suffix !== '' ? ['#{value}'] : []);
         } finally {
           tree.delete();
         }
@@ -150,25 +151,30 @@ test.each(['\n', '\r\n'])('retains interior token ranges in heredocs with %j', (
   const parser = new Parser().setLanguage(language);
   const label = String.raw`A#{name}\n`;
   const header = `value = <<"${label}"`;
-  const source = `${header}${newline}${label} ${newline}${label}${newline}following = 1`;
-  const tree = parser.parse(source)!;
   try {
-    expect(tree.rootNode.hasError).toBe(false);
-    const body = tree.rootNode.descendantsOfType('heredoc_body')[0]!;
-    const interpolations = body.descendantsOfType('interpolation');
-    const escapes = body.descendantsOfType('escape_sequence');
-    expect(interpolations.map(({ text }) => text)).toEqual(['#{name}']);
-    expect(escapes.map(({ text }) => text)).toEqual([String.raw`\n`]);
-    expect(interpolations[0]!.startIndex).toBe(source.indexOf('#{', header.length));
-    expect(escapes[0]!.startIndex).toBe(interpolations[0]!.endIndex);
-    const end = body.descendantsOfType('heredoc_end')[0]!;
-    expect(end.text).toBe(label);
-    expect(end.startIndex).toBe(source.lastIndexOf(label));
-    expect(body.text).toBe(source.slice(header.length, end.endIndex));
-    expect(body.endPosition).toEqual(positionAt(source, end.endIndex));
-    expect(tree.rootNode.lastNamedChild?.text).toBe('following = 1');
+    for (const name of ['name', 'other']) {
+      const source = `${header}${newline}${label.replace('name', name)} ${newline}${label}${newline}following = 1`;
+      const tree = parser.parse(source)!;
+      try {
+        expect(tree.rootNode.hasError).toBe(false);
+        const body = tree.rootNode.descendantsOfType('heredoc_body')[0]!;
+        const interpolations = body.descendantsOfType('interpolation');
+        const escapes = body.descendantsOfType('escape_sequence');
+        expect(interpolations.map(({ text }) => text)).toEqual([`#{${name}}`]);
+        expect(escapes.map(({ text }) => text)).toEqual([String.raw`\n`]);
+        expect(interpolations[0]!.startIndex).toBe(source.indexOf('#{', header.length));
+        expect(escapes[0]!.startIndex).toBe(interpolations[0]!.endIndex);
+        const end = body.descendantsOfType('heredoc_end')[0]!;
+        expect(end.text).toBe(label);
+        expect(end.startIndex).toBe(source.lastIndexOf(label));
+        expect(body.text).toBe(source.slice(header.length, end.endIndex));
+        expect(body.endPosition).toEqual(positionAt(source, end.endIndex));
+        expect(tree.rootNode.lastNamedChild?.text).toBe('following = 1');
+      } finally {
+        tree.delete();
+      }
+    }
   } finally {
-    tree.delete();
     parser.delete();
   }
 });
