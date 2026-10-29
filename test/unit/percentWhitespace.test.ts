@@ -22,7 +22,7 @@ test.each([
   const parser = new Parser().setLanguage(language);
   const query = new Query(language, '(call receiver: [(string) (regex) (subshell) (delimited_symbol)] @literal)');
   try {
-    for (const delimiter of kind === 'r' ? [' ', '\t', '\n', '\r'] : [' ', '\t', '\n', '\r', '\r\n']) {
+    for (const delimiter of [' ', '\t', '\r']) {
       const literal = `%${kind}${delimiter}abc${delimiter}`;
       const source = `sink ${literal}.size, 7\nfollowing`;
       const tree = parser.parse(source)!;
@@ -99,7 +99,7 @@ test('preserves interpolation and queued heredocs inside typed command literals'
       ['sink %s abc#{1} , 7\nfollowing', 0],
       ['sink %x abc#{1} , 7\nfollowing', 1],
       ['sink %r abc#{1} , 7\nfollowing', 1],
-      ['value = [<<EOS, (sink %Q\nbody\nEOS\ntail#{1}\n)]\nfollowing', 1],
+      ['value = [<<EOS, (sink %Q head\nbody\nEOS\ntail#{1} )]\nfollowing', 1],
     ];
     for (const [source, interpolations] of sources) {
       const tree = parser.parse(source)!;
@@ -110,8 +110,29 @@ test('preserves interpolation and queued heredocs inside typed command literals'
         );
         expect(tree.rootNode.lastNamedChild!.text).toBe('following');
         expect(tree.rootNode.descendantsOfType('heredoc_body').map(({ text }) => text)).toEqual(
-          source.includes('<<EOS') ? ['body\nEOS'] : []
+          source.includes('<<EOS') ? ['\nbody\nEOS'] : []
         );
+      } finally {
+        tree.delete();
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});
+
+test.each(['q', 'Q', 'x', 's', 'r'])('keeps %%%s followed by a line break after a name as modulo', (kind) => {
+  const parser = new Parser().setLanguage(language);
+  try {
+    for (const lineBreak of ['\n', '\r\n']) {
+      const source = `value = sink %${kind}${lineBreak}abc${lineBreak}`;
+      const tree = parser.parse(source)!;
+      try {
+        expect(tree.rootNode.hasError, source).toBe(false);
+        expect(tree.rootNode.namedChildren.map(({ type }) => type)).toEqual(['assignment', 'identifier']);
+        const binary = tree.rootNode.firstNamedChild!.childForFieldName('right')!;
+        expect(binary.type).toBe('binary');
+        expect(binary.text).toBe(`sink %${kind}`);
       } finally {
         tree.delete();
       }

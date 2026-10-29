@@ -1601,8 +1601,25 @@
       "type": "PREC_LEFT",
       "value": 0,
       "content": {
-        "type": "STRING",
-        "value": "return"
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "STRING",
+            "value": "return"
+          },
+          {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "_jump_operand"
+              },
+              {
+                "type": "BLANK"
+              }
+            ]
+          }
+        ]
       }
     },
     "yield": {
@@ -1644,8 +1661,17 @@
             "type": "CHOICE",
             "members": [
               {
-                "type": "SYMBOL",
-                "name": "argument_list"
+                "type": "CHOICE",
+                "members": [
+                  {
+                    "type": "SYMBOL",
+                    "name": "argument_list"
+                  },
+                  {
+                    "type": "SYMBOL",
+                    "name": "_jump_operand"
+                  }
+                ]
               },
               {
                 "type": "BLANK"
@@ -1669,8 +1695,17 @@
             "type": "CHOICE",
             "members": [
               {
-                "type": "SYMBOL",
-                "name": "argument_list"
+                "type": "CHOICE",
+                "members": [
+                  {
+                    "type": "SYMBOL",
+                    "name": "argument_list"
+                  },
+                  {
+                    "type": "SYMBOL",
+                    "name": "_jump_operand"
+                  }
+                ]
               },
               {
                 "type": "BLANK"
@@ -16060,6 +16095,10 @@
     {
       "type": "SYMBOL",
       "name": "_no_line_break"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_jump_operand"
     },
     {
       "type": "SYMBOL",
