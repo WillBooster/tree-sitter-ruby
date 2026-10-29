@@ -2850,3 +2850,42 @@ following = 1
     (heredoc_body (heredoc_content) (heredoc_end))
     (true))
   (assignment (identifier) (integer)))
+
+=========================================
+typed whitespace delimiters in command arguments
+=========================================
+
+foo %q abc , 1
+foo %Q abc 
+foo %x abc 
+foo %s abc 
+foo %r abc i
+p % value
+p %= value
+
+---
+
+(program
+  (call
+    (identifier)
+    (argument_list
+      (string (string_content))
+      (integer)))
+  (call
+    (identifier)
+    (argument_list
+      (string (string_content))))
+  (call
+    (identifier)
+    (argument_list
+      (subshell (string_content))))
+  (call
+    (identifier)
+    (argument_list
+      (delimited_symbol (string_content))))
+  (call
+    (identifier)
+    (argument_list
+      (regex (string_content))))
+  (binary (identifier) (identifier))
+  (operator_assignment (identifier) (identifier)))

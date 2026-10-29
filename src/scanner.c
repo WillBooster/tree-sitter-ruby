@@ -548,6 +548,32 @@ static inline bool expects_literal_operand(const bool *valid_symbols) {
     return (valid_symbols[NO_LINE_BREAK] || valid_symbols[JUMP_OPERAND]) && !valid_symbols[STRING_CONTENT];
 }
 
+// Returns 0 when `delimiter` cannot open a percent literal. After a name, `foo %q abc ` is a command argument,
+// whereas `foo %q\n` stays modulo: Ruby chooses between them by whether `foo` is a local variable, which the scanner
+// cannot see, and a literal would swallow the following line.
+static inline int32_t percent_close_delimiter(int32_t delimiter, bool binary_operator_valid, bool spaced_literal_prefix) {
+    switch (delimiter) {
+        case '(':
+            return ')';
+        case '[':
+            return ']';
+        case '{':
+            return '}';
+        case '<':
+            return '>';
+        case '\n':
+            return binary_operator_valid ? 0 : delimiter;
+        case '\r':
+        case ' ':
+        case '\t':
+            return binary_operator_valid && !spaced_literal_prefix ? 0 : delimiter;
+        default:
+            // strchr would also match the terminating NUL (end of input) and truncate wide characters.
+            return delimiter > 0 && delimiter < 128 && strchr("|!#/\\@$%^&*)]}>=+-~`,.?:;_\"'", delimiter) ? delimiter
+                                                                                                       : 0;
+    }
+}
+
 static inline bool scan_literal_start_or_assignment(Scanner *scanner, TSLexer *lexer, Literal *literal, const bool *valid_symbols) {
     const bool binary_operator_valid =
         valid_symbols[FORWARD_SLASH] && !expects_literal_operand(valid_symbols);
@@ -624,10 +650,13 @@ static inline bool scan_literal_start_or_assignment(Scanner *scanner, TSLexer *l
             };
             literal->type = STRING_START;
             literal->allows_interpolation = true;
+            bool spaced_literal_prefix = false;
             for (unsigned i = 0; i < sizeof(kinds) / sizeof(kinds[0]); i++) {
                 if (lexer->lookahead == kinds[i].prefix) {
                     literal->type = kinds[i].type;
                     literal->allows_interpolation = kinds[i].allows_interpolation;
+                    // Ruby rejects whitespace-delimited word and symbol lists, so only other kinds may follow a name.
+                    spaced_literal_prefix = kinds[i].type != STRING_ARRAY_START && kinds[i].type != SYMBOL_ARRAY_START;
                     advance(lexer);
                     break;
                 }
@@ -637,80 +666,17 @@ static inline bool scan_literal_start_or_assignment(Scanner *scanner, TSLexer *l
                 return false;
             }
 
-            switch (lexer->lookahead) {
-                case '(':
-                    literal->open_delimiter = '(';
-                    literal->close_delimiter = ')';
-                    break;
-
-                case '[':
-                    literal->open_delimiter = '[';
-                    literal->close_delimiter = ']';
-                    break;
-
-                case '{':
-                    literal->open_delimiter = '{';
-                    literal->close_delimiter = '}';
-                    break;
-
-                case '<':
-                    literal->open_delimiter = '<';
-                    literal->close_delimiter = '>';
-                    break;
-
-                case '\r':
-                case '\n':
-                case ' ':
-                case '\t':
-                    // If the `/` operator is valid, then so is the `%` operator, which means
-                    // that a `%` followed by whitespace should be considered an operator,
-                    // not a percent string.
-                    if (binary_operator_valid) {
-                        return false;
-                    }
-                    literal->open_delimiter = lexer->lookahead;
-                    literal->close_delimiter = lexer->lookahead;
-                    break;
-
-                case '|':
-                case '!':
-                case '#':
-                case '/':
-                case '\\':
-                case '@':
-                case '$':
-                case '%':
-                case '^':
-                case '&':
-                case '*':
-                case ')':
-                case ']':
-                case '}':
-                case '>':
-                case '=':
-                case '+':
-                case '-':
-                case '~':
-                case '`':
-                case ',':
-                case '.':
-                case '?':
-                case ':':
-                case ';':
-                case '_':
-                case '"':
-                case '\'':
-                    literal->open_delimiter = lexer->lookahead;
-                    literal->close_delimiter = lexer->lookahead;
-                    break;
-                default:
-                    return false;
+            literal->open_delimiter = lexer->lookahead;
+            literal->close_delimiter = percent_close_delimiter(
+                lexer->lookahead, binary_operator_valid, spaced_literal_prefix && scanner->has_leading_whitespace);
+            if (literal->close_delimiter == 0) {
+                return false;
             }
 
             advance(lexer);
             if (literal->close_delimiter == '\r' && lexer->lookahead == '\n' &&
                 !lexer->is_at_included_range_start(lexer)) {
-                if (valid_symbols[JUMP_OPERAND] && literal->type == REGEX_START) return false;
+                if (binary_operator_valid || (valid_symbols[JUMP_OPERAND] && literal->type == REGEX_START)) return false;
                 literal->open_delimiter = literal->close_delimiter = '\n';
                 advance(lexer);
             }
