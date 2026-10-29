@@ -142,6 +142,23 @@ test.each(['q', 'Q', 'x', 's', 'r'])('keeps %%%s followed by a line break after 
   }
 });
 
+test.each(['w', 'W', 'i', 'I'])('keeps %%%s followed by a space after a name as modulo', (kind) => {
+  const parser = new Parser().setLanguage(language);
+  const source = `puts n if n %${kind} == 1\nfollowing`;
+  const tree = parser.parse(source)!;
+  try {
+    expect(tree.rootNode.hasError, source).toBe(false);
+    expect(tree.rootNode.descendantsOfType('binary').map(({ text }) => text)).toEqual([
+      `n %${kind} == 1`,
+      `n %${kind}`,
+    ]);
+    expect(tree.rootNode.lastNamedChild!.text).toBe('following');
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});
+
 test.each(['w', 'W', 'i', 'I'])('does not terminate a whitespace-delimited %%%s list at word separators', (kind) => {
   const parser = new Parser().setLanguage(language);
   try {

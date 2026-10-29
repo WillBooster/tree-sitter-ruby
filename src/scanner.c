@@ -551,7 +551,7 @@ static inline bool expects_literal_operand(const bool *valid_symbols) {
 // Returns 0 when `delimiter` cannot open a percent literal. After a name, `foo %q abc ` is a command argument,
 // whereas `foo %q\n` stays modulo: Ruby chooses between them by whether `foo` is a local variable, which the scanner
 // cannot see, and a literal would swallow the following line.
-static inline int32_t percent_close_delimiter(int32_t delimiter, bool binary_operator_valid, bool spaced_type_prefix) {
+static inline int32_t percent_close_delimiter(int32_t delimiter, bool binary_operator_valid, bool spaced_literal_prefix) {
     switch (delimiter) {
         case '(':
             return ')';
@@ -566,7 +566,7 @@ static inline int32_t percent_close_delimiter(int32_t delimiter, bool binary_ope
         case '\r':
         case ' ':
         case '\t':
-            return binary_operator_valid && !spaced_type_prefix ? 0 : delimiter;
+            return binary_operator_valid && !spaced_literal_prefix ? 0 : delimiter;
         default:
             // strchr would also match the terminating NUL (end of input) and truncate wide characters.
             return delimiter > 0 && delimiter < 128 && strchr("|!#/\\@$%^&*)]}>=+-~`,.?:;_\"'", delimiter) ? delimiter
@@ -650,12 +650,13 @@ static inline bool scan_literal_start_or_assignment(Scanner *scanner, TSLexer *l
             };
             literal->type = STRING_START;
             literal->allows_interpolation = true;
-            bool has_type_prefix = false;
+            bool spaced_literal_prefix = false;
             for (unsigned i = 0; i < sizeof(kinds) / sizeof(kinds[0]); i++) {
                 if (lexer->lookahead == kinds[i].prefix) {
                     literal->type = kinds[i].type;
                     literal->allows_interpolation = kinds[i].allows_interpolation;
-                    has_type_prefix = true;
+                    // Ruby rejects whitespace-delimited word and symbol lists, so only other kinds may follow a name.
+                    spaced_literal_prefix = kinds[i].type != STRING_ARRAY_START && kinds[i].type != SYMBOL_ARRAY_START;
                     advance(lexer);
                     break;
                 }
@@ -667,7 +668,7 @@ static inline bool scan_literal_start_or_assignment(Scanner *scanner, TSLexer *l
 
             literal->open_delimiter = lexer->lookahead;
             literal->close_delimiter = percent_close_delimiter(
-                lexer->lookahead, binary_operator_valid, has_type_prefix && scanner->has_leading_whitespace);
+                lexer->lookahead, binary_operator_valid, spaced_literal_prefix && scanner->has_leading_whitespace);
             if (literal->close_delimiter == 0) {
                 return false;
             }
