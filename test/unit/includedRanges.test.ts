@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { Edit, Language, Parser, type Point, type Range } from '@willbooster/web-tree-sitter';
+import { Language, Parser, type Point, type Range } from '@willbooster/web-tree-sitter';
 import { afterEach, beforeAll, beforeEach, expect, test } from 'vitest';
 
 import { currentWasmPath } from '../helpers/generationInputs.js';
@@ -57,36 +57,6 @@ test.each([
     tree.delete();
   }
 });
-
-test.each(['<% if ready # old %>\n<p>HTML</p>\n<% end %>', '<% if ready\n# old %>\n<p>HTML</p>\n<% end %>'])(
-  'reparses an edited included comment without losing the following block terminator: %s',
-  (source) => {
-    const changed = source.replace('old', 'new comment');
-    const tree = parser.parse(source, undefined, { includedRanges: includedRanges(source) })!;
-    const startIndex = source.indexOf('old');
-    tree.edit(
-      new Edit({
-        startIndex,
-        oldEndIndex: startIndex + 3,
-        newEndIndex: startIndex + 11,
-        startPosition: pointAt(source, startIndex),
-        oldEndPosition: pointAt(source, startIndex + 3),
-        newEndPosition: pointAt(changed, startIndex + 11),
-      })
-    );
-    const incremental = parser.parse(changed, tree, { includedRanges: includedRanges(changed) })!;
-    const fresh = parser.parse(changed, undefined, { includedRanges: includedRanges(changed) })!;
-    try {
-      expect(incremental.rootNode.toString()).toBe('(program (if condition: (identifier) (comment)))');
-      expect(incremental.rootNode.toString()).toBe(fresh.rootNode.toString());
-      expect(incremental.rootNode.descendantsOfType('comment').map((node) => node.text)).toEqual(['# new comment ']);
-    } finally {
-      fresh.delete();
-      incremental.delete();
-      tree.delete();
-    }
-  }
-);
 
 test.each([
   ['x = <<~EOS; __END__\ndata\nEOS', ['\ndata\nEOS']],

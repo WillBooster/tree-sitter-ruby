@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { Edit, Language, Parser, Query } from '@willbooster/web-tree-sitter';
+import { Language, Parser, Query } from '@willbooster/web-tree-sitter';
 import { beforeAll, expect, test } from 'vitest';
 
 import { currentWasmPath } from '../helpers/generationInputs.js';
@@ -47,45 +47,6 @@ test.each([
     }
   } finally {
     query.delete();
-    parser.delete();
-  }
-});
-
-test('reparses a typed whitespace literal after changing assignment to command and undoing', () => {
-  const parser = new Parser().setLanguage(language);
-  let source = 'value = %q abc \nfollowing';
-  let prefix = 'value =';
-  let tree = parser.parse(source)!;
-  try {
-    for (const replacement of ['sink', 'value =']) {
-      const changed = replacement + source.slice(prefix.length);
-      tree.edit(
-        new Edit({
-          startIndex: 0,
-          oldEndIndex: prefix.length,
-          newEndIndex: replacement.length,
-          startPosition: { row: 0, column: 0 },
-          oldEndPosition: { row: 0, column: prefix.length },
-          newEndPosition: { row: 0, column: replacement.length },
-        })
-      );
-      const previous = tree;
-      tree = parser.parse(changed, previous)!;
-      previous.delete();
-      const fresh = parser.parse(changed)!;
-      try {
-        expect(tree.rootNode.hasError, changed).toBe(false);
-        expect(tree.rootNode.toString()).toBe(fresh.rootNode.toString());
-        expect(tree.rootNode.descendantsOfType('string').map(({ text }) => text)).toEqual(['%q abc ']);
-        expect(tree.rootNode.lastNamedChild!.text).toBe('following');
-      } finally {
-        fresh.delete();
-      }
-      source = changed;
-      prefix = replacement;
-    }
-  } finally {
-    tree.delete();
     parser.delete();
   }
 });

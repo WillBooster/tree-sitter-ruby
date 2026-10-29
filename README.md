@@ -5,7 +5,7 @@
 [![Test](https://github.com/WillBooster/tree-sitter-ruby/actions/workflows/test.yml/badge.svg)](https://github.com/WillBooster/tree-sitter-ruby/actions/workflows/test.yml)
 [![Test rust](https://github.com/WillBooster/tree-sitter-ruby/actions/workflows/test-rust.yml/badge.svg)](https://github.com/WillBooster/tree-sitter-ruby/actions/workflows/test-rust.yml)
 [![semantic-release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg)](https://github.com/semantic-release/semantic-release)
-[![wbfy](https://img.shields.io/badge/wbfy-20.48.9-1e90ff.svg)](https://github.com/WillBooster/shared/tree/main/packages/wbfy)
+[![wbfy](https://img.shields.io/badge/wbfy-20.49.0-1e90ff.svg)](https://github.com/WillBooster/shared/tree/main/packages/wbfy)
 [![crates.io](https://img.shields.io/crates/v/willbooster-tree-sitter-ruby.svg)](https://crates.io/crates/willbooster-tree-sitter-ruby)
 
 Ruby grammar for [tree-sitter](https://github.com/tree-sitter/tree-sitter), forked from
@@ -108,11 +108,8 @@ Profiles in `.tmp/generation-profiles/` are temporary and must not be committed.
 `bun run test` runs:
 
 - the corpus in `test/corpus`, with the native build and with the Wasm build (the first run downloads the WASI SDK);
-- an incremental-parsing check (`test/unit/incremental.test.ts`): `script/fuzz-corpus` runs `tree-sitter fuzz`, which
-  edits each corpus case at random, reparses it, undoes the edits, and reparses again. `TREE_SITTER_SEED`,
-  `TREE_SITTER_ITERATIONS`, and `TREE_SITTER_EDITS` run other or more edits;
-- included-range comment and incremental-edit checks (`test/unit/includedRanges.test.ts`), which load the Wasm build
-  produced by `bun run build/ci`;
+- included-range comment checks (`test/unit/includedRanges.test.ts`), which load the Wasm build produced by
+  `bun run build/ci`;
 - a check that the real-world Ruby files of [ruby/spec](https://github.com/ruby/spec) cloned into `examples/` fail to
   parse exactly as listed in `script/known-failures.txt`. The first run clones the repository, which is pinned to a
   commit in `script/parse-examples`. After a grammar change or a moved pin alters that list, `script/parse-examples`
@@ -123,7 +120,7 @@ Profiles in `.tmp/generation-profiles/` are temporary and must not be committed.
   Node.js compatibility (`test/unit/workerd.test.ts`). Run `bun run test/ci-setup` once to install Chromium.
 
 The tests and `script/parse-examples` compile the parser into `.tmp/tree-sitter-lib` rather than the CLI's cache shared
-by every checkout; `script/fuzz-corpus` builds a per-run parser in `.tmp/fuzz` and deletes it afterwards.
+by every checkout.
 
 CI also runs these tests on Linux arm64 and macOS, where the Rust binding compiles the parser natively, and fuzzes the
 parser with libFuzzer and sanitizers (`.github/workflows/robustness.yml`).

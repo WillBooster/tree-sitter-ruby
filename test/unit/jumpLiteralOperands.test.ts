@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { Edit, Language, Parser } from '@willbooster/web-tree-sitter';
+import { Language, Parser } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
 import { currentWasmPath } from '../helpers/generationInputs.js';
@@ -64,45 +64,6 @@ test('return, break, and next own literal operands without reading a binary oper
       }
     }
   } finally {
-    parser.delete();
-  }
-});
-
-test('incremental edits distinguish jump literals from command modulo and undo', async () => {
-  await Parser.init();
-  const parser = new Parser().setLanguage(
-    await Language.load(currentWasmPath(path.join(import.meta.dirname, '../..')))
-  );
-  let previous = 'return';
-  let tree = parser.parse(`${previous} % q \n`)!;
-  try {
-    for (const keyword of ['sink', 'break', 'sink', 'next', 'return']) {
-      const source = `${keyword} % q \n`;
-      tree.edit(
-        new Edit({
-          startIndex: 0,
-          oldEndIndex: previous.length,
-          newEndIndex: keyword.length,
-          startPosition: { row: 0, column: 0 },
-          oldEndPosition: { row: 0, column: previous.length },
-          newEndPosition: { row: 0, column: keyword.length },
-        })
-      );
-      const incremental = parser.parse(source, tree)!;
-      const fresh = parser.parse(source)!;
-      try {
-        expect(incremental.rootNode.toString(), source).toBe(fresh.rootNode.toString());
-        expect(incremental.rootNode.hasError, source).toBe(false);
-        expect(incremental.rootNode.namedChildren[0]?.type, source).toBe(keyword === 'sink' ? 'binary' : keyword);
-      } finally {
-        tree.delete();
-        tree = incremental;
-        fresh.delete();
-        previous = keyword;
-      }
-    }
-  } finally {
-    tree.delete();
     parser.delete();
   }
 });

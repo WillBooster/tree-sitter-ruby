@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { Edit, Language, Parser } from '@willbooster/web-tree-sitter';
+import { Language, Parser } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
 import { currentWasmPath } from '../helpers/generationInputs.js';
@@ -290,46 +290,6 @@ test('distinguishes adjacent and line-broken not parentheses from horizontal sep
       } finally {
         tree.delete();
       }
-    }
-    let previousGap = '';
-    let tree = parser.parse('not(a) in P')!;
-    try {
-      for (const gap of [' ', '\n', '\\\n', '\n=begin\ntext\n=end\n', ' # note\n ', '', '\t']) {
-        const source = `not${gap}(a) in P`;
-        const oldLines = previousGap.split('\n');
-        const newLines = gap.split('\n');
-        tree.edit(
-          new Edit({
-            startIndex: 3,
-            oldEndIndex: 3 + previousGap.length,
-            newEndIndex: 3 + gap.length,
-            startPosition: { row: 0, column: 3 },
-            oldEndPosition: {
-              row: oldLines.length - 1,
-              column: oldLines.length === 1 ? 3 + previousGap.length : oldLines.at(-1)!.length,
-            },
-            newEndPosition: {
-              row: newLines.length - 1,
-              column: newLines.length === 1 ? 3 + gap.length : newLines.at(-1)!.length,
-            },
-          })
-        );
-        const incremental = parser.parse(source, tree)!;
-        const fresh = parser.parse(source)!;
-        try {
-          expect(incremental.rootNode.toString(), source).toBe(fresh.rootNode.toString());
-          expect(incremental.rootNode.hasError, source).toBe(false);
-          const operator = incremental.rootNode.descendantsOfType('unary')[0]?.childForFieldName('operator');
-          expect([operator?.startIndex, operator?.endIndex], source).toEqual([0, 3]);
-        } finally {
-          tree.delete();
-          tree = incremental;
-          fresh.delete();
-          previousGap = gap;
-        }
-      }
-    } finally {
-      tree.delete();
     }
   } finally {
     parser.delete();

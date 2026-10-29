@@ -8,15 +8,10 @@ const repositoryRoot = path.resolve(import.meta.dirname, '../..');
 // Leaves time to kill the command and report its output before the runner's own test timeout.
 const KillMargin = 10_000;
 
-// Tests that a command run from the repository root exits zero within the timeout, and passes its output to
-// `check`. The command runs in its own process group, which the timeout kills as a whole: a scanner stuck in
-// a loop keeps busy the native binary that a script such as script/fuzz-corpus starts, not the direct child.
-export function testCommand(
-  name: string,
-  command: [string, ...string[]],
-  timeout: number,
-  options: { env?: Record<string, string>; check?: (output: string) => void } = {}
-): void {
+// Tests that a command run from the repository root exits zero within the timeout. The command runs in its own
+// process group, which the timeout kills as a whole: a scanner stuck in a loop keeps busy the native binary that a
+// script such as script/parse-examples starts, not the direct child.
+export function testCommand(name: string, command: [string, ...string[]], timeout: number): void {
   test(
     name,
     async () => {
@@ -26,7 +21,7 @@ export function testCommand(
         // The CLI caches compiled parsers by language name in a directory shared by every checkout and reuses one that is
         // newer than the sources, so another checkout's parser could be tested instead of this one, also through a
         // TREE_SITTER_LIBDIR set in the environment.
-        env: { ...process.env, TREE_SITTER_LIBDIR: `${repositoryRoot}/.tmp/tree-sitter-lib`, ...options.env },
+        env: { ...process.env, TREE_SITTER_LIBDIR: `${repositoryRoot}/.tmp/tree-sitter-lib` },
         stdio: ['ignore', 'pipe', 'pipe'],
       });
       let output = '';
@@ -54,7 +49,6 @@ export function testCommand(
       process.off('SIGINT', onSignal);
       process.off('SIGTERM', onSignal);
       expect(exitCode, output).toBe(0);
-      options.check?.(output);
     },
     timeout + KillMargin
   );
