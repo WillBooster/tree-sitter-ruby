@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { Language, Parser, Query } from '@willbooster/web-tree-sitter';
+import { Language, Parser } from '@willbooster/web-tree-sitter';
 import { beforeAll, expect, test } from 'vitest';
 
 import { currentWasmPath } from '../helpers/generationInputs.js';
@@ -207,7 +207,6 @@ test.each([
   ['def example\n  work\nrescue StandardError', 'rescue'],
 ] as const)('retains trailing comments inside %s', (header, ownerType) => {
   const parser = new Parser().setLanguage(language);
-  const query = new Query(language, '(comment) @trailing');
   try {
     for (const newline of ['\n', '\r\n']) {
       const source = `${header.replaceAll('\n', newline)}${newline}${ownerType === 'rescue' ? '' : `  first${newline}`}  # trailing${newline}end`;
@@ -217,7 +216,7 @@ test.each([
         const comment = tree.rootNode.descendantsOfType('comment')[0]!;
         expect(comment.parent!.type).toBe(ownerType);
         expect(comment.parent!.endIndex).toBe(comment.endIndex);
-        expect(query.captures(tree.rootNode).map(({ node }) => node.text)).toEqual([
+        expect(tree.rootNode.descendantsOfType('comment').map(({ text }) => text)).toEqual([
           `# trailing${newline.slice(0, -1)}`,
         ]);
       } finally {
@@ -225,7 +224,6 @@ test.each([
       }
     }
   } finally {
-    query.delete();
     parser.delete();
   }
 });
