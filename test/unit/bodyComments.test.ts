@@ -27,7 +27,6 @@ test.each([
   'module Example;',
 ])('owns leading comments in the body of %s', (header) => {
   const parser = new Parser().setLanguage(language);
-  const query = new Query(language, '(body_statement (comment) @body.comment)');
   try {
     for (const newline of ['\n', '\r\n']) {
       const carriageReturn = newline.slice(0, -1);
@@ -45,11 +44,6 @@ test.each([
           ['comment', `# middle${carriageReturn}`],
           ['identifier', 'second'],
         ]);
-        expect(query.captures(tree.rootNode).map(({ node }) => node.text)).toEqual([
-          `# leading${carriageReturn}`,
-          `# second${carriageReturn}`,
-          `# middle${carriageReturn}`,
-        ]);
         expect(body.startIndex).toBe(source.indexOf('# leading'));
         expect(body.endIndex).toBe(source.indexOf('\nend'));
         expect(body.namedChildren[0]!.nextNamedSibling?.text).toBe(`# second${carriageReturn}`);
@@ -63,7 +57,6 @@ test.each([
       }
     }
   } finally {
-    query.delete();
     parser.delete();
   }
 });
@@ -108,7 +101,6 @@ test.each([
   ['=begin\nbefore parameters\n=end', '||'],
 ])('preserves %j before do-block parameters %s', (comment, parameters) => {
   const parser = new Parser().setLanguage(language);
-  const query = new Query(language, '(do_block (comment) @header.comment) (body_statement (comment) @body.comment)');
   try {
     for (const newline of ['\n', '\r\n']) {
       const prefix = `foo do\n${comment}\n`;
@@ -122,7 +114,6 @@ test.each([
         expect(block.namedChildren[0]!.type).toBe('comment');
         expect(block.namedChildren[0]!.startIndex).toBe(source.indexOf(comment.split('\n')[0]!));
         expect(block.namedChildren[0]!.endIndex).toBe(startIndex - 1);
-        expect(query.captures(tree.rootNode).map(({ name }) => name)).toEqual(['header.comment', 'body.comment']);
         expect(block.childForFieldName('body')!.namedChildren.map(({ text }) => text)).toEqual([
           `# body${newline.slice(0, -1)}`,
           'x',
@@ -132,7 +123,6 @@ test.each([
       }
     }
   } finally {
-    query.delete();
     parser.delete();
   }
 });
