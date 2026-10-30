@@ -7,8 +7,6 @@
       "scope": "source.ruby",
       "path": ".",
       "file-types": ["rb"],
-      "highlights": ["queries/highlights.scm"],
-      "tags": ["queries/tags.scm"],
       "injection-regex": "ruby"
     }
   ],
