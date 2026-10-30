@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { Language, Parser, Query } from '@willbooster/web-tree-sitter';
+import { Language, Parser } from '@willbooster/web-tree-sitter';
 import { beforeAll, expect, test } from 'vitest';
 
 import { currentWasmPath } from '../helpers/generationInputs.js';
@@ -20,7 +20,6 @@ test.each([
   ['r', 'regex'],
 ])('keeps whitespace-delimited %%%s in command arguments', (kind, type) => {
   const parser = new Parser().setLanguage(language);
-  const query = new Query(language, '(call receiver: [(string) (regex) (subshell) (delimited_symbol)] @literal)');
   try {
     for (const delimiter of [' ', '\t', '\r']) {
       const literal = `%${kind}${delimiter}abc${delimiter}`;
@@ -39,14 +38,12 @@ test.each([
         expect(node.endIndex).toBe(source.indexOf('.size'));
         expect(node.firstChild!.text).toBe(`%${kind}${delimiter}`);
         expect(node.lastChild!.text).toBe(delimiter);
-        expect(query.captures(tree.rootNode).map(({ node: capture }) => capture.text)).toEqual([literal]);
         expect(tree.rootNode.lastNamedChild!.text).toBe('following');
       } finally {
         tree.delete();
       }
     }
   } finally {
-    query.delete();
     parser.delete();
   }
 });

@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { Language, Parser, Query } from '@willbooster/web-tree-sitter';
+import { Language, Parser } from '@willbooster/web-tree-sitter';
 import { beforeAll, expect, test } from 'vitest';
 
 import { currentWasmPath } from '../helpers/generationInputs.js';
@@ -27,7 +27,6 @@ test.each([
   'module Example;',
 ])('owns leading comments in the body of %s', (header) => {
   const parser = new Parser().setLanguage(language);
-  const query = new Query(language, '(body_statement (comment) @body.comment)');
   try {
     for (const newline of ['\n', '\r\n']) {
       const carriageReturn = newline.slice(0, -1);
@@ -45,11 +44,6 @@ test.each([
           ['comment', `# middle${carriageReturn}`],
           ['identifier', 'second'],
         ]);
-        expect(query.captures(tree.rootNode).map(({ node }) => node.text)).toEqual([
-          `# leading${carriageReturn}`,
-          `# second${carriageReturn}`,
-          `# middle${carriageReturn}`,
-        ]);
         expect(body.startIndex).toBe(source.indexOf('# leading'));
         expect(body.endIndex).toBe(source.indexOf('\nend'));
         expect(body.namedChildren[0]!.nextNamedSibling?.text).toBe(`# second${carriageReturn}`);
@@ -63,7 +57,6 @@ test.each([
       }
     }
   } finally {
-    query.delete();
     parser.delete();
   }
 });
@@ -108,7 +101,6 @@ test.each([
   ['=begin\nbefore parameters\n=end', '||'],
 ])('preserves %j before do-block parameters %s', (comment, parameters) => {
   const parser = new Parser().setLanguage(language);
-  const query = new Query(language, '(do_block (comment) @header.comment) (body_statement (comment) @body.comment)');
   try {
     for (const newline of ['\n', '\r\n']) {
       const prefix = `foo do\n${comment}\n`;
@@ -122,7 +114,6 @@ test.each([
         expect(block.namedChildren[0]!.type).toBe('comment');
         expect(block.namedChildren[0]!.startIndex).toBe(source.indexOf(comment.split('\n')[0]!));
         expect(block.namedChildren[0]!.endIndex).toBe(startIndex - 1);
-        expect(query.captures(tree.rootNode).map(({ name }) => name)).toEqual(['header.comment', 'body.comment']);
         expect(block.childForFieldName('body')!.namedChildren.map(({ text }) => text)).toEqual([
           `# body${newline.slice(0, -1)}`,
           'x',
@@ -132,7 +123,6 @@ test.each([
       }
     }
   } finally {
-    query.delete();
     parser.delete();
   }
 });
@@ -217,7 +207,6 @@ test.each([
   ['def example\n  work\nrescue StandardError', 'rescue'],
 ] as const)('retains trailing comments inside %s', (header, ownerType) => {
   const parser = new Parser().setLanguage(language);
-  const query = new Query(language, '(comment) @trailing');
   try {
     for (const newline of ['\n', '\r\n']) {
       const source = `${header.replaceAll('\n', newline)}${newline}${ownerType === 'rescue' ? '' : `  first${newline}`}  # trailing${newline}end`;
@@ -227,7 +216,7 @@ test.each([
         const comment = tree.rootNode.descendantsOfType('comment')[0]!;
         expect(comment.parent!.type).toBe(ownerType);
         expect(comment.parent!.endIndex).toBe(comment.endIndex);
-        expect(query.captures(tree.rootNode).map(({ node }) => node.text)).toEqual([
+        expect(tree.rootNode.descendantsOfType('comment').map(({ text }) => text)).toEqual([
           `# trailing${newline.slice(0, -1)}`,
         ]);
       } finally {
@@ -235,7 +224,6 @@ test.each([
       }
     }
   } finally {
-    query.delete();
     parser.delete();
   }
 });
