@@ -128,6 +128,7 @@ static inline void skip(Scanner *scanner, TSLexer *lexer) {
 
 static inline void advance(TSLexer *lexer) { lexer->advance(lexer, false); }
 
+static inline void scan_symbol_suffix(TSLexer *lexer);
 static inline bool scan_global_symbol(TSLexer *lexer);
 static inline bool scan_symbol_word(TSLexer *lexer);
 static inline bool is_symbol_word_character(int32_t character);
@@ -522,7 +523,20 @@ static bool scan_leading_logical_operator(TSLexer *lexer) {
 }
 
 static inline bool scan_operator(TSLexer *lexer) {
-    static const char *const operators[] = {"|", "^", "&", "<=>", "==", "===", "=~", ">", ">=", "<", "<=", "+", "!=", "-", "*", "/", "%", "!", "!@", "!~", "**", "<<", ">>", "~", "+@", "-@", "~@", "[]", "`", "[]="};
+    static const struct {
+        const char *name;
+        bool allowed;
+    } operators[] = {
+        {"|", true}, {"^", true}, {"&", true}, {"<=>", true}, {"==", true},
+        {"===", true}, {"=~", true}, {">", true}, {">=", true}, {"<", true},
+        {"<=", true}, {"+", true}, {"!=", true}, {"-", true}, {"*", true},
+        {"/", true}, {"%", true}, {"!", true}, {"!@", true}, {"!~", true},
+        {"**", true}, {"<<", true}, {">>", true}, {"~", true}, {"+@", true},
+        {"-@", true}, {"~@", true}, {"[]", true}, {"`", true}, {"[]=", true},
+        {"|=", false}, {"^=", false}, {"&=", false}, {"*=", false}, {"/=", false},
+        {"%=", false}, {"**=", false}, {"<<=", false}, {">>=", false}, {"&&", false},
+        {"||", false},
+    };
     char prefix[3];
     bool complete = false;
     for (unsigned length = 0; length < sizeof(prefix); length++) {
@@ -531,9 +545,9 @@ static inline bool scan_operator(TSLexer *lexer) {
         bool found = false;
         bool next_complete = false;
         for (unsigned index = 0; index < sizeof(operators) / sizeof(operators[0]); index++) {
-            if (strncmp(operators[index], prefix, length + 1) == 0) {
+            if (strncmp(operators[index].name, prefix, length + 1) == 0) {
                 found = true;
-                next_complete |= operators[index][length + 1] == '\0';
+                next_complete |= operators[index].allowed && operators[index].name[length + 1] == '\0';
             }
         }
         if (!found) return complete;
@@ -561,17 +575,25 @@ static inline bool scan_symbol_identifier(TSLexer *lexer) {
     if (!is_symbol_word_start(lexer->lookahead)) return scan_operator(lexer);
     scan_symbol_word(lexer);
     lexer->mark_end(lexer);
-    if (lexer->lookahead == '!') {
-        advance(lexer);
-        if (lexer->lookahead != '=') lexer->mark_end(lexer);
-    } else if (lexer->lookahead == '?') {
-        advance(lexer);
-        lexer->mark_end(lexer);
-    } else if (lexer->lookahead == '=') {
-        advance(lexer);
-        if (lexer->lookahead != '>' && lexer->lookahead != '=' && lexer->lookahead != '~') lexer->mark_end(lexer);
+    if (lexer->lookahead == '!' || lexer->lookahead == '?' || lexer->lookahead == '=') {
+        scan_symbol_suffix(lexer);
     }
     return true;
+}
+
+static inline void scan_symbol_suffix(TSLexer *lexer) {
+    int32_t suffix = lexer->lookahead;
+    advance(lexer);
+    if (suffix != '=') {
+        if (lexer->lookahead != '=') lexer->mark_end(lexer);
+    } else if (lexer->lookahead == '=') {
+        TSLexerCheckpoint setter_end;
+        lexer->get_checkpoint(lexer, &setter_end);
+        advance(lexer);
+        if (lexer->lookahead == '>') lexer->mark_end_at(lexer, &setter_end);
+    } else if (lexer->lookahead != '>' && lexer->lookahead != '~') {
+        lexer->mark_end(lexer);
+    }
 }
 
 static inline bool scan_global_symbol(TSLexer *lexer) {

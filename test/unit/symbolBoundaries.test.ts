@@ -74,6 +74,7 @@ test.each([
   '$name!',
   '$name=',
   'ordinary!~/body/',
+  'ordinary?==1',
 ])('reports invalid unquoted symbol text %s', (name) => {
   checkSource(`value = :${name}\nfollowing`, true);
 });
@@ -91,13 +92,68 @@ test.each(['!=', '!~', '==', '===', '=~'])('keeps comparison %s outside an ident
   });
 });
 
-test('keeps an adjacent rightward match outside a symbol', () => {
-  checkSource('value = :ordinary=>target\nfollowing', false, (node) => {
+test.each(['ordinary', 'ordinary='])('keeps an adjacent rightward match outside symbol %s', (name) => {
+  checkSource(`value = :${name}=>target\nfollowing`, false, (node) => {
     const match = node.firstNamedChild!;
     expect(match.type).toBe('match_pattern');
-    expect(match.childForFieldName('value')!.childForFieldName('right')!.text).toBe(':ordinary');
+    expect(match.childForFieldName('value')!.childForFieldName('right')!.text).toBe(`:${name}`);
     expect(match.childForFieldName('pattern')!.text).toBe('target');
   });
+});
+
+test.each([
+  ['{:a=>1}', ':a'],
+  ['{:a==>1}', ':a='],
+  ['{:a= =>1}', ':a='],
+  ['{:a! =>1}', ':a!'],
+  ['{:a? =>1}', ':a?'],
+])('preserves the complete key in %s', (literal, symbol) => {
+  checkSource(`${literal}\nfollowing`, false, (node) => {
+    const pair = node.firstNamedChild!.firstNamedChild!;
+    expect(pair.type).toBe('pair');
+    expect(pair.childForFieldName('key')!.type).toBe('simple_symbol');
+    expect(pair.childForFieldName('key')!.text).toBe(symbol);
+    expect(pair.childForFieldName('value')!.text).toBe('1');
+  });
+});
+
+test.each(['{:a!=>1}', '{:a?=>1}', '{:a!==>1}', '{:a===>1}'])(
+  'reports invalid compact symbol/hash delimiters in %s',
+  (literal) => {
+    checkSource(`${literal}\nfollowing`, true);
+  }
+);
+
+test.each(['|', '^', '&', '*', '/', '%', '**', '<<', '>>'])(
+  'does not split compound assignment after symbol operator %s',
+  (operator) => {
+    checkSource(`value = :${operator}==1\nfollowing`, true);
+    checkSource(`value = :${operator}=>target\nfollowing`, true);
+    checkSource(`value = :${operator} ==1\nfollowing`, false, (node) => {
+      const binary = node.firstNamedChild!.childForFieldName('right')!;
+      expect(binary.type).toBe('binary');
+      expect(binary.childForFieldName('left')!.text).toBe(`:${operator}`);
+      expect(binary.childForFieldName('operator')!.text).toBe('==');
+      expect(binary.childForFieldName('right')!.text).toBe('1');
+    });
+  }
+);
+
+test.each(['+', '-', '~', '+@', '!@', '[]=', '<=>'])(
+  'retains an adjacent equality comparison after operator symbol %s',
+  (operator) => {
+    checkSource(`value = :${operator}==1\nfollowing`, false, (node) => {
+      const binary = node.firstNamedChild!.childForFieldName('right')!;
+      expect(binary.type).toBe('binary');
+      expect(binary.childForFieldName('left')!.text).toBe(`:${operator}`);
+      expect(binary.childForFieldName('operator')!.text).toBe('==');
+      expect(binary.childForFieldName('right')!.text).toBe('1');
+    });
+  }
+);
+
+test.each(['&&', '||'])('does not split boolean operator text %s into a symbol and binary operator', (operator) => {
+  checkSource(`value = :${operator}1\nfollowing`, true);
 });
 
 function checkSymbol(name: string): void {
