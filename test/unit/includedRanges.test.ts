@@ -30,7 +30,7 @@ test.each([
   ['<% foo\n# c %><% &.bar %>', '(program (identifier) (comment) (ERROR) (identifier))', ['# c ']],
   ['<% foo %><% .bar %>', '(program (identifier) (ERROR) (identifier))', []],
   ['<% foo\n%>\n<% &.bar %>', '(program (identifier) (ERROR) (identifier))', []],
-  ['<% __END__ %>\n<p>x</p>\n<% # data %><% y %>', '(program (uninterpreted))', []],
+  ['<% __END__ %>\n<p>x</p>\n<% # data %><% y %>', '(program (identifier) (comment) (identifier))', ['# data ']],
   ['<% # last %>', '(program (comment))', ['# last ']],
   ['<% # first\nvalue %>', '(program (comment) (identifier))', ['# first']],
 ] as const)('ends included comments without swallowing later Ruby: %s', (source, expected, comments) => {
@@ -62,28 +62,13 @@ test.each([
   ['x = <<~EOS; __END__\ndata\nEOS', ['\ndata\nEOS']],
   ['foo(<<~EOS); __END__\nbody\nEOS', ['\nbody\nEOS']],
   ['foo(<<A, <<B); __END__\na\nA\nb\nB', ['\na\nA', '\nb\nB']],
-] as const)('retains pending heredoc bodies before raw data in incomplete Ruby: %s', (source, bodies) => {
+] as const)('retains heredoc bodies after an ordinary __END__ identifier: %s', (source, bodies) => {
   const tree = parser.parse(source)!;
   try {
     expect(tree.rootNode.hasError).toBe(false);
     expect(tree.rootNode.descendantsOfType('heredoc_body').map((node) => node.text)).toEqual(bodies);
-    expect(tree.rootNode.descendantsOfType('uninterpreted').map((node) => node.text)).toEqual(['']);
-  } finally {
-    tree.delete();
-  }
-});
-
-test('preserves the raw-data tail after an incomplete included heredoc', () => {
-  const source = '<% x = <<~EOS %>\nbody\nEOS\n<% __END__ %>\n<% # c %>\n<% y %>';
-  const tree = parser.parse(source, undefined, { includedRanges: includedRanges(source) })!;
-  try {
-    expect(tree.rootNode.toString()).toBe(
-      '(program (assignment left: (identifier) right: (heredoc_beginning)) (uninterpreted))'
-    );
-    expect(tree.rootNode.descendantsOfType('comment')).toEqual([]);
-    expect(tree.rootNode.descendantsOfType('uninterpreted').map((node) => node.text)).toEqual([
-      ' %>\n<% # c %>\n<% y ',
-    ]);
+    expect(tree.rootNode.descendantsOfType('uninterpreted')).toHaveLength(0);
+    expect(tree.rootNode.descendantsOfType('identifier').map((node) => node.text)).toContain('__END__');
   } finally {
     tree.delete();
   }
