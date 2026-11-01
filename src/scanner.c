@@ -128,6 +128,12 @@ static inline void skip(Scanner *scanner, TSLexer *lexer) {
 
 static inline void advance(TSLexer *lexer) { lexer->advance(lexer, false); }
 
+static inline void scan_symbol_suffix(TSLexer *lexer);
+static inline bool scan_global_symbol(TSLexer *lexer);
+static inline bool scan_symbol_word(TSLexer *lexer);
+static inline bool is_symbol_word_character(int32_t character);
+static inline bool is_symbol_word_start(int32_t character);
+
 static uint32_t save_literal(Scanner *scanner);
 static void restore_literal(Scanner *scanner, uint32_t frame_id);
 static LiteralKey literal_key(const LiteralFrame *frame);
@@ -517,96 +523,39 @@ static bool scan_leading_logical_operator(TSLexer *lexer) {
 }
 
 static inline bool scan_operator(TSLexer *lexer) {
-    switch (lexer->lookahead) {
-        case '<':
-            advance(lexer);
-            if (lexer->lookahead == '<') {
-                advance(lexer);
-            } else if (lexer->lookahead == '=') {
-                advance(lexer);
-                if (lexer->lookahead == '>') {
-                    advance(lexer);
-                }
+    static const struct {
+        const char *name;
+        bool allowed;
+    } operators[] = {
+        {"|", true}, {"^", true}, {"&", true}, {"<=>", true}, {"==", true},
+        {"===", true}, {"=~", true}, {">", true}, {">=", true}, {"<", true},
+        {"<=", true}, {"+", true}, {"!=", true}, {"-", true}, {"*", true},
+        {"/", true}, {"%", true}, {"!", true}, {"!@", true}, {"!~", true},
+        {"**", true}, {"<<", true}, {">>", true}, {"~", true}, {"+@", true},
+        {"-@", true}, {"~@", true}, {"[]", true}, {"`", true}, {"[]=", true},
+        {"|=", false}, {"^=", false}, {"&=", false}, {"*=", false}, {"/=", false},
+        {"%=", false}, {"**=", false}, {"<<=", false}, {">>=", false}, {"&&", false},
+        {"||", false},
+    };
+    char prefix[3];
+    bool complete = false;
+    for (unsigned length = 0; length < sizeof(prefix); length++) {
+        if (lexer->lookahead <= 0 || lexer->lookahead > 0x7f) return complete;
+        prefix[length] = (char)lexer->lookahead;
+        bool found = false;
+        bool next_complete = false;
+        for (unsigned index = 0; index < sizeof(operators) / sizeof(operators[0]); index++) {
+            if (strncmp(operators[index].name, prefix, length + 1) == 0) {
+                found = true;
+                next_complete |= operators[index].allowed && operators[index].name[length + 1] == '\0';
             }
-            return true;
-
-        case '>':
-            advance(lexer);
-            if (lexer->lookahead == '>' || lexer->lookahead == '=') {
-                advance(lexer);
-            }
-            return true;
-
-        case '=':
-            advance(lexer);
-            if (lexer->lookahead == '~') {
-                advance(lexer);
-                return true;
-            }
-            if (lexer->lookahead == '=') {
-                advance(lexer);
-                if (lexer->lookahead == '=') {
-                    advance(lexer);
-                }
-                return true;
-            }
-            return false;
-
-        case '+':
-        case '-':
-        case '~':
-            advance(lexer);
-            if (lexer->lookahead == '@') {
-                advance(lexer);
-            }
-            return true;
-
-        case '.':
-            advance(lexer);
-            if (lexer->lookahead == '.') {
-                advance(lexer);
-                return true;
-            }
-            return false;
-
-        case '&':
-        case '^':
-        case '|':
-        case '/':
-        case '%':
-        case '`':
-            advance(lexer);
-            return true;
-
-        case '!':
-            advance(lexer);
-            if (lexer->lookahead == '=' || lexer->lookahead == '~') {
-                advance(lexer);
-            }
-            return true;
-
-        case '*':
-            advance(lexer);
-            if (lexer->lookahead == '*') {
-                advance(lexer);
-            }
-            return true;
-
-        case '[':
-            advance(lexer);
-            if (lexer->lookahead == ']') {
-                advance(lexer);
-            } else {
-                return false;
-            }
-            if (lexer->lookahead == '=') {
-                advance(lexer);
-            }
-            return true;
-
-        default:
-            return false;
+        }
+        if (!found) return complete;
+        advance(lexer);
+        complete = next_complete;
+        if (complete) lexer->mark_end(lexer);
     }
+    return complete;
 }
 
 static inline bool is_iden_char(int32_t c) {
@@ -617,38 +566,74 @@ static inline bool is_iden_char(int32_t c) {
 static inline bool ends_keyword(int32_t c) { return !is_iden_char(c) && c != '?' && c != '!'; }
 
 static inline bool scan_symbol_identifier(TSLexer *lexer) {
+    if (lexer->lookahead == '$') return scan_global_symbol(lexer);
     if (lexer->lookahead == '@') {
         advance(lexer);
-        if (lexer->lookahead == '@') {
-            advance(lexer);
-        }
-    } else if (lexer->lookahead == '$') {
-        advance(lexer);
+        if (lexer->lookahead == '@') advance(lexer);
+        return scan_symbol_word(lexer);
     }
-
-    if (is_iden_char(lexer->lookahead)) {
-        advance(lexer);
-    } else if (!scan_operator(lexer)) {
-        return false;
+    if (!is_symbol_word_start(lexer->lookahead)) return scan_operator(lexer);
+    scan_symbol_word(lexer);
+    lexer->mark_end(lexer);
+    if (lexer->lookahead == '!' || lexer->lookahead == '?' || lexer->lookahead == '=') {
+        scan_symbol_suffix(lexer);
     }
-
-    while (is_iden_char(lexer->lookahead)) {
-        advance(lexer);
-    }
-
-    if (lexer->lookahead == '?' || lexer->lookahead == '!') {
-        advance(lexer);
-    }
-
-    if (lexer->lookahead == '=') {
-        lexer->mark_end(lexer);
-        advance(lexer);
-        if (lexer->lookahead != '>') {
-            lexer->mark_end(lexer);
-        }
-    }
-
     return true;
+}
+
+static inline void scan_symbol_suffix(TSLexer *lexer) {
+    int32_t suffix = lexer->lookahead;
+    advance(lexer);
+    if (suffix != '=') {
+        if (lexer->lookahead != '=') lexer->mark_end(lexer);
+    } else if (lexer->lookahead == '=') {
+        TSLexerCheckpoint setter_end;
+        lexer->get_checkpoint(lexer, &setter_end);
+        advance(lexer);
+        if (lexer->lookahead == '>') lexer->mark_end_at(lexer, &setter_end);
+    } else if (lexer->lookahead != '>' && lexer->lookahead != '~') {
+        lexer->mark_end(lexer);
+    }
+}
+
+static inline bool scan_global_symbol(TSLexer *lexer) {
+    advance(lexer);
+    if (lexer->lookahead == '-') {
+        advance(lexer);
+        if (!is_symbol_word_character(lexer->lookahead)) return false;
+        advance(lexer);
+        return true;
+    }
+    if (lexer->lookahead >= '0' && lexer->lookahead <= '9') {
+        bool zero = lexer->lookahead == '0';
+        advance(lexer);
+        if (!zero) {
+            while (lexer->lookahead >= '0' && lexer->lookahead <= '9') advance(lexer);
+        }
+        return true;
+    }
+    if (lexer->lookahead > 0 && lexer->lookahead < 0x80 && strchr("!@&`'+~=/\\,;.<>*$?:\"", lexer->lookahead)) {
+        advance(lexer);
+        return true;
+    }
+    return scan_symbol_word(lexer);
+}
+
+static inline bool scan_symbol_word(TSLexer *lexer) {
+    if (!is_symbol_word_start(lexer->lookahead)) return false;
+    do {
+        advance(lexer);
+    } while (is_symbol_word_character(lexer->lookahead));
+    return true;
+}
+
+static inline bool is_symbol_word_character(int32_t character) {
+    return is_symbol_word_start(character) || (character >= '0' && character <= '9');
+}
+
+static inline bool is_symbol_word_start(int32_t character) {
+    return character > 0x7f || character == '_' || (character >= 'a' && character <= 'z') ||
+        (character >= 'A' && character <= 'Z');
 }
 
 // NO_LINE_BREAK is valid after `..` and `...` (an endless range) and after a hash shorthand (`foo key:`), where Ruby
