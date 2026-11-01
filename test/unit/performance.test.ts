@@ -32,7 +32,7 @@ test('recovers from an error on each line with bounded CPU growth', { timeout: 6
 test('continues calls through comment chains with bounded CPU growth', { timeout: 60_000 }, () => {
   const small = `receiver\n${'# comment\n'.repeat(500)}.call\n`;
   const large = `receiver\n${'# comment\n'.repeat(5000)}.call\n`;
-  checkCommentGrowth(small, large);
+  checkValidGrowth(small, large);
 });
 
 test.each([
@@ -52,7 +52,7 @@ test.each([
 ] as const)('bounds leading comment growth in a %s', { timeout: 60_000 }, (_, header, tail) => {
   const small = `${header}${'  # comment\n'.repeat(500)}${tail}`;
   const large = `${header}${'  # comment\n'.repeat(5000)}${tail}`;
-  checkCommentGrowth(small, large);
+  checkValidGrowth(small, large);
 });
 
 test.each(['|value|', '||'])(
@@ -61,17 +61,25 @@ test.each(['|value|', '||'])(
   (parameters) => {
     const small = `foo do\n${'=begin\ncomment\n=end\n'.repeat(500)}${parameters}\nvalue\nend\n`;
     const large = `foo do\n${'=begin\ncomment\n=end\n'.repeat(5000)}${parameters}\nvalue\nend\n`;
-    checkCommentGrowth(small, large);
+    checkValidGrowth(small, large);
   }
 );
 
-function checkCommentGrowth(small: string, large: string): void {
+test('bounds CPU growth for nested interpolated strings', { timeout: 60_000 }, () => {
+  checkValidGrowth(nestedString(64), nestedString(512));
+});
+
+function nestedString(depth: number): string {
+  return `${'"#{'.repeat(depth)}1${'}"'.repeat(depth)}\nfollowing`;
+}
+
+function checkValidGrowth(small: string, large: string): void {
   parseCpuTime(large, false);
   let smallFastest = Infinity;
   let largeFastest = Infinity;
   for (let run = 0; run < 5; run++) {
-    smallFastest = Math.min(smallFastest, parseCommentSample(small));
-    largeFastest = Math.min(largeFastest, parseCommentSample(large));
+    smallFastest = Math.min(smallFastest, parseValidSample(small));
+    largeFastest = Math.min(largeFastest, parseValidSample(large));
   }
   expect(largeFastest / smallFastest).toBeLessThan(18);
   expect(largeFastest).toBeLessThan(5_000_000);
@@ -88,7 +96,7 @@ function parseCpuTime(source: string, expectedError = true): number {
   return system + user;
 }
 
-function parseCommentSample(source: string): number {
+function parseValidSample(source: string): number {
   const start = process.threadCpuUsage();
   let parses = 0;
   let microseconds = 0;
