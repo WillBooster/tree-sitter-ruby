@@ -71,6 +71,33 @@ test.each(['self', 'super', 'Name'])('parses endless methods named %s in both bo
   }
 });
 
+test.each(['<=>', '===', '=~', '>=', '<=', '+', '!=', '-', '!@', '!~', '~', '+@', '-@', '~@', '`'])(
+  'accepts a gapless endless delimiter after operator %s',
+  (operator) => {
+    for (const body of ['1', 'sink value', 'yield value']) {
+      for (const receiver of ['', 'self.']) {
+        checkSource(`def ${receiver}${operator}=${body}\nfollowing`, false, (node) => {
+          const method = node.firstNamedChild!;
+          expect(method.type).toBe(receiver ? 'singleton_method' : 'method');
+          expect(method.childForFieldName('name')!.text).toBe(operator);
+          expect(method.childForFieldName('body')!.text).toBe(body);
+        });
+      }
+    }
+  }
+);
+
+test.each(['|', '^', '&', '==', '>', '<', '*', '/', '%', '!', '**', '<<', '>>', '[]'])(
+  'requires separation before an endless delimiter after operator %s',
+  (operator) => {
+    checkSource(`def ${operator}=1\nfollowing`, true);
+    checkSource(`def ${operator} =1\nfollowing`, false, (node) => {
+      expect(node.firstNamedChild!.childForFieldName('name')!.text).toBe(operator);
+      expect(node.firstNamedChild!.childForFieldName('body')!.text).toBe('1');
+    });
+  }
+);
+
 test('owns the complete body of an array setter definition', () => {
   const source = 'def []=(index, value)\n  @stored = value\nend\nfollowing';
   checkSource(source, false, (node) => {

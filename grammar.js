@@ -1515,44 +1515,22 @@ module.exports = grammar({
 
     operator: ($) => choice($._nonsetter_operator, '[]='),
 
-    _nonsetter_operator: () =>
-      choice(
-        '|',
-        '^',
-        '&',
-        '<=>',
-        '==',
-        '===',
-        '=~',
-        '>',
-        '>=',
-        '<',
-        '<=',
-        '+',
-        '!=',
-        '-',
-        '*',
-        '/',
-        '%',
-        '!',
-        '!@',
-        '!~',
-        '**',
-        '<<',
-        '>>',
-        '~',
-        '+@',
-        '-@',
-        '~@',
-        '[]',
-        '`'
-      ),
+    _nonsetter_operator: ($) => choice($._spaced_method_operator, $._gapless_method_operator),
+
+    _spaced_method_operator: () => choice('|', '^', '&', '==', '>', '<', '*', '/', '%', '!', '**', '<<', '>>', '[]'),
+
+    _gapless_method_operator: () =>
+      choice('<=>', '===', '=~', '>=', '<=', '+', '!=', '-', '!@', '!~', '~', '+@', '-@', '~@', '`'),
 
     _method_name: ($) =>
       choice($._nonsetter_method_name, $.setter, alias('[]=', $.operator), $.simple_symbol, $.delimited_symbol),
 
-    _nonsetter_method_name: ($) =>
-      choice($._method_identifier, $._function_identifier, $.constant, alias($._nonsetter_operator, $.operator)),
+    _nonsetter_method_name: ($) => choice($._spaced_definition_name, $._gapless_definition_name),
+
+    _spaced_definition_name: ($) =>
+      choice($._method_identifier, $._function_identifier, $.constant, alias($._spaced_method_operator, $.operator)),
+
+    _gapless_definition_name: ($) => alias($._gapless_method_operator, $.operator),
 
     _method_identifier: ($) =>
       choice(reserved('methodNames', $.identifier), alias($.self, $.identifier), alias($.super, $.identifier)),
@@ -1995,11 +1973,11 @@ function singletonMethod($, rest) {
  * @param {RuleOrLiteral} body
  */
 function endlessMethodRest($, body) {
+  const parameters = seq(field('parameters', alias($.parameters, $.method_parameters)), alias($._endless_equals, '='));
   return seq(
-    field('name', $._nonsetter_method_name),
     choice(
-      alias($._spaced_endless_equals, '='),
-      seq(field('parameters', alias($.parameters, $.method_parameters)), alias($._endless_equals, '='))
+      seq(field('name', $._spaced_definition_name), choice(alias($._spaced_endless_equals, '='), parameters)),
+      seq(field('name', $._gapless_definition_name), choice(alias($._endless_equals, '='), parameters))
     ),
     field('body', body)
   );
@@ -2143,7 +2121,8 @@ function methodRest($, bodyExpression, spacedBodyExpression) {
     seq(optional(field('parameters', alias($.bare_parameters, $.method_parameters))), $._body_separator, body, 'end')
   );
   return choice(
-    seq(field('name', $._nonsetter_method_name), choice(block, spacedBodyExpression, seq(parameters, bodyExpression))),
+    seq(field('name', $._spaced_definition_name), choice(block, spacedBodyExpression, seq(parameters, bodyExpression))),
+    seq(field('name', $._gapless_definition_name), choice(block, bodyExpression, seq(parameters, bodyExpression))),
     seq(field('name', choice($.setter, alias('[]=', $.operator))), block)
   );
 }
