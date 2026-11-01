@@ -71,6 +71,22 @@ typedef struct {
 } Literal;
 
 typedef struct {
+    Literal literal;
+    uint32_t parent;
+    uint32_t depth;
+} LiteralFrame;
+
+typedef struct {
+    uint32_t words[7];
+} LiteralKey;
+
+typedef struct {
+    uint32_t children[2];
+    uint32_t frame;
+    uint8_t bit;
+} LiteralIndexNode;
+
+typedef struct {
     String word;
     bool end_word_indentation_allowed;
     bool squiggly;
@@ -85,7 +101,12 @@ typedef struct {
 typedef struct {
     bool has_leading_whitespace;
     bool continuation_comments;
-    Array(Literal) literal_stack;
+    Array(LiteralFrame) literal_frames;
+    Array(LiteralIndexNode) literal_index;
+    uint32_t literal_root;
+    Literal literal;
+    uint32_t literal_parent;
+    uint32_t literal_depth;
     Array(Heredoc) open_heredocs;
 } Scanner;
 
@@ -107,9 +128,15 @@ static inline void skip(Scanner *scanner, TSLexer *lexer) {
 
 static inline void advance(TSLexer *lexer) { lexer->advance(lexer, false); }
 
+static uint32_t save_literal(Scanner *scanner);
+static void restore_literal(Scanner *scanner, uint32_t frame_id);
+static LiteralKey literal_key(const LiteralFrame *frame);
+static uint8_t literal_difference(LiteralKey left, LiteralKey right);
+static unsigned literal_bit(LiteralKey key, uint8_t bit);
+
 static inline void reset(Scanner *scanner) {
     scanner->continuation_comments = 0;
-    array_delete(&scanner->literal_stack);
+    restore_literal(scanner, 0);
     for (uint32_t i = 0; i < scanner->open_heredocs.size; i++) {
         array_delete(&array_get(&scanner->open_heredocs, i)->word);
     }
@@ -119,23 +146,12 @@ static inline void reset(Scanner *scanner) {
 static inline unsigned serialize(Scanner *scanner, char *buffer) {
     unsigned size = 0;
 
-    if (scanner->literal_stack.size * 6 + 2 >= TREE_SITTER_SERIALIZATION_BUFFER_SIZE) {
-        return 0;
-    }
-
-    buffer[size++] = (char)scanner->literal_stack.size;
-    for (uint32_t i = 0; i < scanner->literal_stack.size; i++) {
-        Literal *literal = array_get(&scanner->literal_stack, i);
-        buffer[size++] = literal->type;
-        buffer[size++] = (char)literal->open_delimiter;
-        buffer[size++] = (char)literal->close_delimiter;
-        // Nested delimiters such as `%(((...)))` can exceed one byte of depth.
-        if (literal->nesting_depth > UINT16_MAX) {
-            return 0;
-        }
-        buffer[size++] = (char)(literal->nesting_depth & 0xFF);
-        buffer[size++] = (char)(literal->nesting_depth >> 8);
-        buffer[size++] = (char)(literal->allows_interpolation | (literal->resume_after_heredoc << 1) | ((i == 0 && scanner->continuation_comments) << 2));
+    bool has_literal = scanner->literal_depth > 0;
+    buffer[size++] = (char)(has_literal | (scanner->continuation_comments << 1));
+    if (has_literal) {
+        uint32_t frame_id = save_literal(scanner);
+        memcpy(&buffer[size], &frame_id, sizeof(frame_id));
+        size += sizeof(frame_id);
     }
 
     buffer[size++] = (char)scanner->open_heredocs.size;
@@ -145,7 +161,7 @@ static inline unsigned serialize(Scanner *scanner, char *buffer) {
             size + 4 + heredoc->word.size > TREE_SITTER_SERIALIZATION_BUFFER_SIZE) {
             return 0;
         }
-        buffer[size++] = (char)(heredoc->end_word_indentation_allowed | (heredoc->squiggly << 1) | ((i == 0 && scanner->literal_stack.size == 0 && scanner->continuation_comments) << 2));
+        buffer[size++] = (char)(heredoc->end_word_indentation_allowed | (heredoc->squiggly << 1));
         buffer[size++] = (char)(heredoc->allows_interpolation | (heredoc->mid_line << 1));
         buffer[size++] = (char)(((heredoc->word.size >> 8) << 4) | (heredoc->finished << 3) | (heredoc->host_line_continued << 2) | (heredoc->newline_consumed << 1) | heredoc->started);
         buffer[size++] = (char)(heredoc->word.size & 0xFF);
@@ -153,12 +169,10 @@ static inline unsigned serialize(Scanner *scanner, char *buffer) {
         size += heredoc->word.size;
     }
 
-    if (scanner->literal_stack.size == 0 && scanner->open_heredocs.size == 0 && scanner->continuation_comments) {
-        buffer[size++] = 1;
-    }
     return size;
 }
 
+// code-gauge-allow functionNcss 35 -- The header and pending heredoc records decode one layout; splitting it would duplicate buffer-position bookkeeping.
 static inline void deserialize(Scanner *scanner, const char *buffer, unsigned length) {
     unsigned size = 0;
     scanner->has_leading_whitespace = false;
@@ -168,19 +182,13 @@ static inline void deserialize(Scanner *scanner, const char *buffer, unsigned le
         return;
     }
 
-    uint8_t literal_depth = buffer[size++];
-    for (unsigned j = 0; j < literal_depth; j++) {
-        Literal literal = {0};
-        literal.type = (TokenType)(buffer[size++]);
-        literal.open_delimiter = (unsigned char)buffer[size++];
-        literal.close_delimiter = (unsigned char)buffer[size++];
-        literal.nesting_depth = (unsigned char)buffer[size] | ((unsigned char)buffer[size + 1] << 8);
-        size += 2;
-        uint8_t literal_flags = (uint8_t)buffer[size++];
-        literal.allows_interpolation = (literal_flags & 1) != 0;
-        literal.resume_after_heredoc = (literal_flags & 2) != 0;
-        if (j == 0) scanner->continuation_comments = (literal_flags & 4) != 0;
-        array_push(&scanner->literal_stack, literal);
+    uint8_t flags = buffer[size++];
+    scanner->continuation_comments = (flags & 2) != 0;
+    if (flags & 1) {
+        uint32_t frame_id;
+        memcpy(&frame_id, &buffer[size], sizeof(frame_id));
+        size += sizeof(frame_id);
+        restore_literal(scanner, frame_id);
     }
 
     uint8_t open_heredoc_count = buffer[size++];
@@ -189,7 +197,6 @@ static inline void deserialize(Scanner *scanner, const char *buffer, unsigned le
         uint8_t indentation_flags = (uint8_t)buffer[size++];
         heredoc.end_word_indentation_allowed = (indentation_flags & 1) != 0;
         heredoc.squiggly = (indentation_flags & 2) != 0;
-        if (j == 0 && literal_depth == 0) scanner->continuation_comments = (indentation_flags & 4) != 0;
         uint8_t interpolation_flags = (uint8_t)buffer[size++];
         heredoc.allows_interpolation = (interpolation_flags & 1) != 0;
         heredoc.mid_line = (interpolation_flags & 2) != 0;
@@ -208,8 +215,110 @@ static inline void deserialize(Scanner *scanner, const char *buffer, unsigned le
         array_push(&scanner->open_heredocs, heredoc);
     }
 
-    if (size < length) scanner->continuation_comments = buffer[size++] != 0;
     assert(size == length);
+}
+
+static void push_literal(Scanner *scanner, Literal literal) {
+    scanner->literal_parent = scanner->literal_depth ? save_literal(scanner) : 0;
+    scanner->literal = literal;
+    scanner->literal_depth++;
+}
+
+static void pop_literal(Scanner *scanner) {
+    restore_literal(scanner, scanner->literal_parent);
+}
+
+// The runtime gives each full parse its own scanner. Keep immutable parent frames until destruction so parser
+// branches can restore arbitrary literal depths through frame IDs without copying or truncating the whole stack.
+// code-gauge-allow functionNcss 42 -- Lookup and insertion share the canonical trie; splitting them would relocate index traversal and node ownership bookkeeping.
+static uint32_t save_literal(Scanner *scanner) {
+    LiteralFrame frame = {scanner->literal, scanner->literal_parent, scanner->literal_depth};
+    LiteralKey key = literal_key(&frame);
+    uint32_t current = scanner->literal_root;
+    while (current && !scanner->literal_index.contents[current - 1].frame) {
+        const LiteralIndexNode *node = &scanner->literal_index.contents[current - 1];
+        current = node->children[literal_bit(key, node->bit)];
+    }
+    uint8_t difference = 0;
+    if (current) {
+        uint32_t existing = scanner->literal_index.contents[current - 1].frame;
+        difference = literal_difference(key, literal_key(&scanner->literal_frames.contents[existing - 1]));
+        if (difference == UINT8_MAX) return existing;
+    }
+    array_push(&scanner->literal_frames, frame);
+    uint32_t frame_id = scanner->literal_frames.size;
+    LiteralIndexNode leaf = {{0, 0}, frame_id, 0};
+    array_push(&scanner->literal_index, leaf);
+    uint32_t inserted = scanner->literal_index.size;
+    if (!current) {
+        scanner->literal_root = inserted;
+        return frame_id;
+    }
+    uint32_t parent = 0;
+    unsigned direction = 0;
+    current = scanner->literal_root;
+    while (!scanner->literal_index.contents[current - 1].frame &&
+           scanner->literal_index.contents[current - 1].bit < difference) {
+        parent = current;
+        const LiteralIndexNode *node = &scanner->literal_index.contents[current - 1];
+        direction = literal_bit(key, node->bit);
+        current = node->children[direction];
+    }
+    LiteralIndexNode branch = {{0, 0}, 0, difference};
+    direction = literal_bit(key, difference);
+    branch.children[direction] = inserted;
+    branch.children[!direction] = current;
+    array_push(&scanner->literal_index, branch);
+    inserted = scanner->literal_index.size;
+    if (parent) {
+        const LiteralIndexNode *node = &scanner->literal_index.contents[parent - 1];
+        direction = literal_bit(key, node->bit);
+        scanner->literal_index.contents[parent - 1].children[direction] = inserted;
+    } else {
+        scanner->literal_root = inserted;
+    }
+    return frame_id;
+}
+
+static void restore_literal(Scanner *scanner, uint32_t frame_id) {
+    assert(frame_id <= scanner->literal_frames.size);
+    if (frame_id == 0) {
+        scanner->literal = (Literal){0};
+        scanner->literal_parent = 0;
+        scanner->literal_depth = 0;
+        return;
+    }
+    const LiteralFrame *frame = array_get(&scanner->literal_frames, frame_id - 1);
+    scanner->literal = frame->literal;
+    scanner->literal_parent = frame->parent;
+    scanner->literal_depth = frame->depth;
+}
+
+// Equal stacks need equal serialized IDs for the runtime to join parser branches. The fixed-width radix key
+// bounds lookup and insertion by 224 bits, independently of literal depth or the number of saved frames.
+static LiteralKey literal_key(const LiteralFrame *frame) {
+    const Literal *literal = &frame->literal;
+    return (LiteralKey){{frame->parent, frame->depth, (uint32_t)literal->type,
+        (uint32_t)literal->open_delimiter, (uint32_t)literal->close_delimiter,
+        (uint32_t)literal->nesting_depth, literal->allows_interpolation | (literal->resume_after_heredoc << 1)}};
+}
+
+static uint8_t literal_difference(LiteralKey left, LiteralKey right) {
+    for (uint8_t word = 0; word < 7; word++) {
+        uint32_t difference = left.words[word] ^ right.words[word];
+        if (!difference) continue;
+        uint8_t bit = 0;
+        while (!(difference & 1)) {
+            difference >>= 1;
+            bit++;
+        }
+        return word * 32 + bit;
+    }
+    return UINT8_MAX;
+}
+
+static unsigned literal_bit(LiteralKey key, uint8_t bit) {
+    return (key.words[bit / 32] >> (bit % 32)) & 1;
 }
 
 static inline bool scan_literal_resume(Literal *literal, TSLexer *lexer, const bool *valid_symbols);
@@ -927,7 +1036,7 @@ static inline bool is_short_interpolation_name_start(int32_t prefix, int32_t cod
 }
 
 static inline bool scan_literal_content(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols) {
-    Literal *literal = array_back(&scanner->literal_stack);
+    Literal *literal = &scanner->literal;
     bool has_content = false;
     bool stop_on_space = literal->type == SYMBOL_ARRAY_START || literal->type == STRING_ARRAY_START;
     bool pending_heredoc = has_pending_heredoc_body(scanner, valid_symbols);
@@ -996,7 +1105,7 @@ static inline bool scan_literal_content(Scanner *scanner, TSLexer *lexer, const 
                             advance(lexer);
                         }
                     }
-                    array_pop(&scanner->literal_stack);
+                    pop_literal(scanner);
                     if (newline_consumed) array_get(&scanner->open_heredocs, 0)->newline_consumed = true;
                     lexer->result_symbol = STRING_END;
                     lexer->mark_end(lexer);
@@ -1047,7 +1156,7 @@ static inline bool scan_literal_content(Scanner *scanner, TSLexer *lexer, const 
 
 static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols) {
     bool raw_data = valid_symbols[UNINTERPRETED] && !valid_symbols[STRING_START];
-    if (raw_data && scanner->open_heredocs.size == 0 && scanner->literal_stack.size == 0) {
+    if (raw_data && scanner->open_heredocs.size == 0 && scanner->literal_depth == 0) {
         return false;
     }
     scanner->has_leading_whitespace = false;
@@ -1064,7 +1173,7 @@ static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symb
     }
 
     if (!valid_symbols[STRING_START]) {
-        if ((valid_symbols[STRING_CONTENT] || valid_symbols[STRING_END]) && scanner->literal_stack.size > 0) {
+        if ((valid_symbols[STRING_CONTENT] || valid_symbols[STRING_END]) && scanner->literal_depth > 0) {
             return scan_literal_content(scanner, lexer, valid_symbols);
         }
         if ((valid_symbols[HEREDOC_CONTENT] || valid_symbols[HEREDOC_BODY_END]) && scanner->open_heredocs.size > 0) {
@@ -1196,7 +1305,7 @@ static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symb
                         literal.open_delimiter = '"';
                         literal.close_delimiter = '"';
                         literal.allows_interpolation = true;
-                        array_push(&scanner->literal_stack, literal);
+                        push_literal(scanner, literal);
                         lexer->result_symbol = SYMBOL_START;
                         return true;
 
@@ -1205,7 +1314,7 @@ static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symb
                         literal.open_delimiter = '\'';
                         literal.close_delimiter = '\'';
                         literal.allows_interpolation = false;
-                        array_push(&scanner->literal_stack, literal);
+                        push_literal(scanner, literal);
                         lexer->result_symbol = SYMBOL_START;
                         return true;
 
@@ -1285,7 +1394,7 @@ static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symb
                     array_get(&scanner->open_heredocs, 0)->newline_consumed = true;
                     literal.resume_after_heredoc = true;
                 }
-                array_push(&scanner->literal_stack, literal);
+                push_literal(scanner, literal);
             }
             lexer->result_symbol = literal.type;
             return true;
@@ -1535,7 +1644,7 @@ static inline bool is_horizontal_whitespace(int32_t codepoint) {
 }
 
 static inline bool start_literal_heredoc_body(Scanner *scanner, TSLexer *lexer) {
-    Literal *literal = array_back(&scanner->literal_stack);
+    Literal *literal = &scanner->literal;
     if (literal->close_delimiter == '\n') literal->resume_after_heredoc = true;
     return start_heredoc_body(scanner, lexer);
 }
@@ -1644,6 +1753,7 @@ void tree_sitter_ruby_external_scanner_destroy(void *payload) {
         array_delete(&array_get(&scanner->open_heredocs, i)->word);
     }
     array_delete(&scanner->open_heredocs);
-    array_delete(&scanner->literal_stack);
+    array_delete(&scanner->literal_frames);
+    array_delete(&scanner->literal_index);
     ts_free(scanner);
 }
