@@ -168,6 +168,7 @@ module.exports = grammar({
     [$._yield_pattern_not, $._test_pattern_not],
     [$._yield_argument_list, $._yield_pair_key_arguments],
     [$._body_expr, $._yield_value],
+    [$._spaced_body_expr, $._yield_value],
     [$._endless_command_operand, $._yield_value],
     [$._yield_argument, $._command_argument],
     [$._command_value, $._yield_value, $.pair],
@@ -263,7 +264,7 @@ module.exports = grammar({
 
     singleton_method: ($) => singletonMethod($, $._method_rest),
 
-    _method_rest: ($) => methodRest($, $._body_expr),
+    _method_rest: ($) => methodRest($, $._body_expr, $._spaced_body_expr),
 
     rescue_modifier_arg: ($) => prec(PREC.RESCUE, seq(field('body', $._arg), 'rescue', field('handler', $._arg))),
 
@@ -276,7 +277,15 @@ module.exports = grammar({
     rescue_modifier_expression: ($) =>
       prec(PREC.RESCUE, seq(field('body', $._non_pattern_expression), 'rescue', field('handler', $._arg))),
 
-    _body_expr: ($) => seq('=', field('body', endlessBody($, $._arg, $._endless_body_rescue))),
+    _body_expr: ($) =>
+      seq(alias($._endless_equals, '='), field('body', endlessBody($, $._arg, $._endless_body_rescue))),
+
+    _spaced_body_expr: ($) =>
+      seq(alias($._spaced_endless_equals, '='), field('body', endlessBody($, $._arg, $._endless_body_rescue))),
+
+    _endless_equals: () => token.immediate(/(?:[ \t\f\v\r]|\\\r?\n)*=/),
+
+    _spaced_endless_equals: () => token.immediate(/(?:[ \t\f\v\r]|\\\r?\n)+=/),
 
     _endless_body_rescue: ($) => endlessBodyRescue($, $._arg),
 
@@ -1504,9 +1513,10 @@ module.exports = grammar({
 
     _variable: ($) => prec.right(choice($.super, reserved('variables', $.identifier), $.constant)),
 
-    operator: () =>
+    operator: ($) => choice($._nonsetter_operator, '[]='),
+
+    _nonsetter_operator: () =>
       choice(
-        '..',
         '|',
         '^',
         '&',
@@ -1525,6 +1535,7 @@ module.exports = grammar({
         '/',
         '%',
         '!',
+        '!@',
         '!~',
         '**',
         '<<',
@@ -1534,28 +1545,33 @@ module.exports = grammar({
         '-@',
         '~@',
         '[]',
-        '[]=',
         '`'
       ),
 
     _method_name: ($) =>
-      choice(
-        reserved('methodNames', $.identifier),
-        $._function_identifier,
-        $.constant,
-        $.setter,
-        $.simple_symbol,
-        $.delimited_symbol,
-        $.operator,
-        $._nonlocal_variable
-      ),
+      choice($._nonsetter_method_name, $.setter, alias('[]=', $.operator), $.simple_symbol, $.delimited_symbol),
+
+    _nonsetter_method_name: ($) =>
+      choice($._method_identifier, $._function_identifier, $.constant, alias($._nonsetter_operator, $.operator)),
+
+    _method_identifier: ($) =>
+      choice(reserved('methodNames', $.identifier), alias($.self, $.identifier), alias($.super, $.identifier)),
 
     _nonlocal_variable: ($) => choice($.instance_variable, $.class_variable, $.global_variable),
 
-    setter: ($) => seq(field('name', $.identifier), token.immediate('=')),
+    setter: ($) =>
+      seq(field('name', choice($._method_identifier, alias($.constant, $.identifier))), token.immediate('=')),
 
     undef: ($) => seq('undef', commaSep1($._method_name)),
-    alias: ($) => seq('alias', field('name', $._method_name), field('alias', $._method_name)),
+    alias: ($) =>
+      choice(
+        seq('alias', field('name', $._method_name), field('alias', $._method_name)),
+        seq(
+          'alias',
+          field('name', $.global_variable),
+          field('alias', alias($._alias_global_variable, $.global_variable))
+        )
+      ),
 
     comment: ($) => choice($._line_comment, $._block_comment, token(prec(PREC.COMMENT, seq('#', /.*/)))),
 
@@ -1582,10 +1598,14 @@ module.exports = grammar({
     instance_variable: () => token(seq('@', ALPHA_CHAR, IDENTIFIER_CHARS)),
     class_variable: () => token(seq('@@', ALPHA_CHAR, IDENTIFIER_CHARS)),
 
-    global_variable: () =>
+    global_variable: ($) => choice($._named_global_variable, /\$[0-9]+/),
+
+    _alias_global_variable: ($) => choice($._named_global_variable, '$0'),
+
+    _named_global_variable: () =>
       token(
         choice(
-          /\$(-[a-zA-Z0-9_]|[!@&`'+~=/\\,;.<>*$?:"]|[0-9]+)/,
+          /\$(-[a-zA-Z0-9_]|[!@&`'+~=/\\,;.<>*$?:"])/,
           seq('$-', /[^\u0000-\u007F]/),
           seq('$', ALPHA_CHAR, IDENTIFIER_CHARS)
         )
@@ -1976,9 +1996,11 @@ function singletonMethod($, rest) {
  */
 function endlessMethodRest($, body) {
   return seq(
-    field('name', $._method_name),
-    optional(field('parameters', alias($.parameters, $.method_parameters))),
-    '=',
+    field('name', $._nonsetter_method_name),
+    choice(
+      alias($._spaced_endless_equals, '='),
+      seq(field('parameters', alias($.parameters, $.method_parameters)), alias($._endless_equals, '='))
+    ),
     field('body', body)
   );
 }
@@ -2111,23 +2133,18 @@ function callExpression($, primary, member, allowDoBlock = true) {
 /**
  * @param {GrammarSymbols<string>} $
  * @param {RuleOrLiteral} bodyExpression
+ * @param {RuleOrLiteral} spacedBodyExpression
  */
-function methodRest($, bodyExpression) {
-  return seq(
-    field('name', $._method_name),
-    choice(
-      bodyExpression,
-      seq(
-        field('parameters', alias($.parameters, $.method_parameters)),
-        choice(seq(optional($._terminator), optional(field('body', $.body_statement)), 'end'), bodyExpression)
-      ),
-      seq(
-        optional(field('parameters', alias($.bare_parameters, $.method_parameters))),
-        $._body_separator,
-        optional(field('body', $.body_statement)),
-        'end'
-      )
-    )
+function methodRest($, bodyExpression, spacedBodyExpression) {
+  const parameters = field('parameters', alias($.parameters, $.method_parameters));
+  const body = optional(field('body', $.body_statement));
+  const block = choice(
+    seq(parameters, optional($._terminator), body, 'end'),
+    seq(optional(field('parameters', alias($.bare_parameters, $.method_parameters))), $._body_separator, body, 'end')
+  );
+  return choice(
+    seq(field('name', $._nonsetter_method_name), choice(block, spacedBodyExpression, seq(parameters, bodyExpression))),
+    seq(field('name', choice($.setter, alias('[]=', $.operator))), block)
   );
 }
 

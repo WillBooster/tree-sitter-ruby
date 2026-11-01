@@ -162,10 +162,6 @@
     "named": true,
     "subtypes": [
       {
-        "type": "_nonlocal_variable",
-        "named": true
-      },
-      {
         "type": "constant",
         "named": true
       },
@@ -642,6 +638,10 @@
           {
             "type": "_method_name",
             "named": true
+          },
+          {
+            "type": "global_variable",
+            "named": true
           }
         ]
       },
@@ -651,6 +651,10 @@
         "types": [
           {
             "type": "_method_name",
+            "named": true
+          },
+          {
+            "type": "global_variable",
             "named": true
           }
         ]
@@ -1985,6 +1989,11 @@
     "fields": {}
   },
   {
+    "type": "global_variable",
+    "named": true,
+    "fields": {}
+  },
+  {
     "type": "hash",
     "named": true,
     "fields": {},
@@ -2559,7 +2568,19 @@
         "required": true,
         "types": [
           {
-            "type": "_method_name",
+            "type": "constant",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "operator",
+            "named": true
+          },
+          {
+            "type": "setter",
             "named": true
           }
         ]
@@ -3297,7 +3318,19 @@
         "required": true,
         "types": [
           {
-            "type": "_method_name",
+            "type": "constant",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "operator",
+            "named": true
+          },
+          {
+            "type": "setter",
             "named": true
           }
         ]
@@ -3881,6 +3914,10 @@
     "named": false
   },
   {
+    "type": "!@",
+    "named": false
+  },
+  {
     "type": "!~",
     "named": false
   },
@@ -3890,6 +3927,10 @@
   },
   {
     "type": "#{",
+    "named": false
+  },
+  {
+    "type": "$0",
     "named": false
   },
   {
@@ -4203,10 +4244,6 @@
   {
     "type": "for",
     "named": false
-  },
-  {
-    "type": "global_variable",
-    "named": true
   },
   {
     "type": "heredoc_beginning",
