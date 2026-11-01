@@ -54,6 +54,7 @@ typedef enum {
     HEREDOC_RESUME,
     BODY_COMMENT,
     BODY_LINE_BREAK,
+    END_OF_SOURCE,
 
     NONE
 } TokenType;
@@ -246,6 +247,7 @@ static bool scan_word_text(TSLexer *lexer, const char *word);
 static bool scan_leading_logical_operator(TSLexer *lexer);
 static bool scan_line_break(TSLexer *lexer);
 static bool scan_host_line_escape(Scanner *scanner, TSLexer *lexer, bool heredoc_body_start_is_valid);
+static bool scan_end_marker_line_end(TSLexer *lexer);
 
 static inline bool scan_whitespace(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols,
                                    bool *rescue_may_end_line) {
@@ -1237,7 +1239,8 @@ static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symb
     if (((valid_symbols[HASH_KEY_SYMBOL] || valid_symbols[IDENTIFIER_SUFFIX]) &&
          (iswalpha(lexer->lookahead) || lexer->lookahead == '_')) ||
         (valid_symbols[CONSTANT_SUFFIX] && iswupper(lexer->lookahead)) ||
-        (valid_symbols[NOT_PARENTHESIZED] && lexer->lookahead == 'n')) {
+        (valid_symbols[NOT_PARENTHESIZED] && lexer->lookahead == 'n') ||
+        (valid_symbols[END_OF_SOURCE] && lexer->lookahead == '_' && lexer->get_column(lexer) == 0)) {
         return scan_word_token(lexer, valid_symbols, rescue_may_end_line);
     }
 
@@ -1311,17 +1314,26 @@ static bool scan_splat(Scanner *scanner, TSLexer *lexer, const bool *valid_symbo
     return true;
 }
 
+// code-gauge-allow functionCognitiveComplexity 29 -- Suffixes and whole-word tokens share the scan so lookahead cannot consume another token's input.
+// code-gauge-allow functionNcss 42 -- Suffixes and whole-word tokens share the scan so lookahead cannot consume another token's input.
 static bool scan_word_token(TSLexer *lexer, const bool *valid_symbols, bool rescue_may_end_line) {
     static const char RESCUE[] = "rescue";
     TokenType suffix = iswupper(lexer->lookahead) ? CONSTANT_SUFFIX : IDENTIFIER_SUFFIX;
     bool not_word = valid_symbols[NOT_PARENTHESIZED];
+    bool end_marker = valid_symbols[END_OF_SOURCE] && lexer->get_column(lexer) == 0;
     unsigned length = 0;
     lexer->mark_end(lexer);
     while (iswalnum(lexer->lookahead) || lexer->lookahead == '_') {
         not_word &= length < 3 && lexer->lookahead == "not"[length];
+        end_marker &= length < 7 && lexer->lookahead == "__END__"[length] &&
+            (length == 0 || !lexer->is_at_included_range_start(lexer));
         rescue_may_end_line &= length < sizeof(RESCUE) - 1 && lexer->lookahead == RESCUE[length];
         length++;
         advance(lexer);
+    }
+    if (end_marker && length == 7 &&
+        (lexer->lookahead == '\n' || lexer->lookahead == '\r' || lexer->eof(lexer))) {
+        return scan_end_marker_line_end(lexer);
     }
     if (rescue_may_end_line && length == sizeof(RESCUE) - 1 && ends_keyword(lexer->lookahead)) {
         // A zero-width line break ends the hash shorthand or range before the `rescue` clause, which may name a
@@ -1352,6 +1364,16 @@ static bool scan_word_token(TSLexer *lexer, const bool *valid_symbols, bool resc
     lexer->mark_end(lexer);
     if (!scan_not_parentheses_gap(lexer)) return false;
     lexer->result_symbol = NOT_PARENTHESIZED;
+    return true;
+}
+
+static bool scan_end_marker_line_end(TSLexer *lexer) {
+    lexer->mark_end(lexer);
+    if (lexer->lookahead == '\r') {
+        advance(lexer);
+        if (lexer->lookahead != '\n') return false;
+    }
+    lexer->result_symbol = END_OF_SOURCE;
     return true;
 }
 
