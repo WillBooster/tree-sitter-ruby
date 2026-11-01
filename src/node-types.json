@@ -4113,6 +4113,10 @@
     "named": false
   },
   {
+    "type": "__END__",
+    "named": false
+  },
+  {
     "type": "`",
     "named": false
   },
