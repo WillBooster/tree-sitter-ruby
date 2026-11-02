@@ -219,3 +219,15 @@ test.each(['if!', 'end?', '(1)', ':a', ":'a'", ':"a"', ':+', '!a', '~a', '@a', '
     }
   }
 );
+
+test('keeps modulo by r before an operand that is not a regex option', () => {
+  const parser = new Parser().setLanguage(language);
+  const tree = parser.parse('def f(left, r, right)\n  value = left %r + right\nend\n')!;
+  try {
+    expect(tree.rootNode.hasError).toBe(false);
+    expect(tree.rootNode.descendantsOfType('regex')).toHaveLength(0);
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});

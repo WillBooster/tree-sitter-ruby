@@ -686,6 +686,13 @@ static bool spaced_percent_literal_ends_argument(Scanner *scanner, TSLexer *lexe
     if (!is_spaced_percent_delimiter(literal->close_delimiter)) return true;
     lexer->mark_end(lexer);
     if (!skip_spaced_percent_literal(scanner, lexer, literal)) return true;
+    if (literal->type == REGEX_START) {
+        // Ruby reads every following letter as a regex option and rejects unknown ones.
+        while (is_symbol_word_character(lexer->lookahead)) {
+            if (lexer->lookahead > 0x7f || !strchr("eimnosux", (char)lexer->lookahead)) return false;
+            advance(lexer);
+        }
+    }
     while (lexer->lookahead == ' ' || lexer->lookahead == '\t') advance(lexer);
     if (is_symbol_word_character(lexer->lookahead)) return scan_command_continuation_keyword(lexer);
     return !starts_symbol_operand(lexer);
@@ -727,9 +734,6 @@ static bool skip_spaced_percent_literal(Scanner *scanner, TSLexer *lexer, const 
         if (character == '#' && literal->allows_interpolation && lexer->lookahead == '{') return false;
     }
     advance(lexer);
-    if (literal->type == REGEX_START) {
-        while (lexer->lookahead >= 'a' && lexer->lookahead <= 'z') advance(lexer);
-    }
     return true;
 }
 
