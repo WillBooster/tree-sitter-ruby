@@ -65,6 +65,13 @@ test.each(['|value|', '||'])(
   }
 );
 
+test.each([
+  ['typed percent commands', '', 'sink %q abc \n', ''],
+  ['modulo with prefix-like variables', 'def f(left, q)\n', 'value = left %q + 1\n', 'end\nfollowing'],
+])('bounds parsing growth for %s', { timeout: 60_000 }, (_, prefix, line, suffix) => {
+  checkValidGrowth(`${prefix}${line.repeat(500)}${suffix}`, `${prefix}${line.repeat(5000)}${suffix}`);
+});
+
 test('bounds CPU growth for nested interpolated strings', { timeout: 60_000 }, () => {
   checkValidGrowth(nestedString(64), nestedString(512));
 });

@@ -2889,3 +2889,45 @@ p %= value
       (regex (string_content))))
   (binary (identifier) (identifier))
   (operator_assignment (identifier) (identifier)))
+
+=========================================
+modulo by percent-literal prefix names
+=========================================
+
+Q = 2
+W = 2
+I = 2
+def f(left, q, r, x, s, w, i)
+  left %q + 1
+  left %Q + 1
+  left %r + 1
+  left %x + 1
+  left %s + 1
+  left %w + 1
+  left %W + 1
+  left %i + 1
+  left %I + 1
+end
+following
+
+---
+
+(program
+  (assignment (constant) (integer))
+  (assignment (constant) (integer))
+  (assignment (constant) (integer))
+  (method
+    (identifier)
+    (method_parameters (identifier) (identifier) (identifier) (identifier) (identifier) (identifier) (identifier))
+    (body_statement
+      (binary (binary (identifier) (identifier)) (integer))
+      (binary (binary (identifier) (constant)) (integer))
+      (binary (binary (identifier) (identifier)) (integer))
+      (binary (binary (identifier) (identifier)) (integer))
+      (binary (binary (identifier) (identifier)) (integer))
+      (binary (binary (identifier) (identifier)) (integer))
+      (binary (binary (identifier) (constant)) (integer))
+      (binary (binary (identifier) (identifier)) (integer))
+      (binary (binary (identifier) (constant)) (integer))
+))
+  (identifier))
