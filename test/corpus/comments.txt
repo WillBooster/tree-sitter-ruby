@@ -160,3 +160,68 @@ end
   (call (identifier) (do_block (body_statement (identifier) (comment))))
   (method (identifier)
     (body_statement (identifier) (rescue (exceptions (constant)) (comment)))))
+
+====================================================
+Leading comments open the bodies after a line break
+====================================================
+
+if ready
+  # if head
+  first
+end
+while ready
+  # loop head
+  first
+end
+case value
+when 1
+  # when head
+  first
+end
+begin
+  first
+rescue StandardError
+  # handler head
+  second
+end
+class Example < Parent
+  # class head
+  first
+end
+
+---
+
+(program
+  (if (identifier) (then (comment) (identifier)))
+  (while (identifier) (do (comment) (identifier)))
+  (case (identifier) (when (pattern (integer)) (then (comment) (identifier))))
+  (begin (identifier) (rescue (exceptions (constant)) (then (comment) (identifier))))
+  (class (constant) (superclass (constant)) (body_statement (comment) (identifier))))
+
+====================================================
+Leading comments open bodies whose first word starts like a closing keyword
+====================================================
+
+if ready
+  # if head
+  items.each
+end
+
+---
+
+(program
+  (if (identifier) (then (comment) (call (identifier) (identifier)))))
+
+====================================================
+Trailing comments remain in brace blocks
+====================================================
+
+foo {
+  first
+  # block tail
+}
+
+---
+
+(program
+  (call (identifier) (block (block_body (identifier) (comment)))))

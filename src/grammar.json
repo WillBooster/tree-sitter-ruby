@@ -349,31 +349,27 @@
                 "type": "SEQ",
                 "members": [
                   {
-                    "type": "CHOICE",
-                    "members": [
-                      {
-                        "type": "FIELD",
-                        "name": "parameters",
-                        "content": {
-                          "type": "ALIAS",
-                          "content": {
-                            "type": "SYMBOL",
-                            "name": "bare_parameters"
-                          },
-                          "named": true,
-                          "value": "method_parameters"
-                        }
+                    "type": "FIELD",
+                    "name": "parameters",
+                    "content": {
+                      "type": "ALIAS",
+                      "content": {
+                        "type": "SYMBOL",
+                        "name": "bare_parameters"
                       },
-                      {
-                        "type": "BLANK"
-                      }
-                    ]
+                      "named": true,
+                      "value": "method_parameters"
+                    }
                   },
                   {
                     "type": "SYMBOL",
-                    "name": "_body_separator"
+                    "name": "_terminator"
                   }
                 ]
+              },
+              {
+                "type": "SYMBOL",
+                "name": "_body_separator"
               }
             ]
           }
@@ -1416,7 +1412,7 @@
                 },
                 {
                   "type": "SYMBOL",
-                  "name": "_body_separator"
+                  "name": "_terminator"
                 }
               ]
             },
@@ -1495,7 +1491,7 @@
         },
         {
           "type": "SYMBOL",
-          "name": "_body_separator"
+          "name": "_terminator"
         },
         {
           "type": "CHOICE",

@@ -351,7 +351,10 @@ static inline bool is_heredoc_word_character(int32_t codepoint);
 static inline uint32_t encode_utf8(int32_t codepoint, char *bytes);
 static inline void append_heredoc_character(String *word, int32_t codepoint);
 static inline bool scan_line_comment(TSLexer *lexer);
-static bool scan_comment_line_break(Scanner *scanner, TSLexer *lexer);
+static bool scan_comment_line_break(Scanner *scanner, TSLexer *lexer, bool opens_body);
+static bool may_close_body(TSLexer *lexer);
+static bool scan_closing_keyword(TSLexer *lexer);
+static inline bool ends_keyword(int32_t c);
 static bool scan_after_whitespace(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols, bool crossed_newline, bool crossed_line);
 static bool scan_continuation_comment(Scanner *scanner, TSLexer *lexer);
 static bool scan_splat(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols);
@@ -422,10 +425,9 @@ static bool scan_after_whitespace(Scanner *scanner, TSLexer *lexer, const bool *
                                   bool crossed_newline, bool crossed_line) {
     if (lexer->lookahead == '#') {
         if (scanner->continuation_comments) return scan_continuation_comment(scanner, lexer);
-        if (crossed_newline && (valid_symbols[BODY_LINE_BREAK] || valid_symbols[BODY_COMMENT])) {
-            return scan_comment_line_break(scanner, lexer);
+        if (crossed_newline) {
+            return scan_comment_line_break(scanner, lexer, valid_symbols[BODY_LINE_BREAK] || valid_symbols[BODY_COMMENT]);
         }
-        if (crossed_newline) return true;
         if (crossed_line && valid_symbols[BODY_COMMENT]) {
             scan_line_comment(lexer);
             lexer->mark_end(lexer);
@@ -471,7 +473,7 @@ static bool scan_line_break(TSLexer *lexer) {
     return true;
 }
 
-static bool scan_comment_line_break(Scanner *scanner, TSLexer *lexer) {
+static bool scan_comment_line_break(Scanner *scanner, TSLexer *lexer, bool opens_body) {
     TSLexerCheckpoint comment_start;
     TSLexerCheckpoint comment_end;
     lexer->get_checkpoint(lexer, &comment_start);
@@ -483,9 +485,13 @@ static bool scan_comment_line_break(Scanner *scanner, TSLexer *lexer) {
         while (iswspace(lexer->lookahead) && !lexer->is_at_included_range_start(lexer)) advance(lexer);
     } while (lexer->lookahead == '#' && !lexer->is_at_included_range_start(lexer));
 
-    bool continued = !lexer->is_at_included_range_start(lexer) &&
-                     (!scan_line_break(lexer) || lexer->result_symbol != LINE_BREAK);
-    if (continued) {
+    // Comments before a continued line stay in the expression. Otherwise the line break comes first so that the comments
+    // open the following statements' body, unless the next line closes the current body, which keeps them in it.
+    bool comment_first = !lexer->is_at_included_range_start(lexer) &&
+                         (!opens_body && may_close_body(lexer)
+                              ? scan_closing_keyword(lexer)
+                              : !scan_line_break(lexer) || lexer->result_symbol != LINE_BREAK);
+    if (comment_first) {
         scanner->continuation_comments = comment_count > 1;
         lexer->mark_start(lexer, &comment_start);
         lexer->mark_end_at(lexer, &comment_end);
@@ -494,6 +500,29 @@ static bool scan_comment_line_break(Scanner *scanner, TSLexer *lexer) {
         lexer->result_symbol = LINE_BREAK;
     }
     return true;
+}
+
+// No line that scan_line_break treats as a continuation starts with these characters.
+static bool may_close_body(TSLexer *lexer) {
+    int32_t c = lexer->lookahead;
+    return lexer->eof(lexer) || (c > 0 && c < 0x80 && strchr(")]}eirtw", c));
+}
+
+static bool scan_closing_keyword(TSLexer *lexer) {
+    static const char *const KEYWORDS[] = {"end", "else", "elsif", "ensure", "rescue", "when", "in", "then"};
+    if (lexer->eof(lexer) || !iswalpha(lexer->lookahead)) return true;
+    char word[8];
+    unsigned length = 0;
+    while (length < sizeof(word) - 1 && lexer->lookahead >= 'a' && lexer->lookahead <= 'z') {
+        word[length++] = (char)lexer->lookahead;
+        advance(lexer);
+    }
+    word[length] = '\0';
+    if (!ends_keyword(lexer->lookahead)) return false;
+    for (size_t i = 0; i < sizeof(KEYWORDS) / sizeof(KEYWORDS[0]); i++) {
+        if (strcmp(word, KEYWORDS[i]) == 0) return true;
+    }
+    return false;
 }
 
 static bool scan_host_line_escape(Scanner *scanner, TSLexer *lexer, bool heredoc_body_start_is_valid) {

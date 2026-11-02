@@ -276,7 +276,8 @@ module.exports = grammar({
           ),
           choice(
             seq(field('parameters', alias($.parameters, $.method_parameters)), optional($._terminator)),
-            seq(optional(field('parameters', alias($.bare_parameters, $.method_parameters))), $._body_separator)
+            seq(field('parameters', alias($.bare_parameters, $.method_parameters)), $._terminator),
+            $._body_separator
           )
         )
       ),
@@ -400,7 +401,7 @@ module.exports = grammar({
       seq(
         'class',
         field('name', choice($.constant, $.scope_resolution)),
-        choice(seq(field('superclass', $.superclass), $._body_separator), optional($._terminator)),
+        choice(seq(field('superclass', $.superclass), $._terminator), optional($._terminator)),
         optional(field('body', $.body_statement)),
         'end'
       ),
@@ -412,7 +413,7 @@ module.exports = grammar({
         'class',
         alias($._singleton_class_left_angle_left_langle, '<<'),
         field('value', $._arg),
-        $._body_separator,
+        $._terminator,
         optional(field('body', $.body_statement)),
         'end'
       ),
@@ -1761,6 +1762,9 @@ module.exports = grammar({
 
     empty_statement: () => prec(-1, ';'),
 
+    // The scanner emits comments after this line break into the body even when only comments precede `end`. It follows
+    // only a method name: after an expression, its validity would split the states of every expression from those of
+    // other contexts.
     _body_separator: ($) => choice(prec.dynamic(1, $._body_line_break), ';'),
 
     _terminator: ($) => choice(prec.dynamic(1, $._line_break), ';'),
