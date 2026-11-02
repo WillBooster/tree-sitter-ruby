@@ -644,7 +644,7 @@ static inline bool expects_literal_operand(const bool *valid_symbols) {
     return (valid_symbols[NO_LINE_BREAK] || valid_symbols[JUMP_OPERAND]) && !valid_symbols[STRING_CONTENT];
 }
 
-static bool skip_spaced_percent_literal(TSLexer *lexer, const Literal *literal);
+static bool skip_spaced_percent_literal(Scanner *scanner, TSLexer *lexer, const Literal *literal);
 static bool scan_command_continuation_keyword(TSLexer *lexer);
 
 static inline bool is_spaced_percent_delimiter(int32_t delimiter) {
@@ -680,19 +680,20 @@ static inline int32_t percent_close_delimiter(int32_t delimiter, bool binary_ope
 // After a name, `sink %q abc , 1` passes a literal argument, whereas `left %q + 1` divides by `q` when `left` is a
 // local variable. The scanner cannot see local variables, so it keeps the literal unless the text after it starts
 // another operand, which no command argument can be followed by.
-static bool spaced_percent_literal_ends_argument(TSLexer *lexer, const Literal *literal) {
+static bool spaced_percent_literal_ends_argument(Scanner *scanner, TSLexer *lexer, const Literal *literal) {
     if (!is_spaced_percent_delimiter(literal->close_delimiter)) return true;
     lexer->mark_end(lexer);
-    if (!skip_spaced_percent_literal(lexer, literal)) return true;
+    if (!skip_spaced_percent_literal(scanner, lexer, literal)) return true;
     while (lexer->lookahead == ' ' || lexer->lookahead == '\t') advance(lexer);
     if (lexer->lookahead == '@' || lexer->lookahead == '$') return false;
     return !is_symbol_word_character(lexer->lookahead) || scan_command_continuation_keyword(lexer);
 }
 
-// Returns false at an interpolation, whose contents may contain the delimiter.
-static bool skip_spaced_percent_literal(TSLexer *lexer, const Literal *literal) {
+// Returns false where the literal's extent cannot be read from raw text: at an interpolation, whose contents may
+// contain the delimiter, and at a line break while a heredoc body is queued, which the literal suspends for.
+static bool skip_spaced_percent_literal(Scanner *scanner, TSLexer *lexer, const Literal *literal) {
     while (lexer->lookahead != literal->close_delimiter) {
-        if (lexer->eof(lexer)) return false;
+        if (lexer->eof(lexer) || (lexer->lookahead == '\n' && scanner->open_heredocs.size > 0)) return false;
         int32_t character = lexer->lookahead;
         advance(lexer);
         if (character == '\\') advance(lexer);
@@ -706,7 +707,8 @@ static bool skip_spaced_percent_literal(TSLexer *lexer, const Literal *literal) 
 }
 
 static bool scan_command_continuation_keyword(TSLexer *lexer) {
-    static const char *const keywords[] = {"and", "do", "end", "if", "or", "rescue", "then", "unless", "until", "while"};
+    static const char *const keywords[] = {"and", "do",   "else",   "elsif", "end",  "ensure", "if",   "in",
+                                           "or",  "rescue", "then", "unless", "until", "when", "while"};
     char word[7] = {0};
     for (unsigned length = 0; is_symbol_word_character(lexer->lookahead); length++) {
         if (length == sizeof(word) - 1 || lexer->lookahead > 0x7f) return false;
@@ -825,7 +827,7 @@ static inline bool scan_literal_start_or_assignment(Scanner *scanner, TSLexer *l
                 literal->open_delimiter = literal->close_delimiter = '\n';
                 advance(lexer);
             }
-            return !binary_operator_valid || spaced_percent_literal_ends_argument(lexer, literal);
+            return !binary_operator_valid || spaced_percent_literal_ends_argument(scanner, lexer, literal);
         }
         default:
             return false;

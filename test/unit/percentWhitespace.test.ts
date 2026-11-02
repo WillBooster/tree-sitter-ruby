@@ -157,6 +157,11 @@ test.each([
   'def f; yield %q abc ; end',
   'obj.sink %q abc  do end',
   'sink %q abc  do end',
+  'if true; sink %q abc else 2 end',
+  'if true; sink %q abc elsif false then 2 end',
+  'begin; sink %q abc ensure 2 end',
+  'case 1; when 1 then sink %q abc when 2 then 3 end',
+  'case 1; in Integer then sink %q abc in String then 3 end',
 ])('keeps a whitespace literal in the argument list of %j', (source) => {
   const parser = new Parser().setLanguage(language);
   const tree = parser.parse(source)!;
@@ -164,6 +169,21 @@ test.each([
     expect(tree.rootNode.hasError, source).toBe(false);
     const literals = tree.rootNode.descendantsOfType('string');
     expect(literals.map((node) => [node.parent!.type, node.text])).toEqual([['argument_list', '%q abc ']]);
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});
+
+test('keeps a whitespace literal whose body spans a queued heredoc', () => {
+  const source = 'value = [<<EOS, (sink %q head\nbody with spaces\nEOS\ntail )]\nfollowing\n';
+  const parser = new Parser().setLanguage(language);
+  const tree = parser.parse(source)!;
+  try {
+    expect(tree.rootNode.hasError).toBe(false);
+    const literal = tree.rootNode.descendantsOfType('string').find((node) => node.text.startsWith('%q'))!;
+    expect(literal.parent!.type).toBe('argument_list');
+    expect(literal.descendantsOfType('heredoc_body')).toHaveLength(1);
   } finally {
     tree.delete();
     parser.delete();
