@@ -685,7 +685,8 @@ static inline int32_t percent_close_delimiter(int32_t delimiter, bool binary_ope
 static bool spaced_percent_literal_ends_argument(Scanner *scanner, TSLexer *lexer, const Literal *literal) {
     if (!is_spaced_percent_delimiter(literal->close_delimiter)) return true;
     lexer->mark_end(lexer);
-    if (!skip_spaced_percent_literal(scanner, lexer, literal)) return true;
+    // An unterminated literal leaves modulo as the only reading.
+    if (!skip_spaced_percent_literal(scanner, lexer, literal)) return !lexer->eof(lexer);
     if (literal->type == REGEX_START) {
         // Ruby reads every following letter as a regex option and rejects unknown ones.
         while (is_symbol_word_character(lexer->lookahead)) {
@@ -719,7 +720,7 @@ static bool starts_symbol_operand(TSLexer *lexer) {
 
 // Returns false where the literal's extent cannot be read from raw text: at an interpolation or a braced Unicode
 // escape (`\u{41 42}`), whose contents may contain the delimiter, and at a line break while a heredoc body is
-// queued, which the literal suspends for.
+// queued, which the literal suspends for. Also returns false at the end of input, where the literal is unterminated.
 static bool skip_spaced_percent_literal(Scanner *scanner, TSLexer *lexer, const Literal *literal) {
     while (lexer->lookahead != literal->close_delimiter) {
         if (lexer->eof(lexer) || suspends_for_heredoc(scanner, lexer)) return false;

@@ -231,3 +231,15 @@ test('keeps modulo by r before an operand that is not a regex option', () => {
     parser.delete();
   }
 });
+
+test('keeps modulo when a spaced percent literal would run to the end of input', () => {
+  const parser = new Parser().setLanguage(language);
+  const tree = parser.parse('def f(left, q)\n  left %q +1\nend\n')!;
+  try {
+    expect(tree.rootNode.hasError).toBe(false);
+    expect(tree.rootNode.descendantsOfType('string')).toHaveLength(0);
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});
