@@ -197,3 +197,17 @@ end
   (case (identifier) (when (pattern (integer)) (then (comment) (identifier))))
   (begin (identifier) (rescue (exceptions (constant)) (then (comment) (identifier))))
   (class (constant) (superclass (constant)) (body_statement (comment) (identifier))))
+
+====================================================
+Leading comments open bodies whose first word starts like a closing keyword
+====================================================
+
+if ready
+  # if head
+  items.each
+end
+
+---
+
+(program
+  (if (identifier) (then (comment) (call (identifier) (identifier)))))

@@ -352,6 +352,7 @@ static inline uint32_t encode_utf8(int32_t codepoint, char *bytes);
 static inline void append_heredoc_character(String *word, int32_t codepoint);
 static inline bool scan_line_comment(TSLexer *lexer);
 static bool scan_comment_line_break(Scanner *scanner, TSLexer *lexer, bool opens_body);
+static bool may_close_body(TSLexer *lexer);
 static bool scan_closing_keyword(TSLexer *lexer);
 static inline bool ends_keyword(int32_t c);
 static bool scan_after_whitespace(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols, bool crossed_newline, bool crossed_line);
@@ -487,8 +488,9 @@ static bool scan_comment_line_break(Scanner *scanner, TSLexer *lexer, bool opens
     // Comments before a continued line stay in the expression. Otherwise the line break comes first so that the comments
     // open the following statements' body, unless the next line closes the current body, which keeps them in it.
     bool comment_first = !lexer->is_at_included_range_start(lexer) &&
-                         ((!opens_body && scan_closing_keyword(lexer)) || !scan_line_break(lexer) ||
-                          lexer->result_symbol != LINE_BREAK);
+                         (!opens_body && may_close_body(lexer)
+                              ? scan_closing_keyword(lexer)
+                              : !scan_line_break(lexer) || lexer->result_symbol != LINE_BREAK);
     if (comment_first) {
         scanner->continuation_comments = comment_count > 1;
         lexer->mark_start(lexer, &comment_start);
@@ -500,11 +502,15 @@ static bool scan_comment_line_break(Scanner *scanner, TSLexer *lexer, bool opens
     return true;
 }
 
+// No line that scan_line_break treats as a continuation starts with these characters.
+static bool may_close_body(TSLexer *lexer) {
+    int32_t c = lexer->lookahead;
+    return lexer->eof(lexer) || (c > 0 && c <= 'z' && strchr(")]}eirtw", c));
+}
+
 static bool scan_closing_keyword(TSLexer *lexer) {
     static const char *const KEYWORDS[] = {"end", "else", "elsif", "ensure", "rescue", "when", "in", "then"};
-    if (lexer->eof(lexer) || lexer->lookahead == ')' || lexer->lookahead == ']' || lexer->lookahead == '}') return true;
-    // A line starting with another letter may continue the expression (`and`, `or`), which scan_line_break must see.
-    if (lexer->lookahead == 0 || lexer->lookahead > 'z' || !strchr("eirtw", lexer->lookahead)) return false;
+    if (lexer->eof(lexer) || !iswalpha(lexer->lookahead)) return true;
     char word[8];
     unsigned length = 0;
     while (length < sizeof(word) - 1 && lexer->lookahead >= 'a' && lexer->lookahead <= 'z') {
