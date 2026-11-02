@@ -175,6 +175,19 @@ test.each([
   }
 });
 
+test('keeps a whitespace literal containing a spaced Unicode escape', () => {
+  const parser = new Parser().setLanguage(language);
+  const tree = parser.parse('sink %Q \\u{41 42} , 1\nfollowing\n')!;
+  try {
+    expect(tree.rootNode.hasError).toBe(false);
+    const literal = tree.rootNode.descendantsOfType('string')[0]!;
+    expect([literal.parent!.type, literal.text]).toEqual(['argument_list', String.raw`%Q \u{41 42} `]);
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});
+
 test('keeps a whitespace literal whose body spans a queued heredoc', () => {
   const source = 'value = [<<EOS, (sink %q head\nbody with spaces\nEOS\ntail )]\nfollowing\n';
   const parser = new Parser().setLanguage(language);

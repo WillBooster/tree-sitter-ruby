@@ -689,14 +689,19 @@ static bool spaced_percent_literal_ends_argument(Scanner *scanner, TSLexer *lexe
     return !is_symbol_word_character(lexer->lookahead) || scan_command_continuation_keyword(lexer);
 }
 
-// Returns false where the literal's extent cannot be read from raw text: at an interpolation, whose contents may
-// contain the delimiter, and at a line break while a heredoc body is queued, which the literal suspends for.
+// Returns false where the literal's extent cannot be read from raw text: at an interpolation or a braced Unicode
+// escape (`\u{41 42}`), whose contents may contain the delimiter, and at a line break while a heredoc body is
+// queued, which the literal suspends for.
 static bool skip_spaced_percent_literal(Scanner *scanner, TSLexer *lexer, const Literal *literal) {
     while (lexer->lookahead != literal->close_delimiter) {
         if (lexer->eof(lexer) || (lexer->lookahead == '\n' && scanner->open_heredocs.size > 0)) return false;
         int32_t character = lexer->lookahead;
         advance(lexer);
-        if (character == '\\') advance(lexer);
+        if (character == '\\') {
+            bool unicode = literal->allows_interpolation && lexer->lookahead == 'u';
+            advance(lexer);
+            if (unicode && lexer->lookahead == '{') return false;
+        }
         if (character == '#' && literal->allows_interpolation && lexer->lookahead == '{') return false;
     }
     advance(lexer);
