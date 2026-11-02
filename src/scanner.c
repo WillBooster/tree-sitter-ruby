@@ -645,6 +645,7 @@ static inline bool expects_literal_operand(const bool *valid_symbols) {
 }
 
 static bool skip_spaced_percent_literal(Scanner *scanner, TSLexer *lexer, const Literal *literal);
+static inline bool suspends_for_heredoc(Scanner *scanner, TSLexer *lexer);
 static bool scan_command_continuation_keyword(TSLexer *lexer);
 
 static inline bool is_spaced_percent_delimiter(int32_t delimiter) {
@@ -694,10 +695,11 @@ static bool spaced_percent_literal_ends_argument(Scanner *scanner, TSLexer *lexe
 // queued, which the literal suspends for.
 static bool skip_spaced_percent_literal(Scanner *scanner, TSLexer *lexer, const Literal *literal) {
     while (lexer->lookahead != literal->close_delimiter) {
-        if (lexer->eof(lexer) || (lexer->lookahead == '\n' && scanner->open_heredocs.size > 0)) return false;
+        if (lexer->eof(lexer) || suspends_for_heredoc(scanner, lexer)) return false;
         int32_t character = lexer->lookahead;
         advance(lexer);
         if (character == '\\') {
+            if (suspends_for_heredoc(scanner, lexer)) return false;
             bool unicode = literal->allows_interpolation && lexer->lookahead == 'u';
             advance(lexer);
             if (unicode && lexer->lookahead == '{') return false;
@@ -711,6 +713,10 @@ static bool skip_spaced_percent_literal(Scanner *scanner, TSLexer *lexer, const 
     return true;
 }
 
+static inline bool suspends_for_heredoc(Scanner *scanner, TSLexer *lexer) {
+    return scanner->open_heredocs.size > 0 && (lexer->lookahead == '\n' || lexer->lookahead == '\r');
+}
+
 static bool scan_command_continuation_keyword(TSLexer *lexer) {
     static const char *const keywords[] = {"and", "do",   "else",   "elsif", "end",  "ensure", "if",   "in",
                                            "or",  "rescue", "then", "unless", "until", "when", "while"};
@@ -719,6 +725,11 @@ static bool scan_command_continuation_keyword(TSLexer *lexer) {
         if (length == sizeof(word) - 1 || lexer->lookahead > 0x7f) return false;
         word[length] = (char)lexer->lookahead;
         advance(lexer);
+    }
+    // `if!` and `end?` are method names.
+    if (lexer->lookahead == '!' || lexer->lookahead == '?') {
+        advance(lexer);
+        if (lexer->lookahead != '=') return false;
     }
     for (unsigned i = 0; i < sizeof(keywords) / sizeof(keywords[0]); i++) {
         if (strcmp(word, keywords[i]) == 0) return true;

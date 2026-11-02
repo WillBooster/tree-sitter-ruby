@@ -188,8 +188,10 @@ test('keeps a whitespace literal containing a spaced Unicode escape', () => {
   }
 });
 
-test('keeps a whitespace literal whose body spans a queued heredoc', () => {
-  const source = 'value = [<<EOS, (sink %q head\nbody with spaces\nEOS\ntail )]\nfollowing\n';
+test.each([
+  'value = [<<EOS, (sink %q head\nbody with spaces\nEOS\ntail )]\nfollowing\n',
+  'value = [<<EOS, (sink %q head\\\nbody with spaces\nEOS\ntail )]\nfollowing\n',
+])('keeps a whitespace literal whose body spans a queued heredoc in %j', (source) => {
   const parser = new Parser().setLanguage(language);
   const tree = parser.parse(source)!;
   try {
@@ -197,6 +199,18 @@ test('keeps a whitespace literal whose body spans a queued heredoc', () => {
     const literal = tree.rootNode.descendantsOfType('string').find((node) => node.text.startsWith('%q'))!;
     expect(literal.parent!.type).toBe('argument_list');
     expect(literal.descendantsOfType('heredoc_body')).toHaveLength(1);
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});
+
+test.each(['if!', 'end?'])('keeps modulo before the method name %s', (name) => {
+  const parser = new Parser().setLanguage(language);
+  const tree = parser.parse(`def f(left, q)\n  value = left %q + ${name}\nend\n`)!;
+  try {
+    expect(tree.rootNode.hasError).toBe(false);
+    expect(tree.rootNode.descendantsOfType('string')).toHaveLength(0);
   } finally {
     tree.delete();
     parser.delete();
