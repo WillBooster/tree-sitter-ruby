@@ -645,6 +645,7 @@ static inline bool expects_literal_operand(const bool *valid_symbols) {
 }
 
 static bool skip_spaced_percent_literal(Scanner *scanner, TSLexer *lexer, const Literal *literal);
+static bool starts_symbol_operand(TSLexer *lexer);
 static inline bool suspends_for_heredoc(Scanner *scanner, TSLexer *lexer);
 static bool scan_command_continuation_keyword(TSLexer *lexer);
 
@@ -686,8 +687,27 @@ static bool spaced_percent_literal_ends_argument(Scanner *scanner, TSLexer *lexe
     lexer->mark_end(lexer);
     if (!skip_spaced_percent_literal(scanner, lexer, literal)) return true;
     while (lexer->lookahead == ' ' || lexer->lookahead == '\t') advance(lexer);
-    if (lexer->lookahead == '@' || lexer->lookahead == '$') return false;
-    return !is_symbol_word_character(lexer->lookahead) || scan_command_continuation_keyword(lexer);
+    if (is_symbol_word_character(lexer->lookahead)) return scan_command_continuation_keyword(lexer);
+    return !starts_symbol_operand(lexer);
+}
+
+// Covers the non-word operand starts; `[`, `-`, `::`, and quotes can continue a literal argument.
+static bool starts_symbol_operand(TSLexer *lexer) {
+    switch (lexer->lookahead) {
+        case '@':
+        case '$':
+        case '(':
+        case '~':
+            return true;
+        case '!':
+            advance(lexer);
+            return lexer->lookahead != '=' && lexer->lookahead != '~';
+        case ':':
+            advance(lexer);
+            return is_symbol_word_start(lexer->lookahead) || lexer->lookahead == '"';
+        default:
+            return false;
+    }
 }
 
 // Returns false where the literal's extent cannot be read from raw text: at an interpolation or a braced Unicode

@@ -205,7 +205,7 @@ test.each([
   }
 });
 
-test.each(['if!', 'end?'])('keeps modulo before the method name %s', (name) => {
+test.each(['if!', 'end?', '(1)', ':a', '!a', '~a', '@a', '$a'])('keeps modulo before the operand %s', (name) => {
   const parser = new Parser().setLanguage(language);
   const tree = parser.parse(`def f(left, q)\n  value = left %q + ${name}\nend\n`)!;
   try {
