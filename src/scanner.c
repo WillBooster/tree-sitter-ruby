@@ -505,7 +505,7 @@ static bool scan_comment_line_break(Scanner *scanner, TSLexer *lexer, bool opens
 // No line that scan_line_break treats as a continuation starts with these characters.
 static bool may_close_body(TSLexer *lexer) {
     int32_t c = lexer->lookahead;
-    return lexer->eof(lexer) || (c > 0 && c <= 'z' && strchr(")]}eirtw", c));
+    return lexer->eof(lexer) || (c > 0 && c < 0x80 && strchr(")]}eirtw", c));
 }
 
 static bool scan_closing_keyword(TSLexer *lexer) {

@@ -211,3 +211,17 @@ end
 
 (program
   (if (identifier) (then (comment) (call (identifier) (identifier)))))
+
+====================================================
+Trailing comments remain in brace blocks
+====================================================
+
+foo {
+  first
+  # block tail
+}
+
+---
+
+(program
+  (call (identifier) (block (block_body (identifier) (comment)))))
