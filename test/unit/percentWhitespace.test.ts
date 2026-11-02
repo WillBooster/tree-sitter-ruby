@@ -144,3 +144,28 @@ test.each(['sink%q abc ', 'sink %r\r\nabc\r\n.size, 7\nfollowing'])('retains syn
     parser.delete();
   }
 });
+
+test.each([
+  'obj.sink %q abc ',
+  'sink! %q abc ',
+  'sink? %q abc ',
+  'Foo %q abc ',
+  'def f; super %q abc ; end',
+  'def f; return %q abc ; end',
+  'loop do; break %q abc ; end',
+  'loop do; next %q abc ; end',
+  'def f; yield %q abc ; end',
+  'obj.sink %q abc  do end',
+  'sink %q abc  do end',
+])('keeps a whitespace literal in the argument list of %j', (source) => {
+  const parser = new Parser().setLanguage(language);
+  const tree = parser.parse(source)!;
+  try {
+    expect(tree.rootNode.hasError, source).toBe(false);
+    const literals = tree.rootNode.descendantsOfType('string');
+    expect(literals.map((node) => [node.parent!.type, node.text])).toEqual([['argument_list', '%q abc ']]);
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});
