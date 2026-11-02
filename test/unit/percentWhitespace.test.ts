@@ -232,9 +232,13 @@ test('keeps modulo by r before an operand that is not a regex option', () => {
   }
 });
 
-test('keeps modulo when a spaced percent literal would run to the end of input', () => {
+test.each([
+  'def f(left, q)\n  left %q +1\nend\n',
+  'def f(left, q)\n  left %q +1\n  end\n',
+  'def f(left, q)\n  left %q +1\\\n  end\n',
+])('keeps modulo when a spaced percent literal would cross a line break or the end of input in %j', (source) => {
   const parser = new Parser().setLanguage(language);
-  const tree = parser.parse('def f(left, q)\n  left %q +1\nend\n')!;
+  const tree = parser.parse(source)!;
   try {
     expect(tree.rootNode.hasError).toBe(false);
     expect(tree.rootNode.descendantsOfType('string')).toHaveLength(0);

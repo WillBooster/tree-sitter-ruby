@@ -644,9 +644,14 @@ static inline bool expects_literal_operand(const bool *valid_symbols) {
     return (valid_symbols[NO_LINE_BREAK] || valid_symbols[JUMP_OPERAND]) && !valid_symbols[STRING_CONTENT];
 }
 
-static bool skip_spaced_percent_literal(Scanner *scanner, TSLexer *lexer, const Literal *literal);
+typedef enum {
+    SPACED_LITERAL_CLOSED,
+    SPACED_LITERAL_UNREADABLE,
+    SPACED_LITERAL_UNTERMINATED,
+} SpacedLiteralEnd;
+
+static SpacedLiteralEnd skip_spaced_percent_literal(Scanner *scanner, TSLexer *lexer, const Literal *literal);
 static bool starts_symbol_operand(TSLexer *lexer);
-static inline bool suspends_for_heredoc(Scanner *scanner, TSLexer *lexer);
 static bool scan_command_continuation_keyword(TSLexer *lexer);
 
 static inline bool is_spaced_percent_delimiter(int32_t delimiter) {
@@ -685,8 +690,14 @@ static inline int32_t percent_close_delimiter(int32_t delimiter, bool binary_ope
 static bool spaced_percent_literal_ends_argument(Scanner *scanner, TSLexer *lexer, const Literal *literal) {
     if (!is_spaced_percent_delimiter(literal->close_delimiter)) return true;
     lexer->mark_end(lexer);
-    // An unterminated literal leaves modulo as the only reading.
-    if (!skip_spaced_percent_literal(scanner, lexer, literal)) return !lexer->eof(lexer);
+    switch (skip_spaced_percent_literal(scanner, lexer, literal)) {
+        case SPACED_LITERAL_UNREADABLE:
+            return true;
+        case SPACED_LITERAL_UNTERMINATED:
+            return false;
+        case SPACED_LITERAL_CLOSED:
+            break;
+    }
     if (literal->type == REGEX_START) {
         // Ruby reads every following letter as a regex option and rejects unknown ones.
         while (is_symbol_word_character(lexer->lookahead)) {
@@ -718,28 +729,29 @@ static bool starts_symbol_operand(TSLexer *lexer) {
     }
 }
 
-// Returns false where the literal's extent cannot be read from raw text: at an interpolation or a braced Unicode
-// escape (`\u{41 42}`), whose contents may contain the delimiter, and at a line break while a heredoc body is
-// queued, which the literal suspends for. Also returns false at the end of input, where the literal is unterminated.
-static bool skip_spaced_percent_literal(Scanner *scanner, TSLexer *lexer, const Literal *literal) {
+// The literal is unreadable from raw text at an interpolation or a braced Unicode escape (`\u{41 42}`), whose
+// contents may contain the delimiter, and at a line break while a heredoc body is queued, which the literal suspends
+// for. Ruby lets the literal continue past other line breaks, but like `foo %q\n` (see percent_close_delimiter), a
+// literal after a name that would swallow the following line is treated as unterminated, keeping the modulo reading.
+// code-gauge-allow functionCognitiveComplexity 16 -- One loop must classify the delimiter, line breaks, escapes, and interpolation in source order.
+static SpacedLiteralEnd skip_spaced_percent_literal(Scanner *scanner, TSLexer *lexer, const Literal *literal) {
+    const SpacedLiteralEnd line_break = scanner->open_heredocs.size > 0 ? SPACED_LITERAL_UNREADABLE : SPACED_LITERAL_UNTERMINATED;
     while (lexer->lookahead != literal->close_delimiter) {
-        if (lexer->eof(lexer) || suspends_for_heredoc(scanner, lexer)) return false;
+        if (lexer->eof(lexer)) return SPACED_LITERAL_UNTERMINATED;
+        if (lexer->lookahead == '\n' || lexer->lookahead == '\r') return line_break;
         int32_t character = lexer->lookahead;
         advance(lexer);
-        if (character == '\\') {
-            if (suspends_for_heredoc(scanner, lexer)) return false;
-            bool unicode = literal->allows_interpolation && lexer->lookahead == 'u';
+        // An escaped line break is left for the line-break check above.
+        if (character == '\\' && lexer->lookahead != '\n' && lexer->lookahead != '\r') {
+            character = lexer->lookahead;
             advance(lexer);
-            if (unicode && lexer->lookahead == '{') return false;
+            if (character == 'u' && literal->allows_interpolation && lexer->lookahead == '{') return SPACED_LITERAL_UNREADABLE;
+        } else if (character == '#' && literal->allows_interpolation && lexer->lookahead == '{') {
+            return SPACED_LITERAL_UNREADABLE;
         }
-        if (character == '#' && literal->allows_interpolation && lexer->lookahead == '{') return false;
     }
     advance(lexer);
-    return true;
-}
-
-static inline bool suspends_for_heredoc(Scanner *scanner, TSLexer *lexer) {
-    return scanner->open_heredocs.size > 0 && (lexer->lookahead == '\n' || lexer->lookahead == '\r');
+    return SPACED_LITERAL_CLOSED;
 }
 
 static bool scan_command_continuation_keyword(TSLexer *lexer) {
