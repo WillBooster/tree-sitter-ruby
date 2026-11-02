@@ -134,7 +134,6 @@ module.exports = grammar({
     [$._signed_command_argument_list, $._yield_signed_argument_list],
     [$._chained_match_pattern, $._yield_value],
     [$._endless_body_rescue, $._yield_method_body_rescue],
-    [$._body_expr, $._yield_method_rest],
     [$._pattern_command_not, $._command_not],
     [$._negated_chained_test_pattern, $._yield_test_pattern],
     [$._chained_test_pattern, $._negated_chained_test_pattern, $._yield_test_pattern, $._command_not],
@@ -145,7 +144,7 @@ module.exports = grammar({
     [$._argument_command_value, $._chained_match_pattern, $._yield_value],
     [$._argument_command_value, $._yield_value, $.pair],
     [$._argument_command_value, $._yield_value],
-    [$._argument_command_value, $._command_pair],
+    [$._argument_command_value, $._command_pair_head],
     [$._argument_command_value, $.pair],
     [$._argument_command_value, $._command_definition_pair],
     [$._argument_command_value, $._chained_match_pattern],
@@ -155,6 +154,7 @@ module.exports = grammar({
     [$._yield_argument_list, $._yield_call_pair_key_arguments],
     [$.command_call, $._command_pair, $._yield_command_pair],
     [$._command_pair, $._yield_command_pair],
+    [$._command_pair_head, $._yield_command_pair_head],
     [$._command_value, $._command_pair, $._yield_command_pair],
     [$._pattern_unary, $.unary],
     [$._arg, $._pattern_arg],
@@ -167,15 +167,14 @@ module.exports = grammar({
     [$._yield_argument, $._yield_pair_key_arguments],
     [$._yield_pattern_not, $._test_pattern_not],
     [$._yield_argument_list, $._yield_pair_key_arguments],
-    [$._body_expr, $._yield_value],
-    [$._spaced_body_expr, $._yield_value],
+    [$._endless_method_rest, $._yield_value],
     [$._endless_command_operand, $._yield_value],
     [$._yield_argument, $._command_argument],
     [$._command_value, $._yield_value, $.pair],
     [$._command_value, $._chained_match_pattern, $._yield_value],
     [$._command_value, $._yield_value],
     [$._yield_value, $.pair],
-    [$._yield_value, $._yield_command_pair],
+    [$._yield_value, $._yield_command_pair_head],
     [$._chained_command_argument_list, $.command_argument_list],
     [$._pair_block_argument, $.block_argument],
     [$.command_call_with_block, $._super_command_with_block],
@@ -264,7 +263,52 @@ module.exports = grammar({
 
     singleton_method: ($) => singletonMethod($, $._method_rest),
 
-    _method_rest: ($) => methodRest($, $._body_expr, $._spaced_body_expr),
+    _method_rest: ($) => seq($._method_header, optional(field('body', $.body_statement)), 'end'),
+
+    // A definition can end wherever an expression can, so the states of a rule ending in its body are copied for each
+    // context. The prefixes of definitions are rules of their own so that their states are shared by every context.
+    _method_header: ($) =>
+      prec.right(
+        seq(
+          field(
+            'name',
+            choice($._spaced_definition_name, $._gapless_definition_name, $.setter, alias('[]=', $.operator))
+          ),
+          choice(
+            seq(field('parameters', alias($.parameters, $.method_parameters)), optional($._terminator)),
+            seq(optional(field('parameters', alias($.bare_parameters, $.method_parameters))), $._body_separator)
+          )
+        )
+      ),
+
+    _endless_method_header: ($) => {
+      const parameters = seq(
+        field('parameters', alias($.parameters, $.method_parameters)),
+        alias($._endless_equals, '=')
+      );
+      return choice(
+        seq(field('name', $._spaced_definition_name), choice(alias($._spaced_endless_equals, '='), parameters)),
+        seq(field('name', $._gapless_definition_name), choice(alias($._endless_equals, '='), parameters))
+      );
+    },
+
+    _singleton_method_object: ($) =>
+      seq(
+        choice(
+          field('object', choice($._variable, $.self, $._nonlocal_variable)),
+          seq('(', field('object', $._arg), ')')
+        ),
+        choice('.', '::')
+      ),
+
+    // As in Ruby's grammar, an endless definition is an argument rather than a primary, so it is never the receiver of a
+    // call or element reference.
+    _endless_method: ($) => seq('def', $._endless_method_rest),
+
+    _endless_singleton_method: ($) => singletonMethod($, $._endless_method_rest),
+
+    _endless_method_rest: ($) =>
+      seq($._endless_method_header, field('body', endlessBody($, $._arg, $._endless_body_rescue))),
 
     rescue_modifier_arg: ($) => prec(PREC.RESCUE, seq(field('body', $._arg), 'rescue', field('handler', $._arg))),
 
@@ -277,12 +321,6 @@ module.exports = grammar({
     rescue_modifier_expression: ($) =>
       prec(PREC.RESCUE, seq(field('body', $._non_pattern_expression), 'rescue', field('handler', $._arg))),
 
-    _body_expr: ($) =>
-      seq(alias($._endless_equals, '='), field('body', endlessBody($, $._arg, $._endless_body_rescue))),
-
-    _spaced_body_expr: ($) =>
-      seq(alias($._spaced_endless_equals, '='), field('body', endlessBody($, $._arg, $._endless_body_rescue))),
-
     _endless_equals: () => token.immediate(/(?:[ \t\f\v\r]|\\\r?\n)*=/),
 
     _spaced_endless_equals: () => token.immediate(/(?:[ \t\f\v\r]|\\\r?\n)+=/),
@@ -293,7 +331,7 @@ module.exports = grammar({
 
     _command_singleton_method: ($) => singletonMethod($, $._command_method_rest),
 
-    _command_method_rest: ($) => endlessMethodRest($, $._endless_command),
+    _command_method_rest: ($) => seq($._endless_method_header, field('body', $._endless_command)),
 
     // Ruby 4.0's default parser (Prism) lets an endless body hold at most one `rescue`, applied outside any `not`; a
     // further `rescue` applies to the whole definition.
@@ -818,6 +856,8 @@ module.exports = grammar({
       choice(
         alias($._unary_minus_pow, $.unary),
         $._primary,
+        alias($._endless_method, $.method),
+        alias($._endless_singleton_method, $.singleton_method),
         $.operator_assignment,
         $.conditional,
         $.range,
@@ -836,6 +876,8 @@ module.exports = grammar({
       choice(
         alias($._unary_minus_pow, $.unary),
         $._primary,
+        alias($._endless_method, $.method),
+        alias($._endless_singleton_method, $.singleton_method),
         $.assignment,
         $.operator_assignment,
         $.conditional,
@@ -1104,7 +1146,8 @@ module.exports = grammar({
 
     _yield_singleton_method: ($) => singletonMethod($, $._yield_method_rest),
 
-    _yield_method_rest: ($) => endlessMethodRest($, endlessBody($, $._yield_value, $._yield_method_body_rescue)),
+    _yield_method_rest: ($) =>
+      seq($._endless_method_header, field('body', endlessBody($, $._yield_value, $._yield_method_body_rescue))),
 
     _yield_method_body_rescue: ($) => endlessBodyRescue($, $._yield_value),
 
@@ -1150,9 +1193,17 @@ module.exports = grammar({
         )
       ),
 
-    _command_pair: ($) => commandPair($, $._command_pair_key),
+    _command_pair: ($) => commandPair($, $._command_pair_head),
 
-    _yield_command_pair: ($) => commandPair($, $._yield_command_pair_key, false),
+    // As with definitions, a pair ends wherever an expression can, so the key and `=>` are rules of their own so that
+    // their states are shared by every context.
+    _super_command_pair_head: ($) => prec.right(PREC.PATTERN, seq(field('key', alias($._super_command, $.call)), '=>')),
+
+    _command_pair_head: ($) => commandPairHead($, $._command_pair_key),
+
+    _yield_command_pair_head: ($) => commandPairHead($, $._yield_command_pair_key, false),
+
+    _yield_command_pair: ($) => commandPair($, $._yield_command_pair_head),
 
     _yield_command_pair_key: ($) =>
       seq(
@@ -1899,33 +1950,39 @@ function commandCallWithBlock($, receiver, argumentsRule) {
 
 /**
  * @param {GrammarSymbols<string>} $
- * @param {RuleOrLiteral} key
- * @param {boolean} allowBlockContinuation
+ * @param {RuleOrLiteral} head
  */
-function commandPair($, key, allowBlockContinuation = true) {
-  const value = $._arg;
+function commandPair($, head) {
   return prec.dynamic(
     1,
     choice(
-      prec.right(PREC.PATTERN, seq(field('key', alias($._super_command, $.call)), '=>', field('value', value))),
-      prec.right(
-        seq(
-          field(
-            'key',
-            choice(
-              alias(key, $.call),
-              alias($._super_command_with_block, $.call),
-              alias($._yield_pair_key, $.yield),
-              alias(allowBlockContinuation ? $._pattern_command_not : $._yield_not, $.unary),
-              alias($._chained_assignment, $.assignment),
-              alias($._chained_operator_assignment, $.operator_assignment),
-              ...(allowBlockContinuation ? [$._chained_arg] : [])
-            )
-          ),
-          '=>',
-          field('value', value)
+      prec.right(PREC.PATTERN, seq($._super_command_pair_head, field('value', $._arg))),
+      prec.right(seq(head, field('value', $._arg)))
+    )
+  );
+}
+
+/**
+ * @param {GrammarSymbols<string>} $
+ * @param {RuleOrLiteral} key
+ * @param {boolean} allowBlockContinuation
+ */
+function commandPairHead($, key, allowBlockContinuation = true) {
+  return prec.right(
+    seq(
+      field(
+        'key',
+        choice(
+          alias(key, $.call),
+          alias($._super_command_with_block, $.call),
+          alias($._yield_pair_key, $.yield),
+          alias(allowBlockContinuation ? $._pattern_command_not : $._yield_not, $.unary),
+          alias($._chained_assignment, $.assignment),
+          alias($._chained_operator_assignment, $.operator_assignment),
+          ...(allowBlockContinuation ? [$._chained_arg] : [])
         )
-      )
+      ),
+      '=>'
     )
   );
 }
@@ -1955,32 +2012,7 @@ function argument($, expression, commandPairRule = $._command_pair) {
  * @param {RuleOrLiteral} rest
  */
 function singletonMethod($, rest) {
-  return seq(
-    'def',
-    seq(
-      choice(
-        field('object', choice($._variable, $.self, $._nonlocal_variable)),
-        seq('(', field('object', $._arg), ')')
-      ),
-      choice('.', '::')
-    ),
-    rest
-  );
-}
-
-/**
- * @param {GrammarSymbols<string>} $
- * @param {RuleOrLiteral} body
- */
-function endlessMethodRest($, body) {
-  const parameters = seq(field('parameters', alias($.parameters, $.method_parameters)), alias($._endless_equals, '='));
-  return seq(
-    choice(
-      seq(field('name', $._spaced_definition_name), choice(alias($._spaced_endless_equals, '='), parameters)),
-      seq(field('name', $._gapless_definition_name), choice(alias($._endless_equals, '='), parameters))
-    ),
-    field('body', body)
-  );
+  return seq('def', $._singleton_method_object, rest);
 }
 
 /**
@@ -2105,25 +2137,6 @@ function callExpression($, primary, member, allowDoBlock = true) {
     ...(allowDoBlock ? [prec(PREC.DO_BLOCK, seq(receiverArguments, doBlock))] : []),
     prec(PREC.CURLY_BLOCK, seq(receiver, block)),
     ...(allowDoBlock ? [prec(PREC.DO_BLOCK, seq(receiver, doBlock))] : [])
-  );
-}
-
-/**
- * @param {GrammarSymbols<string>} $
- * @param {RuleOrLiteral} bodyExpression
- * @param {RuleOrLiteral} spacedBodyExpression
- */
-function methodRest($, bodyExpression, spacedBodyExpression) {
-  const parameters = field('parameters', alias($.parameters, $.method_parameters));
-  const body = optional(field('body', $.body_statement));
-  const block = choice(
-    seq(parameters, optional($._terminator), body, 'end'),
-    seq(optional(field('parameters', alias($.bare_parameters, $.method_parameters))), $._body_separator, body, 'end')
-  );
-  return choice(
-    seq(field('name', $._spaced_definition_name), choice(block, spacedBodyExpression, seq(parameters, bodyExpression))),
-    seq(field('name', $._gapless_definition_name), choice(block, bodyExpression, seq(parameters, bodyExpression))),
-    seq(field('name', choice($.setter, alias('[]=', $.operator))), block)
   );
 }
 

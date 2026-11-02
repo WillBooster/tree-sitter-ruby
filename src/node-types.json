@@ -20,11 +20,19 @@
         "named": true
       },
       {
+        "type": "method",
+        "named": true
+      },
+      {
         "type": "operator_assignment",
         "named": true
       },
       {
         "type": "range",
+        "named": true
+      },
+      {
+        "type": "singleton_method",
         "named": true
       },
       {
@@ -2482,15 +2490,7 @@
             "named": true
           },
           {
-            "type": "method",
-            "named": true
-          },
-          {
             "type": "scope_resolution",
-            "named": true
-          },
-          {
-            "type": "singleton_method",
             "named": true
           },
           {
@@ -2538,10 +2538,6 @@
             "named": true
           },
           {
-            "type": "method",
-            "named": true
-          },
-          {
             "type": "rescue_modifier",
             "named": true
           },
@@ -2551,10 +2547,6 @@
           },
           {
             "type": "scope_resolution",
-            "named": true
-          },
-          {
-            "type": "singleton_method",
             "named": true
           },
           {
@@ -2834,15 +2826,7 @@
             "named": true
           },
           {
-            "type": "method",
-            "named": true
-          },
-          {
             "type": "scope_resolution",
-            "named": true
-          },
-          {
-            "type": "singleton_method",
             "named": true
           },
           {
@@ -3288,10 +3272,6 @@
             "named": true
           },
           {
-            "type": "method",
-            "named": true
-          },
-          {
             "type": "rescue_modifier",
             "named": true
           },
@@ -3301,10 +3281,6 @@
           },
           {
             "type": "scope_resolution",
-            "named": true
-          },
-          {
-            "type": "singleton_method",
             "named": true
           },
           {
@@ -3526,19 +3502,11 @@
             "named": true
           },
           {
-            "type": "method",
-            "named": true
-          },
-          {
             "type": "rescue_modifier",
             "named": true
           },
           {
             "type": "scope_resolution",
-            "named": true
-          },
-          {
-            "type": "singleton_method",
             "named": true
           },
           {
