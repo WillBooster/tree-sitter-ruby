@@ -704,7 +704,7 @@ static bool starts_symbol_operand(TSLexer *lexer) {
             return lexer->lookahead != '=' && lexer->lookahead != '~';
         case ':':
             advance(lexer);
-            return is_symbol_word_start(lexer->lookahead) || lexer->lookahead == '"';
+            return lexer->lookahead != ':' && !iswspace(lexer->lookahead) && !lexer->eof(lexer);
         default:
             return false;
     }
