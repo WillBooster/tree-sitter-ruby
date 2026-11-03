@@ -191,22 +191,31 @@ test.each([
 });
 
 test.each(['', ' ', '\t', '\\\n', '\\\r\n'])('accepts the header/body gap %j after explicit parameters', (gap) => {
-  checkSource(`def ordinary(value)${gap}=value\nfollowing`, false, (node) => {
+  const source = `def ordinary(value)${gap}=value\nfollowing`;
+  checkSource(source, false, (node) => {
     expect(node.firstNamedChild!.type).toBe('method');
     expect(node.firstNamedChild!.childForFieldName('body')!.text).toBe('value');
+    expectEndlessEquals(node.firstNamedChild!, source.indexOf('=value'));
   });
 });
 
 test.each([' ', '\t', '\f', '\v', '\r', '\\\n', '\\\r\n'])(
   'accepts the separating gap %j in a parameterless endless definition',
   (gap) => {
-    checkSource(`def ordinary${gap}=1\nfollowing`, false, (node) => {
+    const source = `def ordinary${gap}=1\nfollowing`;
+    checkSource(source, false, (node) => {
       expect(node.firstNamedChild!.type).toBe('method');
       expect(node.firstNamedChild!.childForFieldName('name')!.text).toBe('ordinary');
       expect(node.firstNamedChild!.childForFieldName('body')!.text).toBe('1');
+      expectEndlessEquals(node.firstNamedChild!, source.indexOf('=1'));
     });
   }
 );
+
+function expectEndlessEquals(method: Node, index: number): void {
+  const equals = method.children.find(({ type }) => type === '=')!;
+  expect([equals.startIndex, equals.endIndex]).toEqual([index, index + 1]);
+}
 
 function checkSource(source: string, hasError: boolean, inspect?: (node: Node) => void): void {
   const parser = new Parser().setLanguage(language);

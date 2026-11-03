@@ -95,6 +95,8 @@ module.exports = grammar({
     $._body_comment,
     $._body_line_break,
     $._end_of_source,
+    $._endless_equals,
+    $._spaced_endless_equals,
   ],
 
   extras: ($) => [$.comment, $.heredoc_body, $._heredoc_resume, /\s/, /\\\r?\n/],
@@ -321,10 +323,6 @@ module.exports = grammar({
 
     rescue_modifier_expression: ($) =>
       prec(PREC.RESCUE, seq(field('body', $._non_pattern_expression), 'rescue', field('handler', $._arg))),
-
-    _endless_equals: () => token.immediate(/(?:[ \t\f\v\r]|\\\r?\n)*=/),
-
-    _spaced_endless_equals: () => token.immediate(/(?:[ \t\f\v\r]|\\\r?\n)+=/),
 
     _endless_body_rescue: ($) => endlessBodyRescue($, $._arg),
 

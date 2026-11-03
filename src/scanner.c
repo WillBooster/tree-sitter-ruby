@@ -55,6 +55,8 @@ typedef enum {
     BODY_COMMENT,
     BODY_LINE_BREAK,
     END_OF_SOURCE,
+    ENDLESS_EQUALS,
+    SPACED_ENDLESS_EQUALS,
 
     NONE
 } TokenType;
@@ -357,6 +359,7 @@ static bool scan_closing_keyword(TSLexer *lexer);
 static inline bool ends_keyword(int32_t c);
 static bool scan_after_whitespace(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols, bool crossed_newline, bool crossed_line);
 static bool scan_continuation_comment(Scanner *scanner, TSLexer *lexer);
+static bool scan_endless_equals(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols);
 static bool scan_splat(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols);
 static bool scan_word_token(TSLexer *lexer, const bool *valid_symbols, bool rescue_may_end_line);
 static bool scan_not_parentheses_gap(TSLexer *lexer);
@@ -439,8 +442,22 @@ static bool scan_after_whitespace(Scanner *scanner, TSLexer *lexer, const bool *
         lexer->mark_end(lexer);
         lexer->result_symbol = BODY_COMMENT;
         return true;
+    } else if (!crossed_line && lexer->lookahead == '=' && scan_endless_equals(scanner, lexer, valid_symbols)) {
+        return true;
     }
     return !crossed_newline || scan_line_break(lexer);
+}
+
+static bool scan_endless_equals(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols) {
+    // During error recovery every symbol is valid, STRING_CONTENT included.
+    if (valid_symbols[STRING_CONTENT]) return false;
+    TokenType symbol = scanner->has_leading_whitespace && valid_symbols[SPACED_ENDLESS_EQUALS] ? SPACED_ENDLESS_EQUALS
+                                                                                               : ENDLESS_EQUALS;
+    if (!valid_symbols[symbol]) return false;
+    advance(lexer);
+    lexer->mark_end(lexer);
+    lexer->result_symbol = symbol;
+    return true;
 }
 
 static bool scan_continuation_comment(Scanner *scanner, TSLexer *lexer) {

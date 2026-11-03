@@ -707,20 +707,6 @@
         ]
       }
     },
-    "_endless_equals": {
-      "type": "IMMEDIATE_TOKEN",
-      "content": {
-        "type": "PATTERN",
-        "value": "(?:[ \\t\\f\\v\\r]|\\\\\\r?\\n)*="
-      }
-    },
-    "_spaced_endless_equals": {
-      "type": "IMMEDIATE_TOKEN",
-      "content": {
-        "type": "PATTERN",
-        "value": "(?:[ \\t\\f\\v\\r]|\\\\\\r?\\n)+="
-      }
-    },
     "_endless_body_rescue": {
       "type": "PREC",
       "value": 16,
@@ -16469,6 +16455,14 @@
     {
       "type": "SYMBOL",
       "name": "_end_of_source"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_endless_equals"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_spaced_endless_equals"
     }
   ],
   "inline": [
