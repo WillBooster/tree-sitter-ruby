@@ -55,6 +55,8 @@ typedef enum {
     BODY_COMMENT,
     BODY_LINE_BREAK,
     END_OF_SOURCE,
+    ENDLESS_EQUALS,
+    SPACED_ENDLESS_EQUALS,
 
     NONE
 } TokenType;
@@ -355,8 +357,9 @@ static bool scan_comment_line_break(Scanner *scanner, TSLexer *lexer, bool opens
 static bool may_close_body(TSLexer *lexer);
 static bool scan_closing_keyword(TSLexer *lexer);
 static inline bool ends_keyword(int32_t c);
-static bool scan_after_whitespace(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols, bool crossed_newline, bool crossed_line);
+static bool scan_after_whitespace(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols, bool crossed_newline, bool crossed_line, bool escaped_space);
 static bool scan_continuation_comment(Scanner *scanner, TSLexer *lexer);
+static bool scan_endless_equals(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols);
 static bool scan_splat(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols);
 static bool scan_word_token(TSLexer *lexer, const bool *valid_symbols, bool rescue_may_end_line);
 static bool scan_not_parentheses_gap(TSLexer *lexer);
@@ -364,14 +367,17 @@ static bool scan_embdoc(TSLexer *lexer);
 static bool scan_word_text(TSLexer *lexer, const char *word);
 static bool scan_leading_logical_operator(TSLexer *lexer);
 static bool scan_line_break(TSLexer *lexer);
-static bool scan_host_line_escape(Scanner *scanner, TSLexer *lexer, bool heredoc_body_start_is_valid);
+static bool scan_host_line_escape(Scanner *scanner, TSLexer *lexer, bool heredoc_body_start_is_valid, bool *escaped_space);
 static bool scan_end_marker_line_end(TSLexer *lexer);
 
+// code-gauge-allow functionCognitiveComplexity 24 -- One loop skips every whitespace form so that each case shares the line-break and heredoc state it tracks.
+// code-gauge-allow functionNcss 45 -- One loop skips every whitespace form so that each case shares the line-break and heredoc state it tracks.
 static inline bool scan_whitespace(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols,
                                    bool *rescue_may_end_line) {
     bool heredoc_body_start_is_valid = has_pending_heredoc_body(scanner, valid_symbols);
     bool crossed_newline = false;
     bool crossed_line = lexer->is_at_included_range_start(lexer);
+    bool escaped_space = false;
     bool line_break_valid = valid_symbols[LINE_BREAK] || valid_symbols[BODY_LINE_BREAK];
 
     for (;;) {
@@ -412,17 +418,17 @@ static inline bool scan_whitespace(Scanner *scanner, TSLexer *lexer, const bool 
                 }
                 break;
             case '\\':
-                if (!scan_host_line_escape(scanner, lexer, heredoc_body_start_is_valid)) return false;
+                if (!scan_host_line_escape(scanner, lexer, heredoc_body_start_is_valid, &escaped_space)) return false;
                 if (lexer->result_symbol == HEREDOC_BODY_START) return true;
                 break;
             default:
-                return scan_after_whitespace(scanner, lexer, valid_symbols, crossed_newline, crossed_line);
+                return scan_after_whitespace(scanner, lexer, valid_symbols, crossed_newline, crossed_line, escaped_space);
         }
     }
 }
 
 static bool scan_after_whitespace(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols,
-                                  bool crossed_newline, bool crossed_line) {
+                                  bool crossed_newline, bool crossed_line, bool escaped_space) {
     if (lexer->lookahead == '#') {
         if (scanner->continuation_comments) return scan_continuation_comment(scanner, lexer);
         if (crossed_newline) {
@@ -439,8 +445,23 @@ static bool scan_after_whitespace(Scanner *scanner, TSLexer *lexer, const bool *
         lexer->mark_end(lexer);
         lexer->result_symbol = BODY_COMMENT;
         return true;
+    } else if (!crossed_line && !escaped_space && lexer->lookahead == '=' &&
+               scan_endless_equals(scanner, lexer, valid_symbols)) {
+        return true;
     }
     return !crossed_newline || scan_line_break(lexer);
+}
+
+static bool scan_endless_equals(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols) {
+    // During error recovery every symbol is valid, STRING_CONTENT included.
+    if (valid_symbols[STRING_CONTENT]) return false;
+    TokenType symbol = scanner->has_leading_whitespace && valid_symbols[SPACED_ENDLESS_EQUALS] ? SPACED_ENDLESS_EQUALS
+                                                                                               : ENDLESS_EQUALS;
+    if (!valid_symbols[symbol]) return false;
+    advance(lexer);
+    lexer->mark_end(lexer);
+    lexer->result_symbol = symbol;
+    return true;
 }
 
 static bool scan_continuation_comment(Scanner *scanner, TSLexer *lexer) {
@@ -525,7 +546,7 @@ static bool scan_closing_keyword(TSLexer *lexer) {
     return false;
 }
 
-static bool scan_host_line_escape(Scanner *scanner, TSLexer *lexer, bool heredoc_body_start_is_valid) {
+static bool scan_host_line_escape(Scanner *scanner, TSLexer *lexer, bool heredoc_body_start_is_valid, bool *escaped_space) {
     advance(lexer);
     if (heredoc_body_start_is_valid && lexer->is_at_included_range_start(lexer)) return false;
     if (lexer->lookahead == '\r') {
@@ -534,6 +555,7 @@ static bool scan_host_line_escape(Scanner *scanner, TSLexer *lexer, bool heredoc
     }
     if (!iswspace(lexer->lookahead)) return false;
     bool starts_body = heredoc_body_start_is_valid && lexer->lookahead == '\n';
+    *escaped_space |= lexer->lookahead != '\n';
     skip(scanner, lexer);
     if (!starts_body) return true;
     array_get(&scanner->open_heredocs, 0)->host_line_continued = true;
