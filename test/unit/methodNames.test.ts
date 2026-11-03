@@ -186,6 +186,8 @@ test.each([
   'def ordinary!=true',
   'def ordinary\n = 1',
   'def ordinary(value)\n = value',
+  String.raw`def ordinary\ =1`,
+  String.raw`def ordinary(value)\ =value`,
 ])('reports invalid names or definition boundaries in %s', (source) => {
   checkSource(source, true);
 });
