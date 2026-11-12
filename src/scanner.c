@@ -377,7 +377,6 @@ static HeredocScanResult scan_heredoc_interpolation(Heredoc *heredoc, TSLexer *l
 static inline bool finish_heredoc_at_line_end(Scanner *scanner, TSLexer *lexer, bool has_content, uint32_t index);
 static inline bool advance_heredoc_line(Heredoc *heredoc, TSLexer *lexer);
 static inline void mark_current_heredoc_position(TSLexer *lexer);
-static inline bool is_heredoc_word_character(int32_t codepoint);
 static inline uint32_t match_heredoc_character(const String *word, size_t position, int32_t codepoint);
 static inline uint32_t encode_utf8(int32_t codepoint, char *bytes);
 static inline void append_heredoc_character(String *word, int32_t codepoint);
@@ -978,13 +977,9 @@ static inline void scan_heredoc_word(TSLexer *lexer, Heredoc *heredoc) {
             break;
 
         default:
-            if (is_heredoc_word_character(lexer->lookahead)) {
+            while (is_symbol_word_character(lexer->lookahead)) {
                 append_heredoc_character(&word, lexer->lookahead);
                 advance(lexer);
-                while (is_heredoc_word_character(lexer->lookahead)) {
-                    append_heredoc_character(&word, lexer->lookahead);
-                    advance(lexer);
-                }
             }
             break;
     }
@@ -1844,10 +1839,6 @@ static inline void mark_current_heredoc_position(TSLexer *lexer) {
     lexer->get_checkpoint(lexer, &body_start);
     lexer->mark_start(lexer, &body_start);
     lexer->mark_end_at(lexer, &body_start);
-}
-
-static inline bool is_heredoc_word_character(int32_t codepoint) {
-    return is_symbol_word_character(codepoint);
 }
 
 static inline bool is_symbol_word_character(int32_t character) {
