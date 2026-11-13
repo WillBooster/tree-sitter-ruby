@@ -187,7 +187,7 @@ test.each(['<<"\0x\n', 'value = <<"\0x"\nbody\n'])(
     let tree: Tree | undefined;
     try {
       tree =
-        parser.parse(source, undefined, {
+        parser.parse(source, {
           progressCallback: () => {
             if (++progressChecks > 100) throw new Error('Parsing the short malformed heredoc did not finish');
           },

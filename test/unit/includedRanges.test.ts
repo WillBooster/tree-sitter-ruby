@@ -34,7 +34,7 @@ test.each([
   ['<% # last %>', '(program (comment))', ['# last ']],
   ['<% # first\nvalue %>', '(program (comment) (identifier))', ['# first']],
 ] as const)('ends included comments without swallowing later Ruby: %s', (source, expected, comments) => {
-  const tree = parser.parse(source, undefined, { includedRanges: includedRanges(source) })!;
+  const tree = parser.parse(source, { includedRanges: includedRanges(source) })!;
   try {
     expect(tree.rootNode.toString()).toBe(expected);
     expect(tree.rootNode.descendantsOfType('comment').map((node) => node.text)).toEqual(comments);
@@ -76,7 +76,7 @@ test.each([
 
 test('owns comments at included body boundaries', () => {
   const source = '<% def example %>\n<% # body %>\n<% value %>\n<% end %>';
-  const tree = parser.parse(source, undefined, { includedRanges: includedRanges(source) })!;
+  const tree = parser.parse(source, { includedRanges: includedRanges(source) })!;
   try {
     expect(tree.rootNode.hasError).toBe(false);
     const body = tree.rootNode.firstNamedChild!.childForFieldName('body')!;
@@ -93,7 +93,7 @@ test('owns comments at included body boundaries', () => {
 
 test.each(['|value|', '||'])('keeps included comments before block parameters %s', (parameters) => {
   const source = `<% foo do %>\n<% # header %>\n<% ${parameters} %>\n<% # body %>\n<% value %>\n<% end %>`;
-  const tree = parser.parse(source, undefined, { includedRanges: includedRanges(source) })!;
+  const tree = parser.parse(source, { includedRanges: includedRanges(source) })!;
   try {
     expect(tree.rootNode.hasError).toBe(false);
     const block = tree.rootNode.firstNamedChild!.childForFieldName('block')!;
