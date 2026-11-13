@@ -1012,6 +1012,8 @@ static inline bool scan_short_interpolation(TSLexer *lexer, const bool has_conte
     return false;
 }
 
+// code-gauge-allow functionCognitiveComplexity 30 -- One loop scans heredoc lines, interpolations, nested bodies, and EOF while sharing line-start and content state.
+// code-gauge-allow functionNcss 35 -- One loop scans heredoc lines, interpolations, nested bodies, and EOF while sharing line-start and content state.
 static inline bool scan_heredoc_content(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols) {
     uint32_t current = first_started_heredoc_index(scanner);
     if (current == scanner->open_heredocs.size) current = 0;
@@ -1039,6 +1041,7 @@ static inline bool scan_heredoc_content(Scanner *scanner, TSLexer *lexer, const 
         }
         bool line_end = lexer->lookahead == '\r' || lexer->lookahead == '\n';
         if (line_end && current > 0 && valid_symbols[HEREDOC_BODY_START]) {
+            lexer->mark_end(lexer);
             lexer->result_symbol = HEREDOC_CONTENT;
             return has_content || start_heredoc_body(scanner, lexer);
         }
@@ -1046,7 +1049,6 @@ static inline bool scan_heredoc_content(Scanner *scanner, TSLexer *lexer, const 
             look_for_heredoc_end = advance_heredoc_line(heredoc, lexer);
         } else {
             advance(lexer);
-            lexer->mark_end(lexer);
         }
         has_content = true;
     }
@@ -1129,6 +1131,7 @@ static bool scan_heredoc_prefix_token(Heredoc *heredoc, TSLexer *lexer, size_t m
 static HeredocScanResult scan_heredoc_interpolation(Heredoc *heredoc, TSLexer *lexer, bool *has_content) {
     if (lexer->lookahead == '\\') {
         if (!*has_content) return HEREDOC_SCAN_DEFER;
+        lexer->mark_end(lexer);
         heredoc->mid_line = true;
         lexer->result_symbol = HEREDOC_CONTENT;
         return HEREDOC_SCAN_TOKEN;
@@ -1301,8 +1304,6 @@ static inline bool scan_literal_content(Scanner *scanner, TSLexer *lexer, const 
             advance(lexer);
 
         } else if (lexer->eof(lexer)) {
-            advance(lexer);
-            lexer->mark_end(lexer);
             return false;
         } else {
             advance(lexer);

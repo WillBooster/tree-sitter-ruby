@@ -10,15 +10,15 @@
 //! parser
 //!     .set_language(&language.into())
 //!     .expect("Error loading Ruby parser");
-//! let tree = parser.parse(code, None).unwrap();
+//! let tree = parser.parse(code).unwrap();
 //! assert!(!tree.root_node().has_error());
 //! ```
 //!
-//! The parser carries the ABI number of the WillBooster fork of tree-sitter (`0x5742000c`) and omits tables dropped in
-//! runtime 19, so it requires a `willbooster-tree-sitter` 19.x runtime; upstream's `tree-sitter` runtime and incompatible
-//! ABI versions of the fork reject it.
+//! The parser carries the ABI number of the WillBooster fork of tree-sitter (`0x5742000c`) and is tested with the
+//! `willbooster-tree-sitter` 20.x runtime; upstream's `tree-sitter` runtime and incompatible ABI versions of the fork
+//! reject it.
 //!
-//! [`Parser`]: https://docs.rs/willbooster-tree-sitter/19.1.1/tree_sitter/struct.Parser.html
+//! [`Parser`]: https://docs.rs/willbooster-tree-sitter/20.0.0/tree_sitter/struct.Parser.html
 //! [tree-sitter]: https://tree-sitter.github.io/
 
 use tree_sitter_language::LanguageFn;

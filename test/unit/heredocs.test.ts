@@ -185,7 +185,7 @@ test.each([
           const lines = source.slice(0, index).split('\n');
           return { row: lines.length - 1, column: lines.at(-1)!.length };
         };
-        const tree = parser.parse(source, undefined, {
+        const tree = parser.parse(source, {
           includedRanges: [
             {
               startIndex: 0,
@@ -356,7 +356,7 @@ test.each([
           const lines = source.slice(0, index).split('\n');
           return { row: lines.length - 1, column: lines.at(-1)!.length };
         };
-        const tree = parser.parse(source, undefined, {
+        const tree = parser.parse(source, {
           includedRanges: [
             {
               startIndex: 0,
@@ -445,7 +445,7 @@ test.each(['%W', '%w', '%I', '%i'])('preserves heredocs after array separators a
             const lines = source.slice(0, index).split('\n');
             return { row: lines.length - 1, column: lines.at(-1)!.length };
           };
-          const tree = parser.parse(source, undefined, {
+          const tree = parser.parse(source, {
             includedRanges: [
               {
                 startIndex: 0,
@@ -681,7 +681,7 @@ test.each(['opening', 'closing'])('keeps adjacent and disjoint CR/LF %s delimite
     for (const gap of ['', 'EXCLUDED']) {
       const prefix = mode === 'opening' ? 'value = [<<EOS, %Q\r' : 'value = %Q\n#{<<EOS}\r';
       const source = `${prefix}${gap}\nbody\nEOS\ntail${mode === 'opening' ? '\r\n]\n' : '\n;\n'}following = 1\n`;
-      const tree = parser.parse(source, undefined, {
+      const tree = parser.parse(source, {
         includedRanges: [
           {
             startIndex: 0,
@@ -990,7 +990,7 @@ test.each(['%', '%Q', '%q', '%s', '%x', '%r'])(
 );
 
 function parseExcluding(parser: Parser, source: string, gapStart: number, gapEnd: number): Tree {
-  return parser.parse(source, undefined, {
+  return parser.parse(source, {
     includedRanges: [
       {
         startIndex: 0,
