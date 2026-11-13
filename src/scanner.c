@@ -172,6 +172,7 @@ static uint32_t save_literal(Scanner *scanner);
 static void restore_literal(Scanner *scanner, uint32_t frame_id);
 static LiteralKey literal_key(const LiteralFrame *frame);
 static uint8_t literal_difference(LiteralKey left, LiteralKey right);
+static inline uint8_t trailing_zeros(uint32_t bits);
 static unsigned literal_bit(LiteralKey key, uint8_t bit);
 
 static inline void reset(Scanner *scanner) {
@@ -346,9 +347,22 @@ static LiteralKey literal_key(const LiteralFrame *frame) {
 static uint8_t literal_difference(LiteralKey left, LiteralKey right) {
     for (uint8_t word = 0; word < 7; word++) {
         uint32_t difference = left.words[word] ^ right.words[word];
-        if (difference) return (uint8_t)(word * 32 + __builtin_ctz(difference));
+        if (difference) return (uint8_t)(word * 32 + trailing_zeros(difference));
     }
     return UINT8_MAX;
+}
+
+static inline uint8_t trailing_zeros(uint32_t bits) {
+#if defined(__clang__) || defined(__GNUC__)
+    return (uint8_t)__builtin_ctz(bits);
+#else
+    uint8_t count = 0;
+    while (!(bits & 1)) {
+        bits >>= 1;
+        count++;
+    }
+    return count;
+#endif
 }
 
 static unsigned literal_bit(LiteralKey key, uint8_t bit) {
