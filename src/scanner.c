@@ -161,6 +161,7 @@ static inline void skip(Scanner *scanner, TSLexer *lexer) {
 }
 
 static inline void advance(TSLexer *lexer) { lexer->advance(lexer, false); }
+static inline bool at_eof(const TSLexer *lexer) { return lexer->lookahead == 0 && lexer->eof(lexer); }
 
 static inline void scan_symbol_suffix(TSLexer *lexer);
 static inline bool scan_global_symbol(TSLexer *lexer);
@@ -175,13 +176,16 @@ static uint8_t literal_difference(LiteralKey left, LiteralKey right);
 static inline uint8_t trailing_zeros(uint32_t bits);
 static unsigned literal_bit(LiteralKey key, uint8_t bit);
 
+static inline void trim_open_heredocs(Scanner *scanner, uint32_t keep) {
+    for (uint32_t i = keep; i < scanner->open_heredocs.size; i++) {
+        array_delete(&array_get(&scanner->open_heredocs, i)->word);
+    }
+    if (keep < scanner->open_heredocs.size) scanner->open_heredocs.size = keep;
+}
+
 static inline void reset(Scanner *scanner) {
     scanner->continuation_comments = 0;
     restore_literal(scanner, 0);
-    for (uint32_t i = 0; i < scanner->open_heredocs.size; i++) {
-        array_delete(&array_get(&scanner->open_heredocs, i)->word);
-    }
-    array_delete(&scanner->open_heredocs);
 }
 
 static inline unsigned serialize(Scanner *scanner, char *buffer) {
@@ -206,20 +210,21 @@ static inline unsigned serialize(Scanner *scanner, char *buffer) {
         buffer[size++] = (char)(heredoc->allows_interpolation | (heredoc->mid_line << 1));
         buffer[size++] = (char)(((heredoc->word.size >> 8) << 4) | (heredoc->finished << 3) | (heredoc->host_line_continued << 2) | (heredoc->newline_consumed << 1) | heredoc->started);
         buffer[size++] = (char)(heredoc->word.size & 0xFF);
-        memcpy(&buffer[size], heredoc->word.contents, heredoc->word.size);
+        if (heredoc->word.size > 0) memcpy(&buffer[size], heredoc->word.contents, heredoc->word.size);
         size += heredoc->word.size;
     }
 
     return size;
 }
 
-// code-gauge-allow functionNcss 35 -- The header and pending heredoc records decode one layout; splitting it would duplicate buffer-position bookkeeping.
+// code-gauge-allow functionNcss 41 -- The header and pending heredoc records decode one layout; splitting it would duplicate buffer-position bookkeeping.
 static inline void deserialize(Scanner *scanner, const char *buffer, unsigned length) {
     unsigned size = 0;
     scanner->has_leading_whitespace = false;
     reset(scanner);
 
     if (length == 0) {
+        trim_open_heredocs(scanner, 0);
         return;
     }
 
@@ -233,6 +238,10 @@ static inline void deserialize(Scanner *scanner, const char *buffer, unsigned le
     }
 
     uint8_t open_heredoc_count = buffer[size++];
+    uint32_t previous_size = scanner->open_heredocs.size;
+    trim_open_heredocs(scanner, open_heredoc_count);
+    array_reserve(&scanner->open_heredocs, open_heredoc_count);
+    scanner->open_heredocs.size = open_heredoc_count;
     for (unsigned j = 0; j < open_heredoc_count; j++) {
         Heredoc heredoc = {0};
         uint8_t indentation_flags = (uint8_t)buffer[size++];
@@ -247,13 +256,13 @@ static inline void deserialize(Scanner *scanner, const char *buffer, unsigned le
         heredoc.host_line_continued = (state_and_length & 4) != 0;
         heredoc.finished = (state_and_length & 8) != 0;
 
-        heredoc.word = (String)array_new();
+        heredoc.word = j < previous_size ? scanner->open_heredocs.contents[j].word : (String)array_new();
         uint16_t word_length = ((uint16_t)(state_and_length >> 4) << 8) | (uint8_t)buffer[size++];
         array_reserve(&heredoc.word, word_length);
-        memcpy(heredoc.word.contents, &buffer[size], word_length);
+        if (word_length > 0) memcpy(heredoc.word.contents, &buffer[size], word_length);
         heredoc.word.size = word_length;
         size += word_length;
-        array_push(&scanner->open_heredocs, heredoc);
+        scanner->open_heredocs.contents[j] = heredoc;
     }
 
     assert(size == length);
@@ -534,7 +543,7 @@ static bool scan_line_break(TSLexer *lexer) {
             break;
         case '.':
             advance(lexer);
-            if (lexer->eof(lexer) || lexer->lookahead != '.') return false;
+            if (at_eof(lexer) || lexer->lookahead != '.') return false;
             break;
         case '&':
         case '#':
@@ -576,12 +585,12 @@ static bool scan_comment_line_break(Scanner *scanner, TSLexer *lexer, bool opens
 // No line that scan_line_break treats as a continuation starts with these characters.
 static bool may_close_body(TSLexer *lexer) {
     int32_t c = lexer->lookahead;
-    return lexer->eof(lexer) || ((uint32_t)c < 0x80 && BODY_CLOSER_START[c]);
+    return at_eof(lexer) || ((uint32_t)c < 0x80 && BODY_CLOSER_START[c]);
 }
 
 static bool scan_closing_keyword(TSLexer *lexer) {
     static const char *const KEYWORDS[] = {"end", "else", "elsif", "ensure", "rescue", "when", "in", "then"};
-    if (lexer->eof(lexer) || !is_alpha(lexer->lookahead)) return true;
+    if (at_eof(lexer) || !is_alpha(lexer->lookahead)) return true;
     char word[8];
     unsigned length = 0;
     while (length < sizeof(word) - 1 && lexer->lookahead >= 'a' && lexer->lookahead <= 'z') {
@@ -809,7 +818,7 @@ static bool starts_symbol_operand(TSLexer *lexer) {
             return lexer->lookahead != '=' && lexer->lookahead != '~';
         case ':':
             advance(lexer);
-            return lexer->lookahead != ':' && !is_space(lexer->lookahead) && !lexer->eof(lexer);
+            return lexer->lookahead != ':' && !is_space(lexer->lookahead) && !at_eof(lexer);
         default:
             return false;
     }
@@ -823,7 +832,7 @@ static bool starts_symbol_operand(TSLexer *lexer) {
 static SpacedLiteralEnd skip_spaced_percent_literal(Scanner *scanner, TSLexer *lexer, const Literal *literal) {
     const SpacedLiteralEnd line_break = scanner->open_heredocs.size > 0 ? SPACED_LITERAL_UNREADABLE : SPACED_LITERAL_UNTERMINATED;
     while (lexer->lookahead != literal->close_delimiter) {
-        if (lexer->eof(lexer)) return SPACED_LITERAL_UNTERMINATED;
+        if (at_eof(lexer)) return SPACED_LITERAL_UNTERMINATED;
         if (lexer->lookahead == '\n' || lexer->lookahead == '\r') return line_break;
         int32_t character = lexer->lookahead;
         advance(lexer);
@@ -983,7 +992,7 @@ static inline void scan_heredoc_word(TSLexer *lexer, Heredoc *heredoc) {
         case '`':
             quote = lexer->lookahead;
             advance(lexer);
-            while (lexer->lookahead != quote && !lexer->eof(lexer)) {
+            while (lexer->lookahead != quote && !at_eof(lexer)) {
                 append_heredoc_character(&word, lexer->lookahead);
                 advance(lexer);
             }
@@ -1042,7 +1051,7 @@ static inline bool scan_heredoc_content(Scanner *scanner, TSLexer *lexer, const 
             if (result != HEREDOC_SCAN_CONTINUE) return result == HEREDOC_SCAN_TOKEN;
             look_for_heredoc_end = false;
         }
-        if (lexer->eof(lexer)) {
+        if (at_eof(lexer)) {
             lexer->mark_end(lexer);
             if (has_content) lexer->result_symbol = HEREDOC_CONTENT;
             else finish_heredoc(scanner, lexer, false, current);
@@ -1100,7 +1109,7 @@ static HeredocScanResult scan_heredoc_line_prefix(Scanner *scanner, TSLexer *lex
 
 static HeredocPrefixMatch match_heredoc_line_prefix(const Heredoc *heredoc, TSLexer *lexer) {
     HeredocPrefixMatch match = {0};
-    while (match.matched < heredoc->word.size && !lexer->eof(lexer)) {
+    while (match.matched < heredoc->word.size && !at_eof(lexer)) {
         if (!match.has_interior_token && match.matched > 0 && heredoc->allows_interpolation &&
             (lexer->lookahead == '#' || lexer->lookahead == '\\')) {
             lexer->get_checkpoint(lexer, &match.interior_token_start);
@@ -1117,6 +1126,7 @@ static HeredocPrefixMatch match_heredoc_line_prefix(const Heredoc *heredoc, TSLe
     return match;
 }
 
+// code-gauge-allow functionCognitiveComplexity 20 -- Escape, braced-interpolation and short-interpolation prefixes share one lookahead cursor.
 static bool scan_heredoc_prefix_token(Heredoc *heredoc, TSLexer *lexer, size_t matched) {
     if (!heredoc->allows_interpolation || matched == 0) return false;
     if (heredoc->word.contents[0] == '\\') {
@@ -1166,7 +1176,7 @@ static HeredocScanResult scan_heredoc_interpolation(Heredoc *heredoc, TSLexer *l
 }
 
 static inline bool finish_heredoc_at_line_end(Scanner *scanner, TSLexer *lexer, bool has_content, uint32_t index) {
-    if (lexer->lookahead != '\n' && lexer->lookahead != '\r' && !lexer->eof(lexer)) return false;
+    if (lexer->lookahead != '\n' && lexer->lookahead != '\r' && !at_eof(lexer)) return false;
     if (has_content) {
         array_get(&scanner->open_heredocs, index)->mid_line = false;
         lexer->result_symbol = HEREDOC_CONTENT;
@@ -1317,7 +1327,7 @@ static inline bool scan_literal_content(Scanner *scanner, TSLexer *lexer, const 
             advance(lexer);
             advance(lexer);
 
-        } else if (lexer->eof(lexer)) {
+        } else if (at_eof(lexer)) {
             return false;
         } else {
             advance(lexer);
@@ -1614,7 +1624,7 @@ static bool scan_word_token(TSLexer *lexer, const bool *valid_symbols, bool resc
         advance(lexer);
     }
     if (end_marker && length == 7 &&
-        (lexer->lookahead == '\n' || lexer->lookahead == '\r' || lexer->eof(lexer))) {
+        (lexer->lookahead == '\n' || lexer->lookahead == '\r' || at_eof(lexer))) {
         return scan_end_marker_line_end(lexer);
     }
     if (rescue_may_end_line && length == sizeof(RESCUE) - 1 && ends_keyword(lexer->lookahead)) {
@@ -1698,12 +1708,12 @@ static inline bool scan_escaped_newline(TSLexer *lexer) {
 
 static bool scan_embdoc(TSLexer *lexer) {
     if (!scan_word_text(lexer, "=begin") || !is_space(lexer->lookahead)) return false;
-    while (!lexer->eof(lexer)) {
+    while (!at_eof(lexer)) {
         bool closed = lexer->get_column(lexer) == 0 && lexer->lookahead == '=' &&
-                      scan_word_text(lexer, "=end") && (is_space(lexer->lookahead) || lexer->eof(lexer));
-        while (!lexer->eof(lexer) && lexer->lookahead != '\n') advance(lexer);
+                      scan_word_text(lexer, "=end") && (is_space(lexer->lookahead) || at_eof(lexer));
+        while (!at_eof(lexer) && lexer->lookahead != '\n') advance(lexer);
         if (closed) return true;
-        if (!lexer->eof(lexer)) advance(lexer);
+        if (!at_eof(lexer)) advance(lexer);
     }
     return false;
 }
@@ -1846,7 +1856,7 @@ static inline bool scan_heredoc_end_word(Heredoc *heredoc, TSLexer *lexer) {
         position += length;
         advance(lexer);
     }
-    return lexer->lookahead == '\r' || lexer->lookahead == '\n' || lexer->eof(lexer);
+    return lexer->lookahead == '\r' || lexer->lookahead == '\n' || at_eof(lexer);
 }
 
 static inline void mark_current_heredoc_position(TSLexer *lexer) {
@@ -1939,7 +1949,7 @@ static bool scan_word_text(TSLexer *lexer, const char *word) {
 
 static inline bool scan_line_comment(TSLexer *lexer) {
     advance(lexer);
-    while (!lexer->eof(lexer) && lexer->lookahead != '\n') {
+    while (!at_eof(lexer) && lexer->lookahead != '\n') {
         if (lexer->is_at_included_range_start(lexer)) {
             return true;
         }
@@ -1974,9 +1984,7 @@ void tree_sitter_ruby_external_scanner_deserialize(void *payload, const char *bu
 
 void tree_sitter_ruby_external_scanner_destroy(void *payload) {
     Scanner *scanner = (Scanner *)payload;
-    for (uint32_t i = 0; i < scanner->open_heredocs.size; i++) {
-        array_delete(&array_get(&scanner->open_heredocs, i)->word);
-    }
+    trim_open_heredocs(scanner, 0);
     array_delete(&scanner->open_heredocs);
     array_delete(&scanner->literal_frames);
     array_delete(&scanner->literal_index);
