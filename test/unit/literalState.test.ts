@@ -222,3 +222,21 @@ test.each(
     parser.delete();
   }
 });
+
+test.each(
+  ['W', 'I', 'Q'].flatMap((kind) =>
+    [String.raw`\c`, String.raw`\C-`, String.raw`\M-`, String.raw`\M-\C-`].flatMap((prefix) =>
+      [String.raw`\x`, String.raw`\xZ`, String.raw`\xG`].map((operand) => `%${kind}[${prefix}${operand}]`)
+    )
+  )
+)('rejects incomplete structured control operands: %s', (source) => {
+  const parser = new Parser().setLanguage(language);
+  const tree = parser.parse(source)!;
+  try {
+    expect(tree.rootNode.hasError).toBe(true);
+    nativeParser.check(source, tree.rootNode);
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});

@@ -15498,7 +15498,7 @@
                               },
                               {
                                 "type": "PATTERN",
-                                "value": "[^u]"
+                                "value": "[^uUx0-7cCM]"
                               }
                             ]
                           }
