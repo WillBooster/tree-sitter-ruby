@@ -137,3 +137,25 @@ test.each(['p %Q(a) "b"', 'p "a" "b"', String.raw`p %W[a\ b #{1} \n]`])(
     }
   }
 );
+
+test.each(['W', 'I'])('keeps an escaped percent-%s word across its heredoc body', (kind) => {
+  const source = String.raw`value = %${kind}[#{<<EOS}\
+body
+EOS
+\n]
+`;
+  const parser = new Parser().setLanguage(language);
+  const tree = parser.parse(source)!;
+  try {
+    const node = tree.rootNode;
+    expect(node.hasError).toBe(false);
+    const words = node.descendantsOfType(kind === 'I' ? 'bare_symbol' : 'bare_string');
+    expect(words).toHaveLength(1);
+    expect(words[0]!.descendantsOfType('interpolation')).toHaveLength(1);
+    expect(words[0]!.descendantsOfType('escape_sequence').map(({ text }) => text)).toEqual([String.raw`\n`]);
+    nativeParser.check(source, node);
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});

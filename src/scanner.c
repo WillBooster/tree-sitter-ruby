@@ -386,9 +386,9 @@ static inline bool scan_heredoc_host_resume(Scanner *scanner, TSLexer *lexer, co
 static inline void finish_heredoc(Scanner *scanner, TSLexer *lexer, bool can_resume, uint32_t index);
 static inline uint32_t first_started_heredoc_index(Scanner *scanner);
 static inline bool has_pending_heredoc_body(Scanner *scanner, const bool *valid_symbols);
-static inline bool scan_heredoc_after_literal_escape(Scanner *scanner, TSLexer *lexer, bool consume_plain_escape);
+static inline bool scan_heredoc_after_literal_escape(Scanner *scanner, TSLexer *lexer, bool consume_plain_escape, bool continues_word);
 static inline bool finish_literal_content(TSLexer *lexer);
-static inline bool scan_heredoc_after_literal_space(Scanner *scanner, TSLexer *lexer);
+static inline bool scan_heredoc_after_literal_space(Scanner *scanner, TSLexer *lexer, bool separator_valid);
 static inline bool is_horizontal_whitespace(int32_t codepoint);
 static inline bool start_literal_heredoc_body(Scanner *scanner, TSLexer *lexer);
 static inline bool start_heredoc_body(Scanner *scanner, TSLexer *lexer);
@@ -1238,13 +1238,7 @@ static inline bool scan_literal_content(Scanner *scanner, TSLexer *lexer, const 
     for (;;) {
         if (pending_heredoc && stop_on_space && !has_content && lexer->lookahead != literal->close_delimiter &&
             is_horizontal_whitespace(lexer->lookahead)) {
-            if (valid_symbols[WORD_SEPARATOR] && lexer->lookahead != '\r') {
-                do { advance(lexer); } while (lexer->lookahead != '\r' && is_horizontal_whitespace(lexer->lookahead));
-                lexer->mark_end(lexer);
-                lexer->result_symbol = WORD_SEPARATOR;
-                return true;
-            }
-            return scan_heredoc_after_literal_space(scanner, lexer);
+            return scan_heredoc_after_literal_space(scanner, lexer, valid_symbols[WORD_SEPARATOR]);
         }
         if (pending_heredoc &&
             (literal->resume_after_heredoc ||
@@ -1337,7 +1331,7 @@ static inline bool scan_literal_content(Scanner *scanner, TSLexer *lexer, const 
                 return finish_literal_content(lexer);
             }
             if (pending_heredoc) {
-                return scan_heredoc_after_literal_escape(scanner, lexer, !literal->allows_interpolation);
+                return scan_heredoc_after_literal_escape(scanner, lexer, !literal->allows_interpolation, stop_on_space);
             }
             if (literal->allows_interpolation) return false;
             advance(lexer);
@@ -1794,7 +1788,7 @@ static inline bool has_pending_heredoc_body(Scanner *scanner, const bool *valid_
            !array_get(&scanner->open_heredocs, 0)->started;
 }
 
-static inline bool scan_heredoc_after_literal_escape(Scanner *scanner, TSLexer *lexer, bool consume_plain_escape) {
+static inline bool scan_heredoc_after_literal_escape(Scanner *scanner, TSLexer *lexer, bool consume_plain_escape, bool continues_word) {
     advance(lexer);
     bool separated = lexer->is_at_included_range_start(lexer);
     if (separated && (lexer->lookahead == '\r' || lexer->lookahead == '\n')) {
@@ -1809,6 +1803,7 @@ static inline bool scan_heredoc_after_literal_escape(Scanner *scanner, TSLexer *
     if (!separated && lexer->lookahead == '\n') {
         advance(lexer);
         mark_current_heredoc_position(lexer);
+        if (continues_word) scanner->literal.resume_after_heredoc = true;
         return start_literal_heredoc_body(scanner, lexer);
     }
     if (!consume_plain_escape) return false;
@@ -1822,8 +1817,9 @@ static inline bool finish_literal_content(TSLexer *lexer) {
     return true;
 }
 
-static inline bool scan_heredoc_after_literal_space(Scanner *scanner, TSLexer *lexer) {
-    TSLexerCheckpoint body_start;
+static inline bool scan_heredoc_after_literal_space(Scanner *scanner, TSLexer *lexer, bool separator_valid) {
+    TSLexerCheckpoint boundary_start, boundary_end, body_start;
+    lexer->get_checkpoint(lexer, &boundary_start);
     bool after_carriage_return = false;
     do {
         after_carriage_return = lexer->lookahead == '\r';
@@ -1831,11 +1827,14 @@ static inline bool scan_heredoc_after_literal_space(Scanner *scanner, TSLexer *l
         lexer->advance(lexer, true);
         if (lexer->is_at_included_range_start(lexer)) after_carriage_return = false;
     } while (is_horizontal_whitespace(lexer->lookahead));
-    if (lexer->lookahead == '\\') {
-        return scan_heredoc_after_literal_escape(scanner, lexer, false);
-    }
+    lexer->get_checkpoint(lexer, &boundary_end);
+    if (lexer->lookahead == '\\' && scan_heredoc_after_literal_escape(scanner, lexer, false, false)) return true;
     if (lexer->lookahead != '\n') {
-        return false;
+        if (!separator_valid) return false;
+        lexer->mark_start(lexer, &boundary_start);
+        lexer->mark_end_at(lexer, &boundary_end);
+        lexer->result_symbol = WORD_SEPARATOR;
+        return true;
     }
     if (!after_carriage_return) lexer->get_checkpoint(lexer, &body_start);
     lexer->mark_start(lexer, &body_start);
