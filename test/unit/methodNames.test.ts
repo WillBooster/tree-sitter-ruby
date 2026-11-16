@@ -247,6 +247,21 @@ test.each(['\f', '\v', '\t', ' '])('separates a negated command argument after %
   }
 });
 
+test.each(['foo\u00A0bar', '名前\u3000確認', '\u3000name', 'foo\u0085bar', 'Éclair\u00A0name'])(
+  'keeps non-ASCII characters inside method name %j',
+  (name) => {
+    for (const suffix of ['', '!', '?']) {
+      for (const receiver of ['', 'obj.']) {
+        checkSource(`${receiver}${name}${suffix}(1)\nfollowing`, false, (node) => {
+          const call = node.firstNamedChild!;
+          expect(call.childForFieldName('method')!.text).toBe(`${name}${suffix}`);
+          expect(call.childForFieldName('arguments')!.firstNamedChild!.type).toBe('integer');
+        });
+      }
+    }
+  }
+);
+
 function expectEndlessEquals(method: Node, index: number): void {
   const equals = method.children.find(({ type }) => type === '=')!;
   expect([equals.startIndex, equals.endIndex]).toEqual([index, index + 1]);

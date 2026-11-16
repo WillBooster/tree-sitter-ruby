@@ -5,8 +5,8 @@ import path from 'node:path';
 const version = '17.0.0';
 const root = path.resolve(import.meta.dirname, '..');
 const points = new Set<number>();
-const [derived, unicode, properties] = await Promise.all(
-  ['DerivedCoreProperties.txt', 'UnicodeData.txt', 'PropList.txt'].map(async (name) => {
+const [derived, unicode] = await Promise.all(
+  ['DerivedCoreProperties.txt', 'UnicodeData.txt'].map(async (name) => {
     const response = await fetch(`https://www.unicode.org/Public/${version}/ucd/${name}`);
     assert.ok(response.ok, `${name}: ${response.status}`);
     return response.text();
@@ -25,17 +25,8 @@ for (const line of unicode!.split('\n')) {
   const [point, , category] = line.split(';');
   if (category === 'Lt') points.add(Number.parseInt(point!, 16));
 }
-const excluded = new Set(Array.from({ length: 32 }, (_, point) => point));
+const excluded = new Set(Array.from({ length: 33 }, (_, point) => point));
 for (const character of ':;`"\'@$#.,|^&<=>+-*/\\%?!~()[]{}') excluded.add(character.codePointAt(0)!);
-for (const line of properties!.split('\n')) {
-  const [range, property] = line
-    .split('#')[0]!
-    .split(';')
-    .map((part) => part.trim());
-  if (property !== 'White_Space') continue;
-  const [first, last = first] = range!.split('..').map((value) => Number.parseInt(value, 16));
-  for (let point = first!; point <= last!; point++) excluded.add(point);
-}
 const uppercase = toRanges(points);
 const excludedIdentifier = toRanges(excluded);
 fs.writeFileSync(

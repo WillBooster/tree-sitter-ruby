@@ -110,7 +110,7 @@ module.exports = grammar({
     $._spaced_endless_equals,
   ],
 
-  extras: ($) => [$.comment, $.heredoc_body, $._heredoc_resume, /\s/, /\\\r?\n/],
+  extras: ($) => [$.comment, $.heredoc_body, $._heredoc_resume, /[ \t\r\n\f\v]/, /\\\r?\n/],
 
   word: ($) => $.identifier,
 
@@ -1671,18 +1671,18 @@ module.exports = grammar({
     string_array: ($) =>
       seq(
         alias($._string_array_start, '%w('),
-        optional(/\s+/),
-        sep(alias($._literal_contents, $.bare_string), /\s+/),
-        optional(/\s+/),
+        optional(/[ \t\r\n\f\v]+/),
+        sep(alias($._literal_contents, $.bare_string), /[ \t\r\n\f\v]+/),
+        optional(/[ \t\r\n\f\v]+/),
         alias($._string_end, ')')
       ),
 
     symbol_array: ($) =>
       seq(
         alias($._symbol_array_start, '%i('),
-        optional(/\s+/),
-        sep(alias($._literal_contents, $.bare_symbol), /\s+/),
-        optional(/\s+/),
+        optional(/[ \t\r\n\f\v]+/),
+        sep(alias($._literal_contents, $.bare_symbol), /[ \t\r\n\f\v]+/),
+        optional(/[ \t\r\n\f\v]+/),
         alias($._string_end, ')')
       ),
 

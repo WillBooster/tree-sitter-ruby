@@ -1884,7 +1884,7 @@ static inline bool is_global_symbol_punctuation(int32_t c) {
 }
 
 static inline bool is_space(int32_t c) {
-    return (uint32_t)c < 0x80 ? c == ' ' || (uint32_t)c - '\t' < 5 : iswspace((wint_t)c) != 0;
+    return c == ' ' || (uint32_t)c - '\t' < 5;
 }
 
 static inline bool is_alpha(int32_t c) {
