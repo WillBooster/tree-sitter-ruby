@@ -82,3 +82,58 @@ function nestedLiteral(depth: number): string {
   const closings = Array.from({ length: depth }, (_, index) => delimiters[index % delimiters.length]![1]);
   return `${openings.join('')}1${closings.toReversed().join('')}`;
 }
+
+test.each(['w', 'W', 'i', 'I'])('separates escaped percent-%s words at source whitespace', (kind) => {
+  const source = String.raw`p %${kind}[hello \n]`;
+  const parser = new Parser().setLanguage(language);
+  const tree = parser.parse(source)!;
+  try {
+    const node = tree.rootNode;
+    expect(node.hasError).toBe(false);
+    const words = node.descendantsOfType(kind === 'i' || kind === 'I' ? 'bare_symbol' : 'bare_string');
+    expect(words.map(({ text }) => text)).toEqual(['hello', String.raw`\n`]);
+    nativeParser.check(source, node);
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});
+
+test.each(['q', 'Q'])('parses percent-%s after a string as a formatting operation', (kind) => {
+  const source = `p "a%s" %${kind}(b)`;
+  const parser = new Parser().setLanguage(language);
+  const tree = parser.parse(source)!;
+  try {
+    const node = tree.rootNode;
+    expect(node.hasError).toBe(false);
+    expect(node.descendantsOfType('binary').map(({ text }) => text)).toEqual([`"a%s" %${kind}(b)`]);
+    expect(node.descendantsOfType('chained_string')).toHaveLength(0);
+    nativeParser.check(source, node);
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});
+
+test.each(['p %Q(a) "b"', 'p "a" "b"', String.raw`p %W[a\ b #{1} \n]`])(
+  'retains genuine concatenation and escaped word content: %s',
+  (source) => {
+    const parser = new Parser().setLanguage(language);
+    const tree = parser.parse(source)!;
+    try {
+      const node = tree.rootNode;
+      expect(node.hasError).toBe(false);
+      if (source.startsWith('p %W'))
+        expect(node.descendantsOfType('bare_string').map(({ text }) => text)).toEqual([
+          String.raw`a\ b`,
+          '#{1}',
+          String.raw`\n`,
+        ]);
+      else expect(node.descendantsOfType('chained_string')).toHaveLength(1);
+      nativeParser.check(source, node);
+    } finally {
+      tree.delete();
+      parser.delete();
+    }
+  }
+);

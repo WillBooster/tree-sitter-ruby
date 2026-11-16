@@ -16,6 +16,8 @@ typedef enum {
 
     SIMPLE_SYMBOL,
     STRING_START,
+    CHAINED_STRING_START,
+    WORD_SEPARATOR,
     SYMBOL_START,
     SUBSHELL_START,
     REGEX_START,
@@ -876,14 +878,14 @@ static inline bool scan_literal_start_or_assignment(Scanner *scanner, TSLexer *l
 
     switch (lexer->lookahead) {
         case '"':
-            literal->type = STRING_START;
+            literal->type = valid_symbols[STRING_START] ? STRING_START : CHAINED_STRING_START;
             literal->open_delimiter = literal->close_delimiter = lexer->lookahead;
             literal->allows_interpolation = true;
             advance(lexer);
             return true;
 
         case '\'':
-            literal->type = STRING_START;
+            literal->type = valid_symbols[STRING_START] ? STRING_START : CHAINED_STRING_START;
             literal->open_delimiter = literal->close_delimiter = lexer->lookahead;
             literal->allows_interpolation = false;
             advance(lexer);
@@ -922,6 +924,7 @@ static inline bool scan_literal_start_or_assignment(Scanner *scanner, TSLexer *l
             return true;
 
         case '%': {
+            if (!valid_symbols[STRING_START] && valid_symbols[CHAINED_STRING_START]) return false;
             advance(lexer);
             if (valid_symbols[MODULO_ASSIGNMENT] && lexer->lookahead == '=') {
                 advance(lexer);
@@ -1235,6 +1238,12 @@ static inline bool scan_literal_content(Scanner *scanner, TSLexer *lexer, const 
     for (;;) {
         if (pending_heredoc && stop_on_space && !has_content && lexer->lookahead != literal->close_delimiter &&
             is_horizontal_whitespace(lexer->lookahead)) {
+            if (valid_symbols[WORD_SEPARATOR] && lexer->lookahead != '\r') {
+                do { advance(lexer); } while (lexer->lookahead != '\r' && is_horizontal_whitespace(lexer->lookahead));
+                lexer->mark_end(lexer);
+                lexer->result_symbol = WORD_SEPARATOR;
+                return true;
+            }
             return scan_heredoc_after_literal_space(scanner, lexer);
         }
         if (pending_heredoc &&
@@ -1261,6 +1270,12 @@ static inline bool scan_literal_content(Scanner *scanner, TSLexer *lexer, const 
         if (stop_on_space && is_space(lexer->lookahead)) {
             if (has_content) {
                 return finish_literal_content(lexer);
+            }
+            if (valid_symbols[WORD_SEPARATOR]) {
+                do { advance(lexer); } while (is_space(lexer->lookahead));
+                lexer->mark_end(lexer);
+                lexer->result_symbol = WORD_SEPARATOR;
+                return true;
             }
             return false;
         }
@@ -1537,7 +1552,7 @@ static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symb
         return scan_word_token(lexer, valid_symbols, rescue_may_end_line);
     }
 
-    if (valid_symbols[STRING_START] || (lexer->lookahead == '%' && valid_symbols[MODULO_ASSIGNMENT])) {
+    if (valid_symbols[STRING_START] || valid_symbols[CHAINED_STRING_START] || (lexer->lookahead == '%' && valid_symbols[MODULO_ASSIGNMENT])) {
         Literal literal = {0};
         literal.nesting_depth = 1;
 

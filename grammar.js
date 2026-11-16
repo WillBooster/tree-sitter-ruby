@@ -65,6 +65,8 @@ module.exports = grammar({
     // Delimited literals
     $.simple_symbol,
     $._string_start,
+    $._chained_string_start,
+    $._word_separator,
     $._symbol_start,
     $._subshell_start,
     $._regex_start,
@@ -1657,7 +1659,10 @@ module.exports = grammar({
         )
       ),
 
-    chained_string: ($) => seq($.string, repeat1($.string)),
+    chained_string: ($) => seq($.string, repeat1(alias($._quoted_string, $.string))),
+
+    _quoted_string: ($) =>
+      seq(alias($._chained_string_start, '"'), optional($._literal_contents), alias($._string_end, '"')),
 
     character: () => /\?(\\\S(\{[0-9A-Fa-f]*\}|[0-9A-Fa-f]*|-\S([MC]-\S)?)?|\S)/,
 
@@ -1671,18 +1676,18 @@ module.exports = grammar({
     string_array: ($) =>
       seq(
         alias($._string_array_start, '%w('),
-        optional(/[ \t\r\n\f\v]+/),
-        sep(alias($._literal_contents, $.bare_string), /[ \t\r\n\f\v]+/),
-        optional(/[ \t\r\n\f\v]+/),
+        optional($._word_separator),
+        sep(alias($._literal_contents, $.bare_string), $._word_separator),
+        optional($._word_separator),
         alias($._string_end, ')')
       ),
 
     symbol_array: ($) =>
       seq(
         alias($._symbol_array_start, '%i('),
-        optional(/[ \t\r\n\f\v]+/),
-        sep(alias($._literal_contents, $.bare_symbol), /[ \t\r\n\f\v]+/),
-        optional(/[ \t\r\n\f\v]+/),
+        optional($._word_separator),
+        sep(alias($._literal_contents, $.bare_symbol), $._word_separator),
+        optional($._word_separator),
         alias($._string_end, ')')
       ),
 
