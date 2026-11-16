@@ -65,6 +65,9 @@ module.exports = grammar({
     // Delimited literals
     $.simple_symbol,
     $._string_start,
+    $._chained_string_start,
+    $._word_separator,
+    $._literal_escape,
     $._symbol_start,
     $._subshell_start,
     $._regex_start,
@@ -1657,7 +1660,10 @@ module.exports = grammar({
         )
       ),
 
-    chained_string: ($) => seq($.string, repeat1($.string)),
+    chained_string: ($) => seq($.string, repeat1(alias($._quoted_string, $.string))),
+
+    _quoted_string: ($) =>
+      seq(alias($._chained_string_start, '"'), optional($._literal_contents), alias($._string_end, '"')),
 
     character: () => /\?(\\\S(\{[0-9A-Fa-f]*\}|[0-9A-Fa-f]*|-\S([MC]-\S)?)?|\S)/,
 
@@ -1671,18 +1677,18 @@ module.exports = grammar({
     string_array: ($) =>
       seq(
         alias($._string_array_start, '%w('),
-        optional(/[ \t\r\n\f\v]+/),
-        sep(alias($._literal_contents, $.bare_string), /[ \t\r\n\f\v]+/),
-        optional(/[ \t\r\n\f\v]+/),
+        optional($._word_separator),
+        sep(alias($._literal_contents, $.bare_string), $._word_separator),
+        optional($._word_separator),
         alias($._string_end, ')')
       ),
 
     symbol_array: ($) =>
       seq(
         alias($._symbol_array_start, '%i('),
-        optional(/[ \t\r\n\f\v]+/),
-        sep(alias($._literal_contents, $.bare_symbol), /[ \t\r\n\f\v]+/),
-        optional(/[ \t\r\n\f\v]+/),
+        optional($._word_separator),
+        sep(alias($._literal_contents, $.bare_symbol), $._word_separator),
+        optional($._word_separator),
         alias($._string_end, ')')
       ),
 
@@ -1694,7 +1700,10 @@ module.exports = grammar({
     heredoc_body: ($) =>
       seq($._heredoc_body_start, repeat(choice($.heredoc_content, $.interpolation, $.escape_sequence)), $.heredoc_end),
 
-    _literal_contents: ($) => repeat1(choice($.string_content, $.interpolation, $.escape_sequence)),
+    _literal_contents: ($) =>
+      repeat1(
+        choice($.string_content, $.interpolation, $.escape_sequence, alias($._literal_escape, $.escape_sequence))
+      ),
 
     // https://ruby-doc.org/core-2.5.0/doc/syntax/literals_rdoc.html#label-Strings
     escape_sequence: () =>
@@ -1703,6 +1712,13 @@ module.exports = grammar({
           '\\',
           choice(
             /\r\n/,
+            seq(
+              choice(
+                seq(choice('c', 'C-'), optional(String.raw`\M-`)),
+                seq('M-', optional(choice(String.raw`\c`, String.raw`\C-`)))
+              ),
+              choice(/\r\n/, /[^\\]/, seq('\\', choice(/\r\n/, /x[0-9a-fA-F]{1,2}/, /[0-7]{1,3}/, /[^uUx0-7cCM]/)))
+            ),
             /[^ux0-7]/, // single character
             /x[0-9a-fA-F]{1,2}/, // hex code
             /[0-7]{1,3}/, // octal

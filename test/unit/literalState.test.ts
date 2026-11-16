@@ -82,3 +82,234 @@ function nestedLiteral(depth: number): string {
   const closings = Array.from({ length: depth }, (_, index) => delimiters[index % delimiters.length]![1]);
   return `${openings.join('')}1${closings.toReversed().join('')}`;
 }
+
+test.each(['w', 'W', 'i', 'I'])('separates escaped percent-%s words at source whitespace', (kind) => {
+  const source = String.raw`p %${kind}[hello \n]`;
+  const parser = new Parser().setLanguage(language);
+  const tree = parser.parse(source)!;
+  try {
+    const node = tree.rootNode;
+    expect(node.hasError).toBe(false);
+    const words = node.descendantsOfType(kind === 'i' || kind === 'I' ? 'bare_symbol' : 'bare_string');
+    expect(words.map(({ text }) => text)).toEqual(['hello', String.raw`\n`]);
+    nativeParser.check(source, node);
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});
+
+test.each(['q', 'Q'])('parses percent-%s after a string as a formatting operation', (kind) => {
+  const source = `p "a%s" %${kind}(b)`;
+  const parser = new Parser().setLanguage(language);
+  const tree = parser.parse(source)!;
+  try {
+    const node = tree.rootNode;
+    expect(node.hasError).toBe(false);
+    expect(node.descendantsOfType('binary').map(({ text }) => text)).toEqual([`"a%s" %${kind}(b)`]);
+    expect(node.descendantsOfType('chained_string')).toHaveLength(0);
+    nativeParser.check(source, node);
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});
+
+test.each(['p %Q(a) "b"', 'p "a" "b"', String.raw`p %W[a\ b #{1} \n]`])(
+  'retains genuine concatenation and escaped word content: %s',
+  (source) => {
+    const parser = new Parser().setLanguage(language);
+    const tree = parser.parse(source)!;
+    try {
+      const node = tree.rootNode;
+      expect(node.hasError).toBe(false);
+      if (source.startsWith('p %W'))
+        expect(node.descendantsOfType('bare_string').map(({ text }) => text)).toEqual([
+          String.raw`a\ b`,
+          '#{1}',
+          String.raw`\n`,
+        ]);
+      else expect(node.descendantsOfType('chained_string')).toHaveLength(1);
+      nativeParser.check(source, node);
+    } finally {
+      tree.delete();
+      parser.delete();
+    }
+  }
+);
+
+test.each(['W', 'I'])('keeps an escaped percent-%s word across its heredoc body', (kind) => {
+  const source = String.raw`value = %${kind}[#{<<EOS}\
+body
+EOS
+\n]
+`;
+  const parser = new Parser().setLanguage(language);
+  const tree = parser.parse(source)!;
+  try {
+    const node = tree.rootNode;
+    expect(node.hasError).toBe(false);
+    const words = node.descendantsOfType(kind === 'I' ? 'bare_symbol' : 'bare_string');
+    expect(words).toHaveLength(1);
+    expect(words[0]!.descendantsOfType('interpolation')).toHaveLength(1);
+    expect(words[0]!.descendantsOfType('escape_sequence').map(({ text }) => text)).toEqual(['\\\n', String.raw`\n`]);
+    nativeParser.check(source, node);
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});
+
+test.each(['w', 'i', 'W', 'I'])('retains complete escaped line endings in percent-%s words', (kind) => {
+  const parser = new Parser().setLanguage(language);
+  try {
+    for (const newline of ['\n', '\r\n'])
+      for (const prefix of ['', ' ', 'first ', 'first']) {
+        const source = `%${kind}[${prefix}\\${newline}second]`;
+        const tree = parser.parse(source)!;
+        try {
+          const node = tree.rootNode;
+          expect(node.hasError, source).toBe(false);
+          const words = node.descendantsOfType(kind.toLowerCase() === 'i' ? 'bare_symbol' : 'bare_string');
+          expect(
+            words.map(({ text }) => text),
+            source
+          ).toEqual(prefix === 'first ' ? ['first', `\\${newline}second`] : [`${prefix.trim()}\\${newline}second`]);
+          nativeParser.check(source, node);
+        } finally {
+          tree.delete();
+        }
+      }
+  } finally {
+    parser.delete();
+  }
+});
+
+test.each(
+  ['W', 'I'].flatMap((kind) =>
+    [
+      String.raw`\c`,
+      String.raw`\C-`,
+      String.raw`\M-`,
+      String.raw`\c\M-`,
+      String.raw`\C-\M-`,
+      String.raw`\M-\c`,
+      String.raw`\M-\C-`,
+    ].flatMap((prefix) =>
+      [' ', '\t', '\n', '\r\n', '\\\n', '\\\r\n', String.raw`\n`, String.raw`\x20`, ']'].map((operand) => ({
+        kind,
+        prefix,
+        operand,
+      }))
+    )
+  )
+)('keeps control/meta operands inside percent words: $kind $prefix $operand', ({ kind, prefix, operand }) => {
+  const word = `${prefix}${operand}${String.raw`\n`}`;
+  const source = `%${kind}[${word} tail]`;
+  const parser = new Parser().setLanguage(language);
+  const tree = parser.parse(source)!;
+  try {
+    const node = tree.rootNode;
+    expect(node.hasError).toBe(false);
+    expect(node.descendantsOfType(kind === 'I' ? 'bare_symbol' : 'bare_string').map(({ text }) => text)).toEqual([
+      word,
+      'tail',
+    ]);
+    expect(node.descendantsOfType('escape_sequence')[0]!.text).toBe(`${prefix}${operand}`);
+    nativeParser.check(source, node);
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});
+
+test.each(
+  ['W', 'I', 'Q'].flatMap((kind) =>
+    [String.raw`\c`, String.raw`\C-`, String.raw`\M-`, String.raw`\M-\C-`].flatMap((prefix) =>
+      [String.raw`\x`, String.raw`\xZ`, String.raw`\xG`].map((operand) => `%${kind}[${prefix}${operand}]`)
+    )
+  )
+)('rejects incomplete structured control operands: %s', (source) => {
+  const parser = new Parser().setLanguage(language);
+  const tree = parser.parse(source)!;
+  try {
+    expect(tree.rootNode.hasError).toBe(true);
+    nativeParser.check(source, tree.rootNode);
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});
+
+test.each(
+  ['W', 'I'].flatMap((kind) =>
+    [
+      String.raw`\c`,
+      String.raw`\C-`,
+      String.raw`\M-`,
+      String.raw`\c\M-`,
+      String.raw`\C-\M-`,
+      String.raw`\M-\c`,
+      String.raw`\M-\C-`,
+    ].flatMap((prefix) =>
+      ['\n', '\r\n'].flatMap((eol) =>
+        [false, true].flatMap((escaped) =>
+          ['tail', String.raw`\n`, ' tail'].map((tail) => ({ kind, prefix, eol, escaped, tail }))
+        )
+      )
+    )
+  )
+)(
+  'preserves control-newline heredoc word ownership: $kind $prefix $escaped $tail $eol',
+  ({ kind, prefix, eol, escaped, tail }) => {
+    const escape = `${prefix}${escaped ? '\\' : ''}${eol}`;
+    const source = `%${kind}[#{<<EOS}${escape}body${eol}EOS${eol}${tail}]`;
+    const parser = new Parser().setLanguage(language);
+    const tree = parser.parse(source)!;
+    try {
+      const node = tree.rootNode;
+      expect(node.hasError).toBe(false);
+      expect(node.descendantsOfType(kind === 'I' ? 'bare_symbol' : 'bare_string')).toHaveLength(
+        tail.startsWith(' ') ? 2 : 1
+      );
+      expect(node.descendantsOfType('escape_sequence')[0]!.text).toBe(escape);
+      expect(node.descendantsOfType('heredoc_body').map(({ text }) => text)).toEqual([`body${eol}EOS`]);
+      nativeParser.check(source, node);
+    } finally {
+      tree.delete();
+      parser.delete();
+    }
+  }
+);
+
+test.each(
+  ['W', 'I'].flatMap((kind) =>
+    ['', String.raw`\c`, String.raw`\C-`, String.raw`\M-`].flatMap((prefix) =>
+      [' ', '\t', '\f', '\v', '\r', ' \t'].flatMap((separator) =>
+        ['\n', '\r\n'].flatMap((eol) =>
+          [false, true].flatMap((escaped) =>
+            [' tail', String.raw` \n`].map((tail) => ({ kind, prefix, separator, eol, escaped, tail }))
+          )
+        )
+      )
+    )
+  )
+)(
+  'keeps real boundaries before newline-owning words: $kind $prefix $separator $eol $escaped $tail',
+  ({ kind, prefix, separator, eol, escaped, tail }) => {
+    const source = `%${kind}[#{<<EOS}${separator}${prefix}${escaped ? '\\' : ''}${eol}body${eol}EOS${eol}${tail}]`;
+    const parser = new Parser().setLanguage(language);
+    const tree = parser.parse(source)!;
+    try {
+      const node = tree.rootNode;
+      expect(node.hasError).toBe(false);
+      expect(node.descendantsOfType(kind === 'I' ? 'bare_symbol' : 'bare_string')).toHaveLength(
+        prefix || escaped ? 3 : 2
+      );
+      nativeParser.check(source, node);
+    } finally {
+      tree.delete();
+      parser.delete();
+    }
+  }
+);
