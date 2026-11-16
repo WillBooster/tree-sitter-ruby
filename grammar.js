@@ -37,8 +37,17 @@ const PREC = {
 // Regex sources reach src/grammar.json as written, so they keep upstream's spelling, and tree-sitter's regex parser
 // rejects an unescaped `[` in a character class.
 // oxlint-disable no-control-regex, no-useless-escape, unicorn/no-hex-escape -- See above.
+// oxlint-disable-next-line unicorn/prefer-module -- The grammar is loaded as CommonJS by tree-sitter.
+const UPPER_ALPHA_RANGES = /** @type {[number, number][]} */ (require('./src/unicodeUppercase.json'));
+const UPPER_ALPHA_CHARS = UPPER_ALPHA_RANGES.map(([first, last]) =>
+  first === last ? `\\u{${first.toString(16)}}` : `\\u{${first.toString(16)}}-\\u{${last.toString(16)}}`
+).join('');
+const UPPER_ALPHA_CHAR = new RegExp(`[${UPPER_ALPHA_CHARS}]`, 'u');
 const IDENTIFIER_CHARS = /[^\x00-\x1F\s:;`"'@$#.,|^&<=>+\-*/\\%?!~()\[\]{}]*/;
-const LOWER_ALPHA_CHAR = /[^\x00-\x1F\s\p{Uppercase}\p{Lt}0-9:;`"'@$#.,|^&<=>+\-*/\\%?!~()\[\]{}]/u;
+const LOWER_ALPHA_CHAR = new RegExp(
+  /[^\x00-\x1F\sA-Z0-9:;`"'@$#.,|^&<=>+\-*/\\%?!~()\[\]{}]/.source.replace('A-Z', UPPER_ALPHA_CHARS),
+  'u'
+);
 const ALPHA_CHAR = /[^\x00-\x1F\s0-9:;`"'@$#.,|^&<=>+\-*/\\%?!~()\[\]{}]/;
 // oxlint-enable no-control-regex, no-useless-escape, unicorn/no-hex-escape
 
@@ -1626,8 +1635,8 @@ module.exports = grammar({
     false: () => 'false',
     nil: () => 'nil',
 
-    constant: () => token(seq(/[\p{Uppercase}\p{Lt}]/u, IDENTIFIER_CHARS)),
-    constant_suffix: ($) => choice(token(seq(/[\p{Uppercase}\p{Lt}]/u, IDENTIFIER_CHARS, /[?]/)), $._constant_suffix),
+    constant: () => token(seq(UPPER_ALPHA_CHAR, IDENTIFIER_CHARS)),
+    constant_suffix: ($) => choice(token(seq(UPPER_ALPHA_CHAR, IDENTIFIER_CHARS, /[?]/)), $._constant_suffix),
     identifier: () => token(seq(LOWER_ALPHA_CHAR, IDENTIFIER_CHARS)),
     identifier_suffix: ($) => choice(token(seq(LOWER_ALPHA_CHAR, IDENTIFIER_CHARS, /[?]/)), $._identifier_suffix),
     instance_variable: () => token(seq('@', ALPHA_CHAR, IDENTIFIER_CHARS)),

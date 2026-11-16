@@ -214,13 +214,17 @@ test.each([' ', '\t', '\f', '\v', '\r', '\\\n', '\\\r\n'])(
   }
 );
 
-test.each(['Éclair', 'Δ', 'ǅelta', 'Ⓐfoo', 'Ⅰfoo', '𐐀name'])('classifies Unicode constant %s', (name) => {
-  checkSource(`${name}=42\nclass ${name};end\nobj.${name}?\nfollowing`, false, (node) => {
-    expect(node.namedChildren[0]!.childForFieldName('left')!.type).toBe('constant');
-    expect(node.namedChildren[1]!.childForFieldName('name')!.type).toBe('constant');
-    expect(node.namedChildren[2]!.childForFieldName('method')!.type).toBe('constant');
-  });
-});
+test.each(['Éclair', 'Δ', 'ǅelta', 'Ⓐfoo', 'Ⅰfoo', '𐐀name', '𝐀bc', '꟎foo', '𖺠foo'])(
+  'classifies Unicode constant %s',
+  (name) => {
+    for (const suffix of ['?', '!'])
+      checkSource(`${name}=42\nclass ${name};end\nobj.${name}${suffix} 1\nfollowing`, false, (node) => {
+        expect(node.namedChildren[0]!.childForFieldName('left')!.type).toBe('constant');
+        expect(node.namedChildren[1]!.childForFieldName('name')!.type).toBe('constant');
+        expect(node.namedChildren[2]!.childForFieldName('method')!.type).toBe('constant');
+      });
+  }
+);
 
 test.each(['nil', 'true', 'false'])('retains the immediate receiver of singleton methods on %s', (receiver) => {
   for (const definition of [`def ${receiver}.label;42;end`, `def ${receiver}.label = 42`]) {
