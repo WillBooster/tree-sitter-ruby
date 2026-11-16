@@ -1335,7 +1335,11 @@ static inline bool scan_literal_content(Scanner *scanner, TSLexer *lexer, const 
             }
             if (literal->allows_interpolation) return false;
             advance(lexer);
-            advance(lexer);
+            if (!lexer->is_at_included_range_start(lexer)) {
+                bool carriage_return = lexer->lookahead == '\r';
+                advance(lexer);
+                if (carriage_return && lexer->lookahead == '\n' && !lexer->is_at_included_range_start(lexer)) advance(lexer);
+            }
 
         } else if (at_eof(lexer)) {
             return false;

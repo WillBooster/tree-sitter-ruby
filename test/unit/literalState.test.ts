@@ -159,3 +159,28 @@ EOS
     parser.delete();
   }
 });
+
+test.each(['w', 'i', 'W', 'I'])('retains complete escaped line endings in percent-%s words', (kind) => {
+  const parser = new Parser().setLanguage(language);
+  try {
+    for (const newline of ['\n', '\r\n'])
+      for (const prefix of ['', ' ', 'first ', 'first']) {
+        const source = `%${kind}[${prefix}\\${newline}second]`;
+        const tree = parser.parse(source)!;
+        try {
+          const node = tree.rootNode;
+          expect(node.hasError, source).toBe(false);
+          const words = node.descendantsOfType(kind.toLowerCase() === 'i' ? 'bare_symbol' : 'bare_string');
+          expect(
+            words.map(({ text }) => text),
+            source
+          ).toEqual(prefix === 'first ' ? ['first', `\\${newline}second`] : [`${prefix.trim()}\\${newline}second`]);
+          nativeParser.check(source, node);
+        } finally {
+          tree.delete();
+        }
+      }
+  } finally {
+    parser.delete();
+  }
+});
