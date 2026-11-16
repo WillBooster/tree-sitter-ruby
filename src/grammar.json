@@ -15375,6 +15375,15 @@
           {
             "type": "SYMBOL",
             "name": "escape_sequence"
+          },
+          {
+            "type": "ALIAS",
+            "content": {
+              "type": "SYMBOL",
+              "name": "_literal_escape"
+            },
+            "named": true,
+            "value": "escape_sequence"
           }
         ]
       }
@@ -16513,6 +16522,10 @@
     {
       "type": "SYMBOL",
       "name": "_word_separator"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_literal_escape"
     },
     {
       "type": "SYMBOL",

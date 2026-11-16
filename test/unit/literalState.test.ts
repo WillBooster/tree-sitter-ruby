@@ -240,3 +240,44 @@ test.each(
     parser.delete();
   }
 });
+
+test.each(
+  ['W', 'I'].flatMap((kind) =>
+    [
+      String.raw`\c`,
+      String.raw`\C-`,
+      String.raw`\M-`,
+      String.raw`\c\M-`,
+      String.raw`\C-\M-`,
+      String.raw`\M-\c`,
+      String.raw`\M-\C-`,
+    ].flatMap((prefix) =>
+      ['\n', '\r\n'].flatMap((eol) =>
+        [false, true].flatMap((escaped) =>
+          ['tail', String.raw`\n`, ' tail'].map((tail) => ({ kind, prefix, eol, escaped, tail }))
+        )
+      )
+    )
+  )
+)(
+  'preserves control-newline heredoc word ownership: $kind $prefix $escaped $tail $eol',
+  ({ kind, prefix, eol, escaped, tail }) => {
+    const escape = `${prefix}${escaped ? '\\' : ''}${eol}`;
+    const source = `%${kind}[#{<<EOS}${escape}body${eol}EOS${eol}${tail}]`;
+    const parser = new Parser().setLanguage(language);
+    const tree = parser.parse(source)!;
+    try {
+      const node = tree.rootNode;
+      expect(node.hasError).toBe(false);
+      expect(node.descendantsOfType(kind === 'I' ? 'bare_symbol' : 'bare_string')).toHaveLength(
+        tail.startsWith(' ') ? 2 : 1
+      );
+      expect(node.descendantsOfType('escape_sequence')[0]!.text).toBe(escape);
+      expect(node.descendantsOfType('heredoc_body')).toHaveLength(1);
+      nativeParser.check(source, node);
+    } finally {
+      tree.delete();
+      parser.delete();
+    }
+  }
+);

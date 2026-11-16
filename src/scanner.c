@@ -18,6 +18,7 @@ typedef enum {
     STRING_START,
     CHAINED_STRING_START,
     WORD_SEPARATOR,
+    LITERAL_ESCAPE,
     SYMBOL_START,
     SUBSHELL_START,
     REGEX_START,
@@ -387,6 +388,7 @@ static inline void finish_heredoc(Scanner *scanner, TSLexer *lexer, bool can_res
 static inline uint32_t first_started_heredoc_index(Scanner *scanner);
 static inline bool has_pending_heredoc_body(Scanner *scanner, const bool *valid_symbols);
 static inline bool scan_heredoc_after_literal_escape(Scanner *scanner, TSLexer *lexer, bool consume_plain_escape, bool continues_word);
+static bool scan_control_newline_operand(TSLexer *lexer);
 static inline bool finish_literal_content(TSLexer *lexer);
 static inline bool scan_heredoc_after_literal_space(Scanner *scanner, TSLexer *lexer, bool separator_valid);
 static inline bool is_horizontal_whitespace(int32_t codepoint);
@@ -1792,6 +1794,8 @@ static inline bool has_pending_heredoc_body(Scanner *scanner, const bool *valid_
            !array_get(&scanner->open_heredocs, 0)->started;
 }
 
+// code-gauge-allow functionCognitiveComplexity 22 -- Escape ownership and heredoc resumption share the consumed lexer position.
+// code-gauge-allow functionNcss 31 -- Escape ownership and heredoc resumption share the consumed lexer position.
 static inline bool scan_heredoc_after_literal_escape(Scanner *scanner, TSLexer *lexer, bool consume_plain_escape, bool continues_word) {
     advance(lexer);
     bool separated = lexer->is_at_included_range_start(lexer);
@@ -1799,6 +1803,13 @@ static inline bool scan_heredoc_after_literal_escape(Scanner *scanner, TSLexer *
         return finish_literal_content(lexer);
     }
     if (separated && !consume_plain_escape) return false;
+    if (!consume_plain_escape && (lexer->lookahead == 'c' || lexer->lookahead == 'C' || lexer->lookahead == 'M')) {
+        if (!scan_control_newline_operand(lexer)) return false;
+        if (continues_word) scanner->literal.resume_after_heredoc = true;
+        lexer->mark_end(lexer);
+        lexer->result_symbol = LITERAL_ESCAPE;
+        return true;
+    }
     bool carriage_return = !separated && lexer->lookahead == '\r';
     if (carriage_return) {
         advance(lexer);
@@ -1813,6 +1824,34 @@ static inline bool scan_heredoc_after_literal_escape(Scanner *scanner, TSLexer *
     if (!consume_plain_escape) return false;
     if (!carriage_return) advance(lexer);
     return finish_literal_content(lexer);
+}
+
+static bool advance_within_range(TSLexer *lexer) {
+    advance(lexer);
+    return !lexer->is_at_included_range_start(lexer);
+}
+
+// code-gauge-allow functionCognitiveComplexity 25 -- The bounded prefix state machine preserves one lexer position and included-range boundary.
+static bool scan_control_newline_operand(TSLexer *lexer) {
+    unsigned seen = 0;
+    for (;;) {
+        int32_t prefix = lexer->lookahead;
+        unsigned flag = prefix == 'M' ? 2 : 1;
+        if (seen & flag) return false;
+        seen |= flag;
+        if (!advance_within_range(lexer)) return false;
+        if (prefix != 'c') {
+            if (lexer->lookahead != '-') return false;
+            if (!advance_within_range(lexer)) return false;
+        }
+        if (lexer->lookahead != '\\') break;
+        if (!advance_within_range(lexer)) return false;
+        if (lexer->lookahead != 'c' && lexer->lookahead != 'C' && lexer->lookahead != 'M') break;
+    }
+    if (lexer->lookahead == '\r' && !advance_within_range(lexer)) return false;
+    if (lexer->lookahead != '\n') return false;
+    advance(lexer);
+    return true;
 }
 
 static inline bool finish_literal_content(TSLexer *lexer) {

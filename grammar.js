@@ -67,6 +67,7 @@ module.exports = grammar({
     $._string_start,
     $._chained_string_start,
     $._word_separator,
+    $._literal_escape,
     $._symbol_start,
     $._subshell_start,
     $._regex_start,
@@ -1699,7 +1700,10 @@ module.exports = grammar({
     heredoc_body: ($) =>
       seq($._heredoc_body_start, repeat(choice($.heredoc_content, $.interpolation, $.escape_sequence)), $.heredoc_end),
 
-    _literal_contents: ($) => repeat1(choice($.string_content, $.interpolation, $.escape_sequence)),
+    _literal_contents: ($) =>
+      repeat1(
+        choice($.string_content, $.interpolation, $.escape_sequence, alias($._literal_escape, $.escape_sequence))
+      ),
 
     // https://ruby-doc.org/core-2.5.0/doc/syntax/literals_rdoc.html#label-Strings
     escape_sequence: () =>
