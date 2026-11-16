@@ -15486,6 +15486,10 @@
                             "members": [
                               {
                                 "type": "PATTERN",
+                                "value": "\\r\\n"
+                              },
+                              {
+                                "type": "PATTERN",
                                 "value": "x[0-9a-fA-F]{1,2}"
                               },
                               {

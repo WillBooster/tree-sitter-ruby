@@ -1713,7 +1713,7 @@ module.exports = grammar({
                 seq(choice('c', 'C-'), optional(String.raw`\M-`)),
                 seq('M-', optional(choice(String.raw`\c`, String.raw`\C-`)))
               ),
-              choice(/\r\n/, /[^\\]/, seq('\\', choice(/x[0-9a-fA-F]{1,2}/, /[0-7]{1,3}/, /[^u]/)))
+              choice(/\r\n/, /[^\\]/, seq('\\', choice(/\r\n/, /x[0-9a-fA-F]{1,2}/, /[0-7]{1,3}/, /[^u]/)))
             ),
             /[^ux0-7]/, // single character
             /x[0-9a-fA-F]{1,2}/, // hex code

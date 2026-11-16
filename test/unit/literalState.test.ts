@@ -196,7 +196,11 @@ test.each(
       String.raw`\M-\c`,
       String.raw`\M-\C-`,
     ].flatMap((prefix) =>
-      [' ', '\t', '\n', '\r\n', String.raw`\n`, String.raw`\x20`, ']'].map((operand) => ({ kind, prefix, operand }))
+      [' ', '\t', '\n', '\r\n', '\\\n', '\\\r\n', String.raw`\n`, String.raw`\x20`, ']'].map((operand) => ({
+        kind,
+        prefix,
+        operand,
+      }))
     )
   )
 )('keeps control/meta operands inside percent words: $kind $prefix $operand', ({ kind, prefix, operand }) => {
