@@ -2784,6 +2784,7 @@ following = 1
           (heredoc_beginning)))
       (bare_string
         (string_content)
+        (escape_sequence)
         (heredoc_body
           (heredoc_content)
           (heredoc_end))
@@ -2798,6 +2799,7 @@ following = 1
           (heredoc_beginning)))
       (bare_symbol
         (string_content)
+        (escape_sequence)
         (heredoc_body
           (heredoc_content)
           (heredoc_end))

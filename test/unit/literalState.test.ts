@@ -152,7 +152,7 @@ EOS
     const words = node.descendantsOfType(kind === 'I' ? 'bare_symbol' : 'bare_string');
     expect(words).toHaveLength(1);
     expect(words[0]!.descendantsOfType('interpolation')).toHaveLength(1);
-    expect(words[0]!.descendantsOfType('escape_sequence').map(({ text }) => text)).toEqual([String.raw`\n`]);
+    expect(words[0]!.descendantsOfType('escape_sequence').map(({ text }) => text)).toEqual(['\\\n', String.raw`\n`]);
     nativeParser.check(source, node);
   } finally {
     tree.delete();
@@ -273,7 +273,39 @@ test.each(
         tail.startsWith(' ') ? 2 : 1
       );
       expect(node.descendantsOfType('escape_sequence')[0]!.text).toBe(escape);
-      expect(node.descendantsOfType('heredoc_body')).toHaveLength(1);
+      expect(node.descendantsOfType('heredoc_body').map(({ text }) => text)).toEqual([`body${eol}EOS`]);
+      nativeParser.check(source, node);
+    } finally {
+      tree.delete();
+      parser.delete();
+    }
+  }
+);
+
+test.each(
+  ['W', 'I'].flatMap((kind) =>
+    ['', String.raw`\c`, String.raw`\C-`, String.raw`\M-`].flatMap((prefix) =>
+      [' ', '\t', '\f', '\v', '\r', ' \t'].flatMap((separator) =>
+        ['\n', '\r\n'].flatMap((eol) =>
+          [false, true].flatMap((escaped) =>
+            [' tail', String.raw` \n`].map((tail) => ({ kind, prefix, separator, eol, escaped, tail }))
+          )
+        )
+      )
+    )
+  )
+)(
+  'keeps real boundaries before newline-owning words: $kind $prefix $separator $eol $escaped $tail',
+  ({ kind, prefix, separator, eol, escaped, tail }) => {
+    const source = `%${kind}[#{<<EOS}${separator}${prefix}${escaped ? '\\' : ''}${eol}body${eol}EOS${eol}${tail}]`;
+    const parser = new Parser().setLanguage(language);
+    const tree = parser.parse(source)!;
+    try {
+      const node = tree.rootNode;
+      expect(node.hasError).toBe(false);
+      expect(node.descendantsOfType(kind === 'I' ? 'bare_symbol' : 'bare_string')).toHaveLength(
+        prefix || escaped ? 3 : 2
+      );
       nativeParser.check(source, node);
     } finally {
       tree.delete();
