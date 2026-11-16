@@ -1,3 +1,4 @@
+#include "unicode_character_classes.h"
 #include "tree_sitter/alloc.h"
 #include "tree_sitter/array.h"
 #include "tree_sitter/parser.h"
@@ -1529,7 +1530,7 @@ static inline bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symb
     }
 
     if (((valid_symbols[HASH_KEY_SYMBOL] || valid_symbols[IDENTIFIER_SUFFIX]) &&
-         (is_alpha(lexer->lookahead) || lexer->lookahead == '_')) ||
+         is_symbol_word_start(lexer->lookahead)) ||
         (valid_symbols[CONSTANT_SUFFIX] && is_upper(lexer->lookahead)) ||
         (valid_symbols[NOT_PARENTHESIZED] && lexer->lookahead == 'n') ||
         (valid_symbols[END_OF_SOURCE] && lexer->lookahead == '_' && lexer->get_column(lexer) == 0)) {
@@ -1615,7 +1616,7 @@ static bool scan_word_token(TSLexer *lexer, const bool *valid_symbols, bool resc
     bool end_marker = valid_symbols[END_OF_SOURCE] && lexer->get_column(lexer) == 0;
     unsigned length = 0;
     lexer->mark_end(lexer);
-    while (is_alnum(lexer->lookahead) || lexer->lookahead == '_') {
+    while (ruby_identifier_character(lexer->lookahead)) {
         not_word &= length < 3 && lexer->lookahead == "not"[length];
         end_marker &= length < 7 && lexer->lookahead == "__END__"[length] &&
             (length == 0 || !lexer->is_at_included_range_start(lexer));
@@ -1883,7 +1884,7 @@ static inline bool is_global_symbol_punctuation(int32_t c) {
 }
 
 static inline bool is_space(int32_t c) {
-    return (uint32_t)c < 0x80 ? c == ' ' || (uint32_t)c - '\t' < 5 : iswspace((wint_t)c) != 0;
+    return c == ' ' || (uint32_t)c - '\t' < 5;
 }
 
 static inline bool is_alpha(int32_t c) {
@@ -1903,7 +1904,7 @@ static inline bool is_lower(int32_t c) {
 }
 
 static inline bool is_upper(int32_t c) {
-    return (uint32_t)c < 0x80 ? (uint32_t)c - 'A' < 26 : iswupper((wint_t)c) != 0;
+    return (uint32_t)c < 0x80 ? (uint32_t)c - 'A' < 26 : ruby_unicode_uppercase(c);
 }
 
 static inline void append_heredoc_character(String *word, int32_t codepoint) {

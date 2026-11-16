@@ -247,3 +247,16 @@ test.each([
     parser.delete();
   }
 });
+
+test.each(['w', 'W', 'i', 'I'])('keeps non-ASCII spaces inside %%%s elements', (kind) => {
+  const parser = new Parser().setLanguage(language);
+  const tree = parser.parse(`%${kind}[a\u00A0b c\u3000d e\u0085f]`)!;
+  try {
+    expect(tree.rootNode.hasError).toBe(false);
+    const words = tree.rootNode.firstNamedChild!;
+    expect(words.namedChildren.map(({ text }) => text)).toEqual(['a\u00A0b', 'c\u3000d', 'e\u0085f']);
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});

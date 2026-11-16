@@ -3328,7 +3328,19 @@
             "named": true
           },
           {
+            "type": "false",
+            "named": true
+          },
+          {
+            "type": "nil",
+            "named": true
+          },
+          {
             "type": "self",
+            "named": true
+          },
+          {
+            "type": "true",
             "named": true
           }
         ]

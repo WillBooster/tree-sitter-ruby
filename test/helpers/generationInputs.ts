@@ -5,9 +5,14 @@ import path from 'node:path';
 
 export function currentWasmPath(root: string): string {
   const wasmPath = path.join(root, 'tree-sitter-ruby.wasm');
-  const sources = ['grammar.js', 'src/parser.c', 'src/scanner.c', 'src/tree_sitter/parser.h'].map(
-    (name) => fs.statSync(path.join(root, name)).mtimeMs
-  );
+  const sources = [
+    'grammar.js',
+    'src/parser.c',
+    'src/scanner.c',
+    'src/tree_sitter/parser.h',
+    'src/unicode_character_classes.h',
+    'src/unicodeCharacterClasses.json',
+  ].map((name) => fs.statSync(path.join(root, name)).mtimeMs);
   assert.ok(
     Math.max(generationInputMtime(root), ...sources) <= fs.statSync(wasmPath).mtimeMs,
     'generation inputs or src/ changed after the Wasm build was built; run `bun run build/ci`'

@@ -214,6 +214,54 @@ test.each([' ', '\t', '\f', '\v', '\r', '\\\n', '\\\r\n'])(
   }
 );
 
+test.each(['Éclair', 'Δ', 'ǅelta', 'Ⓐfoo', 'Ⅰfoo', '𐐀name', '𝐀bc', '꟎foo', '𖺠foo'])(
+  'classifies Unicode constant %s',
+  (name) => {
+    for (const suffix of ['?', '!'])
+      checkSource(`${name}=42\nclass ${name};end\nobj.${name}${suffix} 1\nfollowing`, false, (node) => {
+        expect(node.namedChildren[0]!.childForFieldName('left')!.type).toBe('constant');
+        expect(node.namedChildren[1]!.childForFieldName('name')!.type).toBe('constant');
+        expect(node.namedChildren[2]!.childForFieldName('method')!.type).toBe('constant');
+      });
+  }
+);
+
+test.each(['nil', 'true', 'false'])('retains the immediate receiver of singleton methods on %s', (receiver) => {
+  for (const definition of [`def ${receiver}.label;42;end`, `def ${receiver}.label = 42`]) {
+    checkSource(`${definition}\nfollowing`, false, (node) => {
+      const method = node.firstNamedChild!;
+      expect(method.type).toBe('singleton_method');
+      expect(method.childForFieldName('object')!.type).toBe(receiver);
+      expect(method.childForFieldName('object')!.text).toBe(receiver);
+    });
+  }
+});
+
+test.each(['\f', '\v', '\t', ' '])('separates a negated command argument after %j', (gap) => {
+  for (const method of ['foo', 'Éclair']) {
+    checkSource(`obj.${method}${gap}!arg\nfollowing`, false, (node) => {
+      const call = node.firstNamedChild!;
+      expect(call.childForFieldName('method')!.text).toBe(method);
+      expect(call.childForFieldName('arguments')!.firstNamedChild!.type).toBe('unary');
+    });
+  }
+});
+
+test.each(['foo\u00A0bar', '名前\u3000確認', '\u3000name', 'foo\u0085bar', 'Éclair\u00A0name'])(
+  'keeps non-ASCII characters inside method name %j',
+  (name) => {
+    for (const suffix of ['', '!', '?']) {
+      for (const receiver of ['', 'obj.']) {
+        checkSource(`${receiver}${name}${suffix}(1)\nfollowing`, false, (node) => {
+          const call = node.firstNamedChild!;
+          expect(call.childForFieldName('method')!.text).toBe(`${name}${suffix}`);
+          expect(call.childForFieldName('arguments')!.firstNamedChild!.type).toBe('integer');
+        });
+      }
+    }
+  }
+);
+
 function expectEndlessEquals(method: Node, index: number): void {
   const equals = method.children.find(({ type }) => type === '=')!;
   expect([equals.startIndex, equals.endIndex]).toEqual([index, index + 1]);

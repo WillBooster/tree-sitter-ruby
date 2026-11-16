@@ -34,13 +34,24 @@ const PREC = {
   COMPLEMENT: 85,
 };
 
-// Regex sources reach src/grammar.json as written, so they keep upstream's spelling, and tree-sitter's regex parser
-// rejects an unescaped `[` in a character class.
-// oxlint-disable no-control-regex, no-useless-escape, unicorn/no-hex-escape -- See above.
-const IDENTIFIER_CHARS = /[^\x00-\x1F\s:;`"'@$#.,|^&<=>+\-*/\\%?!~()\[\]{}]*/;
-const LOWER_ALPHA_CHAR = /[^\x00-\x1F\sA-Z0-9:;`"'@$#.,|^&<=>+\-*/\\%?!~()\[\]{}]/;
-const ALPHA_CHAR = /[^\x00-\x1F\s0-9:;`"'@$#.,|^&<=>+\-*/\\%?!~()\[\]{}]/;
-// oxlint-enable no-control-regex, no-useless-escape, unicorn/no-hex-escape
+// oxlint-disable-next-line unicorn/prefer-module -- The grammar is loaded as CommonJS by tree-sitter.
+const CHARACTER_CLASSES = require('./src/unicodeCharacterClasses.json');
+const UPPER_ALPHA_CHARS = characterClass(CHARACTER_CLASSES.uppercase);
+const EXCLUDED_IDENTIFIER_CHARS = characterClass(CHARACTER_CLASSES.excludedIdentifier);
+const UPPER_ALPHA_CHAR = new RegExp(`[${UPPER_ALPHA_CHARS}]`, 'u');
+const IDENTIFIER_CHARS = new RegExp(`[^${EXCLUDED_IDENTIFIER_CHARS}]*`, 'u');
+const LOWER_ALPHA_CHAR = new RegExp(`[^${EXCLUDED_IDENTIFIER_CHARS}${UPPER_ALPHA_CHARS}0-9]`, 'u');
+const ALPHA_CHAR = new RegExp(`[^${EXCLUDED_IDENTIFIER_CHARS}0-9]`, 'u');
+
+/** @param {number[][]} ranges */
+function characterClass(ranges) {
+  return ranges
+    .map((range) => {
+      const [first, last] = /** @type {[number, number]} */ (range);
+      return first === last ? `\\u{${first.toString(16)}}` : `\\u{${first.toString(16)}}-\\u{${last.toString(16)}}`;
+    })
+    .join('');
+}
 
 // oxlint-disable-next-line unicorn/prefer-module -- This package is CommonJS, so tree-sitter loads grammar.js as CommonJS.
 module.exports = grammar({
@@ -99,7 +110,7 @@ module.exports = grammar({
     $._spaced_endless_equals,
   ],
 
-  extras: ($) => [$.comment, $.heredoc_body, $._heredoc_resume, /\s/, /\\\r?\n/],
+  extras: ($) => [$.comment, $.heredoc_body, $._heredoc_resume, /[ \t\r\n\f\v]/, /\\\r?\n/],
 
   word: ($) => $.identifier,
 
@@ -298,7 +309,7 @@ module.exports = grammar({
     _singleton_method_object: ($) =>
       seq(
         choice(
-          field('object', choice($._variable, $.self, $._nonlocal_variable)),
+          field('object', choice($._variable, $.self, $.nil, $.true, $.false, $._nonlocal_variable)),
           seq('(', field('object', $._arg), ')')
         ),
         choice('.', '::')
@@ -1583,7 +1594,14 @@ module.exports = grammar({
     _gapless_definition_name: ($) => alias($._gapless_method_operator, $.operator),
 
     _method_identifier: ($) =>
-      choice(reserved('methodNames', $.identifier), alias($.self, $.identifier), alias($.super, $.identifier)),
+      choice(
+        reserved('methodNames', $.identifier),
+        alias($.self, $.identifier),
+        alias($.super, $.identifier),
+        alias($.nil, $.identifier),
+        alias($.true, $.identifier),
+        alias($.false, $.identifier)
+      ),
 
     _nonlocal_variable: ($) => choice($.instance_variable, $.class_variable, $.global_variable),
 
@@ -1619,8 +1637,8 @@ module.exports = grammar({
     false: () => 'false',
     nil: () => 'nil',
 
-    constant: () => token(seq(/[A-Z]/, IDENTIFIER_CHARS)),
-    constant_suffix: ($) => choice(token(seq(/[A-Z]/, IDENTIFIER_CHARS, /[?]/)), $._constant_suffix),
+    constant: () => token(seq(UPPER_ALPHA_CHAR, IDENTIFIER_CHARS)),
+    constant_suffix: ($) => choice(token(seq(UPPER_ALPHA_CHAR, IDENTIFIER_CHARS, /[?]/)), $._constant_suffix),
     identifier: () => token(seq(LOWER_ALPHA_CHAR, IDENTIFIER_CHARS)),
     identifier_suffix: ($) => choice(token(seq(LOWER_ALPHA_CHAR, IDENTIFIER_CHARS, /[?]/)), $._identifier_suffix),
     instance_variable: () => token(seq('@', ALPHA_CHAR, IDENTIFIER_CHARS)),
@@ -1653,18 +1671,18 @@ module.exports = grammar({
     string_array: ($) =>
       seq(
         alias($._string_array_start, '%w('),
-        optional(/\s+/),
-        sep(alias($._literal_contents, $.bare_string), /\s+/),
-        optional(/\s+/),
+        optional(/[ \t\r\n\f\v]+/),
+        sep(alias($._literal_contents, $.bare_string), /[ \t\r\n\f\v]+/),
+        optional(/[ \t\r\n\f\v]+/),
         alias($._string_end, ')')
       ),
 
     symbol_array: ($) =>
       seq(
         alias($._symbol_array_start, '%i('),
-        optional(/\s+/),
-        sep(alias($._literal_contents, $.bare_symbol), /\s+/),
-        optional(/\s+/),
+        optional(/[ \t\r\n\f\v]+/),
+        sep(alias($._literal_contents, $.bare_symbol), /[ \t\r\n\f\v]+/),
+        optional(/[ \t\r\n\f\v]+/),
         alias($._string_end, ')')
       ),
 

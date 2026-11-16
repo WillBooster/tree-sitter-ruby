@@ -17,6 +17,7 @@
     "grammar.js",
     "tree-sitter.json",
     "src/node-types.json",
+    "src/unicodeCharacterClasses.json",
     "*.wasm"
   ],
   "publishConfig": {
