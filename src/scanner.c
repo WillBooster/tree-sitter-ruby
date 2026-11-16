@@ -1903,7 +1903,8 @@ static inline bool is_lower(int32_t c) {
 }
 
 static inline bool is_upper(int32_t c) {
-    return (uint32_t)c < 0x80 ? (uint32_t)c - 'A' < 26 : iswupper((wint_t)c) != 0;
+    return (uint32_t)c < 0x80 ? (uint32_t)c - 'A' < 26
+                             : iswupper((wint_t)c) != 0 || (towupper((wint_t)c) != (wint_t)c && towlower((wint_t)c) != (wint_t)c);
 }
 
 static inline void append_heredoc_character(String *word, int32_t codepoint) {

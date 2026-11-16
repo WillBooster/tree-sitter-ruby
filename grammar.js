@@ -38,7 +38,7 @@ const PREC = {
 // rejects an unescaped `[` in a character class.
 // oxlint-disable no-control-regex, no-useless-escape, unicorn/no-hex-escape -- See above.
 const IDENTIFIER_CHARS = /[^\x00-\x1F\s:;`"'@$#.,|^&<=>+\-*/\\%?!~()\[\]{}]*/;
-const LOWER_ALPHA_CHAR = /[^\x00-\x1F\sA-Z0-9:;`"'@$#.,|^&<=>+\-*/\\%?!~()\[\]{}]/;
+const LOWER_ALPHA_CHAR = /[^\x00-\x1F\s\p{Uppercase}\p{Lt}0-9:;`"'@$#.,|^&<=>+\-*/\\%?!~()\[\]{}]/u;
 const ALPHA_CHAR = /[^\x00-\x1F\s0-9:;`"'@$#.,|^&<=>+\-*/\\%?!~()\[\]{}]/;
 // oxlint-enable no-control-regex, no-useless-escape, unicorn/no-hex-escape
 
@@ -298,7 +298,7 @@ module.exports = grammar({
     _singleton_method_object: ($) =>
       seq(
         choice(
-          field('object', choice($._variable, $.self, $._nonlocal_variable)),
+          field('object', choice($._variable, $.self, $.nil, $.true, $.false, $._nonlocal_variable)),
           seq('(', field('object', $._arg), ')')
         ),
         choice('.', '::')
@@ -1583,7 +1583,14 @@ module.exports = grammar({
     _gapless_definition_name: ($) => alias($._gapless_method_operator, $.operator),
 
     _method_identifier: ($) =>
-      choice(reserved('methodNames', $.identifier), alias($.self, $.identifier), alias($.super, $.identifier)),
+      choice(
+        reserved('methodNames', $.identifier),
+        alias($.self, $.identifier),
+        alias($.super, $.identifier),
+        alias($.nil, $.identifier),
+        alias($.true, $.identifier),
+        alias($.false, $.identifier)
+      ),
 
     _nonlocal_variable: ($) => choice($.instance_variable, $.class_variable, $.global_variable),
 
@@ -1619,8 +1626,8 @@ module.exports = grammar({
     false: () => 'false',
     nil: () => 'nil',
 
-    constant: () => token(seq(/[A-Z]/, IDENTIFIER_CHARS)),
-    constant_suffix: ($) => choice(token(seq(/[A-Z]/, IDENTIFIER_CHARS, /[?]/)), $._constant_suffix),
+    constant: () => token(seq(/[\p{Uppercase}\p{Lt}]/u, IDENTIFIER_CHARS)),
+    constant_suffix: ($) => choice(token(seq(/[\p{Uppercase}\p{Lt}]/u, IDENTIFIER_CHARS, /[?]/)), $._constant_suffix),
     identifier: () => token(seq(LOWER_ALPHA_CHAR, IDENTIFIER_CHARS)),
     identifier_suffix: ($) => choice(token(seq(LOWER_ALPHA_CHAR, IDENTIFIER_CHARS, /[?]/)), $._identifier_suffix),
     instance_variable: () => token(seq('@', ALPHA_CHAR, IDENTIFIER_CHARS)),

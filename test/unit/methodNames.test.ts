@@ -214,6 +214,25 @@ test.each([' ', '\t', '\f', '\v', '\r', '\\\n', '\\\r\n'])(
   }
 );
 
+test.each(['Éclair', 'Δ', 'ǅelta', 'Ⓐfoo', 'Ⅰfoo', '𐐀name'])('classifies Unicode constant %s', (name) => {
+  checkSource(`${name}=42\nclass ${name};end\nobj.${name}?\nfollowing`, false, (node) => {
+    expect(node.namedChildren[0]!.childForFieldName('left')!.type).toBe('constant');
+    expect(node.namedChildren[1]!.childForFieldName('name')!.type).toBe('constant');
+    expect(node.namedChildren[2]!.childForFieldName('method')!.type).toBe('constant');
+  });
+});
+
+test.each(['nil', 'true', 'false'])('retains the immediate receiver of singleton methods on %s', (receiver) => {
+  for (const definition of [`def ${receiver}.label;42;end`, `def ${receiver}.label = 42`]) {
+    checkSource(`${definition}\nfollowing`, false, (node) => {
+      const method = node.firstNamedChild!;
+      expect(method.type).toBe('singleton_method');
+      expect(method.childForFieldName('object')!.type).toBe(receiver);
+      expect(method.childForFieldName('object')!.text).toBe(receiver);
+    });
+  }
+});
+
 function expectEndlessEquals(method: Node, index: number): void {
   const equals = method.children.find(({ type }) => type === '=')!;
   expect([equals.startIndex, equals.endIndex]).toEqual([index, index + 1]);

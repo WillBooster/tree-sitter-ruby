@@ -511,6 +511,18 @@
                   },
                   {
                     "type": "SYMBOL",
+                    "name": "nil"
+                  },
+                  {
+                    "type": "SYMBOL",
+                    "name": "true"
+                  },
+                  {
+                    "type": "SYMBOL",
+                    "name": "false"
+                  },
+                  {
+                    "type": "SYMBOL",
                     "name": "_nonlocal_variable"
                   }
                 ]
@@ -14372,6 +14384,33 @@
           },
           "named": true,
           "value": "identifier"
+        },
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
+            "name": "nil"
+          },
+          "named": true,
+          "value": "identifier"
+        },
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
+            "name": "true"
+          },
+          "named": true,
+          "value": "identifier"
+        },
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
+            "name": "false"
+          },
+          "named": true,
+          "value": "identifier"
         }
       ]
     },
@@ -14659,7 +14698,8 @@
         "members": [
           {
             "type": "PATTERN",
-            "value": "[A-Z]"
+            "value": "[\\p{Uppercase}\\p{Lt}]",
+            "flags": "u"
           },
           {
             "type": "PATTERN",
@@ -14678,7 +14718,8 @@
             "members": [
               {
                 "type": "PATTERN",
-                "value": "[A-Z]"
+                "value": "[\\p{Uppercase}\\p{Lt}]",
+                "flags": "u"
               },
               {
                 "type": "PATTERN",
@@ -14704,7 +14745,8 @@
         "members": [
           {
             "type": "PATTERN",
-            "value": "[^\\x00-\\x1F\\sA-Z0-9:;`\"'@$#.,|^&<=>+\\-*/\\\\%?!~()\\[\\]{}]"
+            "value": "[^\\x00-\\x1F\\s\\p{Uppercase}\\p{Lt}0-9:;`\"'@$#.,|^&<=>+\\-*/\\\\%?!~()\\[\\]{}]",
+            "flags": "u"
           },
           {
             "type": "PATTERN",
@@ -14723,7 +14765,8 @@
             "members": [
               {
                 "type": "PATTERN",
-                "value": "[^\\x00-\\x1F\\sA-Z0-9:;`\"'@$#.,|^&<=>+\\-*/\\\\%?!~()\\[\\]{}]"
+                "value": "[^\\x00-\\x1F\\s\\p{Uppercase}\\p{Lt}0-9:;`\"'@$#.,|^&<=>+\\-*/\\\\%?!~()\\[\\]{}]",
+                "flags": "u"
               },
               {
                 "type": "PATTERN",
