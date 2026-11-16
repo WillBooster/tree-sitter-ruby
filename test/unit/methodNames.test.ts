@@ -237,6 +237,16 @@ test.each(['nil', 'true', 'false'])('retains the immediate receiver of singleton
   }
 });
 
+test.each(['\f', '\v', '\t', ' '])('separates a negated command argument after %j', (gap) => {
+  for (const method of ['foo', 'Éclair']) {
+    checkSource(`obj.${method}${gap}!arg\nfollowing`, false, (node) => {
+      const call = node.firstNamedChild!;
+      expect(call.childForFieldName('method')!.text).toBe(method);
+      expect(call.childForFieldName('arguments')!.firstNamedChild!.type).toBe('unary');
+    });
+  }
+});
+
 function expectEndlessEquals(method: Node, index: number): void {
   const equals = method.children.find(({ type }) => type === '=')!;
   expect([equals.startIndex, equals.endIndex]).toEqual([index, index + 1]);

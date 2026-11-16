@@ -10,8 +10,8 @@ export function currentWasmPath(root: string): string {
     'src/parser.c',
     'src/scanner.c',
     'src/tree_sitter/parser.h',
-    'src/unicode_uppercase.h',
-    'src/unicodeUppercase.json',
+    'src/unicode_character_classes.h',
+    'src/unicodeCharacterClasses.json',
   ].map((name) => fs.statSync(path.join(root, name)).mtimeMs);
   assert.ok(
     Math.max(generationInputMtime(root), ...sources) <= fs.statSync(wasmPath).mtimeMs,

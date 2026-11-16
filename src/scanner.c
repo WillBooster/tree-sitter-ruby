@@ -1,4 +1,4 @@
-#include "unicode_uppercase.h"
+#include "unicode_character_classes.h"
 #include "tree_sitter/alloc.h"
 #include "tree_sitter/array.h"
 #include "tree_sitter/parser.h"
@@ -1616,7 +1616,7 @@ static bool scan_word_token(TSLexer *lexer, const bool *valid_symbols, bool resc
     bool end_marker = valid_symbols[END_OF_SOURCE] && lexer->get_column(lexer) == 0;
     unsigned length = 0;
     lexer->mark_end(lexer);
-    while (is_iden_char(lexer->lookahead)) {
+    while (ruby_identifier_character(lexer->lookahead)) {
         not_word &= length < 3 && lexer->lookahead == "not"[length];
         end_marker &= length < 7 && lexer->lookahead == "__END__"[length] &&
             (length == 0 || !lexer->is_at_included_range_start(lexer));
