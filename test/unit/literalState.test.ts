@@ -184,3 +184,37 @@ test.each(['w', 'i', 'W', 'I'])('retains complete escaped line endings in percen
     parser.delete();
   }
 });
+
+test.each(
+  ['W', 'I'].flatMap((kind) =>
+    [
+      String.raw`\c`,
+      String.raw`\C-`,
+      String.raw`\M-`,
+      String.raw`\c\M-`,
+      String.raw`\C-\M-`,
+      String.raw`\M-\c`,
+      String.raw`\M-\C-`,
+    ].flatMap((prefix) =>
+      [' ', '\t', '\n', '\r\n', String.raw`\n`, String.raw`\x20`, ']'].map((operand) => ({ kind, prefix, operand }))
+    )
+  )
+)('keeps control/meta operands inside percent words: $kind $prefix $operand', ({ kind, prefix, operand }) => {
+  const word = `${prefix}${operand}${String.raw`\n`}`;
+  const source = `%${kind}[${word} tail]`;
+  const parser = new Parser().setLanguage(language);
+  const tree = parser.parse(source)!;
+  try {
+    const node = tree.rootNode;
+    expect(node.hasError).toBe(false);
+    expect(node.descendantsOfType(kind === 'I' ? 'bare_symbol' : 'bare_string').map(({ text }) => text)).toEqual([
+      word,
+      'tail',
+    ]);
+    expect(node.descendantsOfType('escape_sequence')[0]!.text).toBe(`${prefix}${operand}`);
+    nativeParser.check(source, node);
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});
