@@ -18,7 +18,7 @@
 //! `willbooster-tree-sitter` 23.x runtime; upstream's `tree-sitter` runtime and incompatible ABI versions of the fork
 //! reject it.
 //!
-//! [`Parser`]: https://docs.rs/willbooster-tree-sitter/23.0.0/tree_sitter/struct.Parser.html
+//! [`Parser`]: https://docs.rs/willbooster-tree-sitter/23.0.2/tree_sitter/struct.Parser.html
 //! [tree-sitter]: https://tree-sitter.github.io/
 
 use tree_sitter_language::LanguageFn;
