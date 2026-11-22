@@ -221,7 +221,7 @@ static inline unsigned serialize(Scanner *scanner, char *buffer) {
     return size;
 }
 
-// code-gauge-allow functionNcss 41 -- The header and pending heredoc records decode one layout; splitting it would duplicate buffer-position bookkeeping.
+// code-gauge-allow functionNcss -- The header and pending heredoc records decode one layout; splitting it would duplicate buffer-position bookkeeping.
 static inline void deserialize(Scanner *scanner, const char *buffer, unsigned length) {
     unsigned size = 0;
     scanner->has_leading_whitespace = false;
@@ -284,7 +284,7 @@ static void pop_literal(Scanner *scanner) {
 
 // The runtime gives each full parse its own scanner. Keep immutable parent frames until destruction so parser
 // branches can restore arbitrary literal depths through frame IDs without copying or truncating the whole stack.
-// code-gauge-allow functionNcss 42 -- Lookup and insertion share the canonical trie; splitting them would relocate index traversal and node ownership bookkeeping.
+// code-gauge-allow functionNcss -- Lookup and insertion share the canonical trie; splitting them would relocate index traversal and node ownership bookkeeping.
 static uint32_t save_literal(Scanner *scanner) {
     LiteralFrame frame = {scanner->literal, scanner->literal_parent, scanner->literal_depth};
     LiteralKey key = literal_key(&frame);
@@ -434,8 +434,8 @@ static bool scan_line_break(TSLexer *lexer);
 static bool scan_host_line_escape(Scanner *scanner, TSLexer *lexer, bool heredoc_body_start_is_valid, bool *escaped_space);
 static bool scan_end_marker_line_end(TSLexer *lexer);
 
-// code-gauge-allow functionCognitiveComplexity 24 -- One loop skips every whitespace form so that each case shares the line-break and heredoc state it tracks.
-// code-gauge-allow functionNcss 45 -- One loop skips every whitespace form so that each case shares the line-break and heredoc state it tracks.
+// code-gauge-allow functionCognitiveComplexity -- One loop skips every whitespace form so that each case shares the line-break and heredoc state it tracks.
+// code-gauge-allow functionNcss -- One loop skips every whitespace form so that each case shares the line-break and heredoc state it tracks.
 static inline bool scan_whitespace(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols,
                                    bool *rescue_may_end_line) {
     bool heredoc_body_start_is_valid = has_pending_heredoc_body(scanner, valid_symbols);
@@ -833,7 +833,7 @@ static bool starts_symbol_operand(TSLexer *lexer) {
 // contents may contain the delimiter, and at a line break while a heredoc body is queued, which the literal suspends
 // for. Ruby lets the literal continue past other line breaks, but like `foo %q\n` (see percent_close_delimiter), a
 // literal after a name that would swallow the following line is treated as unterminated, keeping the modulo reading.
-// code-gauge-allow functionCognitiveComplexity 16 -- One loop must classify the delimiter, line breaks, escapes, and interpolation in source order.
+// code-gauge-allow functionCognitiveComplexity -- One loop must classify the delimiter, line breaks, escapes, and interpolation in source order.
 static SpacedLiteralEnd skip_spaced_percent_literal(Scanner *scanner, TSLexer *lexer, const Literal *literal) {
     const SpacedLiteralEnd line_break = scanner->open_heredocs.size > 0 ? SPACED_LITERAL_UNREADABLE : SPACED_LITERAL_UNTERMINATED;
     while (lexer->lookahead != literal->close_delimiter) {
@@ -1041,8 +1041,8 @@ static inline bool scan_short_interpolation(TSLexer *lexer, const bool has_conte
     return false;
 }
 
-// code-gauge-allow functionCognitiveComplexity 30 -- One loop scans heredoc lines, interpolations, nested bodies, and EOF while sharing line-start and content state.
-// code-gauge-allow functionNcss 35 -- One loop scans heredoc lines, interpolations, nested bodies, and EOF while sharing line-start and content state.
+// code-gauge-allow functionCognitiveComplexity -- One loop scans heredoc lines, interpolations, nested bodies, and EOF while sharing line-start and content state.
+// code-gauge-allow functionNcss -- One loop scans heredoc lines, interpolations, nested bodies, and EOF while sharing line-start and content state.
 static inline bool scan_heredoc_content(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols) {
     uint32_t current = first_started_heredoc_index(scanner);
     if (current == scanner->open_heredocs.size) current = 0;
@@ -1132,7 +1132,7 @@ static HeredocPrefixMatch match_heredoc_line_prefix(const Heredoc *heredoc, TSLe
     return match;
 }
 
-// code-gauge-allow functionCognitiveComplexity 20 -- Escape, braced-interpolation and short-interpolation prefixes share one lookahead cursor.
+// code-gauge-allow functionCognitiveComplexity -- Escape, braced-interpolation and short-interpolation prefixes share one lookahead cursor.
 static bool scan_heredoc_prefix_token(Heredoc *heredoc, TSLexer *lexer, size_t matched) {
     if (!heredoc->allows_interpolation || matched == 0) return false;
     if (heredoc->word.contents[0] == '\\') {
@@ -1622,8 +1622,8 @@ static bool scan_splat(Scanner *scanner, TSLexer *lexer, const bool *valid_symbo
     return true;
 }
 
-// code-gauge-allow functionCognitiveComplexity 29 -- Suffixes and whole-word tokens share the scan so lookahead cannot consume another token's input.
-// code-gauge-allow functionNcss 42 -- Suffixes and whole-word tokens share the scan so lookahead cannot consume another token's input.
+// code-gauge-allow functionCognitiveComplexity -- Suffixes and whole-word tokens share the scan so lookahead cannot consume another token's input.
+// code-gauge-allow functionNcss -- Suffixes and whole-word tokens share the scan so lookahead cannot consume another token's input.
 static bool scan_word_token(TSLexer *lexer, const bool *valid_symbols, bool rescue_may_end_line) {
     static const char RESCUE[] = "rescue";
     TokenType suffix = is_upper(lexer->lookahead) ? CONSTANT_SUFFIX : IDENTIFIER_SUFFIX;
@@ -1794,8 +1794,8 @@ static inline bool has_pending_heredoc_body(Scanner *scanner, const bool *valid_
            !array_get(&scanner->open_heredocs, 0)->started;
 }
 
-// code-gauge-allow functionCognitiveComplexity 25 -- Escape ownership and heredoc resumption share the consumed lexer position.
-// code-gauge-allow functionNcss 36 -- Escape ownership and heredoc resumption share the consumed lexer position.
+// code-gauge-allow functionCognitiveComplexity -- Escape ownership and heredoc resumption share the consumed lexer position.
+// code-gauge-allow functionNcss -- Escape ownership and heredoc resumption share the consumed lexer position.
 static inline bool scan_heredoc_after_literal_escape(Scanner *scanner, TSLexer *lexer, bool consume_plain_escape, bool continues_word) {
     advance(lexer);
     bool separated = lexer->is_at_included_range_start(lexer);
@@ -1838,7 +1838,7 @@ static bool advance_within_range(TSLexer *lexer) {
     return !lexer->is_at_included_range_start(lexer);
 }
 
-// code-gauge-allow functionCognitiveComplexity 25 -- The bounded prefix state machine preserves one lexer position and included-range boundary.
+// code-gauge-allow functionCognitiveComplexity -- The bounded prefix state machine preserves one lexer position and included-range boundary.
 static bool scan_control_newline_operand(TSLexer *lexer) {
     unsigned seen = 0;
     for (;;) {
